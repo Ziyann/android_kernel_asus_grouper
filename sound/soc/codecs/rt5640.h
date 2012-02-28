@@ -2040,8 +2040,11 @@ enum {
 #define RT5640_VER_C				0x2
 #define RT5640_VER_D				0x3
 
+#define RT5640_NO_JACK		BIT(0)
+#define RT5640_HEADSET_DET	BIT(1)
+#define RT5640_HEADPHO_DET	BIT(2)
 
-
+int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert);
 
 /* Volume Rescale */
 #define RT5640_VOL_RSCL_MAX 0x27
