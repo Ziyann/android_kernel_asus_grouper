@@ -2521,7 +2521,7 @@ struct tegra_usb_phy *tegra_usb_phy_open(int instance, void __iomem *regs,
 	int i;
 	int err;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	struct tegra_ulpi_config *uhsic_config;
+	struct tegra_uhsic_config *uhsic_config;
 	int reset_gpio, enable_gpio;
 #endif
 	unsigned int pcb_id_version = grouper_query_pcba_revision();
