@@ -62,6 +62,7 @@
 #include "board.h"
 #include "clock.h"
 #include "board-cardhu.h"
+#include "board-touch.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
@@ -626,6 +627,10 @@ static void __init cardhu_spi_init(void)
 	platform_add_devices(cardhu_spi_devices,
 				ARRAY_SIZE(cardhu_spi_devices));
 
+	if (display_board_info.board_id == BOARD_DISPLAY_PM313) {
+		platform_add_devices(touch_spi_device,
+				ARRAY_SIZE(touch_spi_device));
+	}
 	if (board_info.board_id == BOARD_E1198) {
 		tegra_spi_device2.dev.platform_data = &cardhu_spi_pdata;
 		platform_device_register(&tegra_spi_device2);
