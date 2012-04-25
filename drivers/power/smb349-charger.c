@@ -274,8 +274,13 @@ error:
 
 int update_charger_status(void)
 {
-	struct i2c_client *client = charger->client;
+	struct i2c_client *client;
 	int ret, val;
+
+	if (!charger)
+		return -ENODEV;
+	else
+		client = charger->client;
 
 	val =  smb349_read(client, SMB349_STS_REG_D);
 	if (val < 0) {
