@@ -2,6 +2,7 @@
  * SPI init/core code
  *
  * Copyright (C) 2005 David Brownell
+ * Copyright (C) 2012-2013, NVIDIA Corporation.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -530,7 +531,7 @@ static void spi_pump_messages(struct kthread_work *work)
 	/* Lock queue and check for queue work */
 	spin_lock_irqsave(&master->queue_lock, flags);
 	if (list_empty(&master->queue) || !master->running) {
-		if (master->busy) {
+		if (master->busy && master->unprepare_transfer_hardware) {
 			ret = master->unprepare_transfer_hardware(master);
 			if (ret) {
 				spin_unlock_irqrestore(&master->queue_lock, flags);
@@ -560,7 +561,7 @@ static void spi_pump_messages(struct kthread_work *work)
 		master->busy = true;
 	spin_unlock_irqrestore(&master->queue_lock, flags);
 
-	if (!was_busy) {
+	if (!was_busy && master->prepare_transfer_hardware) {
 		ret = master->prepare_transfer_hardware(master);
 		if (ret) {
 			dev_err(&master->dev,
