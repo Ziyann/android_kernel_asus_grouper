@@ -41,6 +41,7 @@
 #include "board-cardhu.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "tegra3_host1x_devices.h"
 
 /* Select panel to be used. */
 #define DSI_PANEL_219 1
@@ -1241,7 +1242,7 @@ int __init cardhu_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra3_register_host1x_devices();
 	if (err)
 		return err;
 #endif
