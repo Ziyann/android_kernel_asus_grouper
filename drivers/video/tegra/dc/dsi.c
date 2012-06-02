@@ -1620,7 +1620,7 @@ static void tegra_dsi_pad_calibration(struct tegra_dc_dsi_data *dsi)
 	tegra_vi_csi_writel(val, CSI_CIL_PAD_CONFIG);
 }
 
-static void tegra_dsi_panelB_enable()
+static void tegra_dsi_panelB_enable(void)
 {
 	unsigned int val;
 
