@@ -22,7 +22,7 @@ struct mmc_cid {
 	unsigned char		hwrev;
 	unsigned char		fwrev;
 	unsigned char		month;
-	unsigned int		prv;
+	unsigned short		prod_rev;
 };
 
 struct mmc_csd {
@@ -88,6 +88,9 @@ struct mmc_ext_csd {
 
 	unsigned int		feature_support;
 #define MMC_DISCARD_FEATURE	BIT(0)
+	bool			refresh;		/* refresh of blocks supported */
+	__kernel_time_t		last_tv_sec;		/* last time a block was refreshed */
+	__kernel_time_t		last_bkops_tv_sec;	/* last time bkops was done */
 };
 
 struct sd_scr {
@@ -229,6 +232,10 @@ struct mmc_card {
 	unsigned int		sd_bus_speed;	/* Bus Speed Mode set for the card */
 
 	struct dentry		*debugfs_root;
+
+	struct timer_list	timer;
+	struct work_struct	bkops;
+	struct work_struct	refresh;
 };
 
 /*
