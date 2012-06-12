@@ -2832,13 +2832,6 @@ void tegra_usb_phy_postsuspend(struct tegra_usb_phy *phy, bool is_dpd)
 
 void tegra_usb_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 {
-	const tegra_phy_fp postresume[] = {
-		utmi_phy_postresume,
-		NULL,
-		NULL,
-		NULL,
-	};
-
 	usb_phy_set_tx_fill_tuning(phy, is_dpd);
 
 	// If Phy type is utmi, call its post resume
