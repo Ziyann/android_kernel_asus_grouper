@@ -42,10 +42,6 @@
 #include <mach/legacy_irq.h>
 #include <linux/nvmap.h>
 
-#include "../../../../video/tegra/host/host1x/host1x_syncpt.h"
-#include "../../../../video/tegra/host/dev.h"
-#include "../../../../video/tegra/host/nvhost_acm.h"
-
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 #include "../avp/headavp.h"
 #endif
@@ -111,7 +107,6 @@ struct nvavp_info {
 
 	struct nv_e276_control		*os_control;
 
-	struct nvhost_syncpt		*nvhost_syncpt;
 	u32				syncpt_id;
 	u32				syncpt_value;
 
@@ -147,7 +142,7 @@ static struct clk *nvavp_clk_get(struct nvavp_info *nvavp, int id)
 static void nvavp_clks_enable(struct nvavp_info *nvavp)
 {
 	if (nvavp->clk_enabled++ == 0) {
-		nvhost_module_busy(nvhost_get_host(nvavp->nvhost_dev)->dev);
+		nvhost_module_busy_ext(nvhost_get_parent(nvavp->nvhost_dev));
 		clk_enable(nvavp->bsev_clk);
 		clk_enable(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, nvavp->emc_clk_rate);
@@ -166,7 +161,7 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 		clk_disable(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, 0);
 		clk_set_rate(nvavp->sclk, 0);
-		nvhost_module_idle(nvhost_get_host(nvavp->nvhost_dev)->dev);
+		nvhost_module_idle_ext(nvhost_get_parent(nvavp->nvhost_dev));
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: resetting emc_clk "
 				"and sclk\n", __func__);
 	}
@@ -425,8 +420,8 @@ static int nvavp_pushbuffer_init(struct nvavp_info *nvavp)
 	writel(temp, &nvavp->pushbuf_fence);
 
 	nvavp->syncpt_id = NVSYNCPT_AVP_0;
-	nvavp->syncpt_value = nvhost_syncpt_read(nvavp->nvhost_syncpt,
-						 nvavp->syncpt_id);
+	nvavp->syncpt_value = nvhost_syncpt_read_ext(
+						nvavp->nvhost_dev, nvavp->syncpt_id);
 
 	return 0;
 }
@@ -1204,7 +1199,6 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev,
 		return -EINVAL;
 	}
 
-
 	nvavp = kzalloc(sizeof(struct nvavp_info), GFP_KERNEL);
 	if (!nvavp) {
 		dev_err(&ndev->dev, "cannot allocate avp_info\n");
@@ -1212,13 +1206,6 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev,
 	}
 
 	memset(nvavp, 0, sizeof(*nvavp));
-
-	nvavp->nvhost_syncpt = &nvhost_get_host(ndev)->syncpt;
-	if (!nvavp->nvhost_syncpt) {
-		dev_err(&ndev->dev, "cannot get syncpt handle\n");
-		ret = -ENOENT;
-		goto err_get_syncpt;
-	}
 
 	nvavp->nvmap = nvmap_create_client(nvmap_dev, "nvavp_drv");
 	if (IS_ERR_OR_NULL(nvavp->nvmap)) {
