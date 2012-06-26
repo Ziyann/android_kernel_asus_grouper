@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/dsi.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -40,7 +40,7 @@
 #include "dsi_regs.h"
 #include "dsi.h"
 
-#define APB_MISC_GP_MIPI_PAD_CTRL_0 	(TEGRA_APB_MISC_BASE + 0x820)
+#define APB_MISC_GP_MIPI_PAD_CTRL_0	(TEGRA_APB_MISC_BASE + 0x820)
 #define DSIB_MODE_ENABLE		0x2
 
 #define DSI_USE_SYNC_POINTS		1

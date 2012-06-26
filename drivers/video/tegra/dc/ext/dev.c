@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/dev.c
  *
- * Copyright (C) 2011-2012, NVIDIA Corporation
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION, All rights reserved.
  *
  * Author: Robert Morell <rmorell@nvidia.com>
  * Some code based on fbdev extensions written by:
@@ -559,13 +559,11 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 
 		atomic_inc(&ext->win[work_index].nr_pending_flips);
 	}
-
-	if (work_index >= 0)
-		queue_work(ext->win[work_index].flip_wq, &data->work);
-	else {
-		pr_err("%s: work_index was not calculated\n", __func__);
-		goto fail_pin;
+	if (work_index < 0) {
+		ret = -EINVAL;
+		goto unlock;
 	}
+	queue_work(ext->win[work_index].flip_wq, &data->work);
 
 	unlock_windows_for_flip(user, args);
 
