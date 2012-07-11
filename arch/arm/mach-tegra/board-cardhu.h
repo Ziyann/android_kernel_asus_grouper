@@ -222,6 +222,8 @@ int cardhu_pm299_gpio_switch_regulator_init(void);
 int cardhu_pm299_regulator_init(void);
 int __init touch_init_raydium(int irq_gpio, int reset_gpio, int platform);
 
+extern struct tegra_uart_platform_data cardhu_irda_pdata;
+
 #define MPU_TYPE_MPU3050	1
 #define MPU_TYPE_MPU6050	2
 #define MPU_GYRO_TYPE		MPU_TYPE_MPU3050
