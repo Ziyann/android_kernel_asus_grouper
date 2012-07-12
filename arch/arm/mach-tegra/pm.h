@@ -86,6 +86,9 @@ struct tegra_suspend_platform_data {
 	int cpu_wake_freq;
 };
 
+/* clears io dpd settings before kernel code */
+void tegra_bl_io_dpd_cleanup(void);
+
 unsigned long tegra_cpu_power_good_time(void);
 unsigned long tegra_cpu_power_off_time(void);
 unsigned long tegra_cpu_lp2_min_residency(void);
