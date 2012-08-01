@@ -1343,14 +1343,18 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 	tegra_dc_clk_enable(dc);
 
 	/* do not accept interrupts during initialization */
-	tegra_dc_writel(dc, 0, DC_CMD_INT_ENABLE);
 	tegra_dc_writel(dc, 0, DC_CMD_INT_MASK);
 
 	enable_dc_irq(dc->irq);
 
 	failed_init = tegra_dc_init(dc);
 	if (failed_init) {
-		_tegra_dc_controller_disable(dc);
+		tegra_dc_writel(dc, 0, DC_CMD_INT_MASK);
+		disable_irq(dc->irq);
+		tegra_dc_clear_bandwidth(dc);
+		tegra_dc_clk_disable(dc);
+		if (dc->out && dc->out->disable)
+			dc->out->disable();
 		return false;
 	}
 
@@ -1491,6 +1495,8 @@ static bool _tegra_dc_enable(struct tegra_dc *dc)
 		clk_enable(dc->min_emc_clk);
 		clk_set_rate(dc->min_emc_clk, dc->pdata->min_emc_clk_rate);
 	}
+	if (!enabled)
+		tegra_dc_io_end(dc);
 
 	return enabled;
 }
