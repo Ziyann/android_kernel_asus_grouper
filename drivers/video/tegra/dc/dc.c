@@ -1444,32 +1444,14 @@ static bool _tegra_dc_controller_reset_enable(struct tegra_dc *dc)
 
 static int _tegra_dc_set_default_videomode(struct tegra_dc *dc)
 {
-	return tegra_dc_set_fb_mode(dc, &tegra_dc_hdmi_fallback_mode, 0);
-}
-
-static bool _tegra_dc_enable(struct tegra_dc *dc)
-{
-	bool enabled = false;
-
-	if (dc->ndev->id == 0) {
-			struct timeval t_resume;
-			int diff_msec = 0;
-			do_gettimeofday(&t_resume);
-			diff_msec = ((t_resume.tv_sec - t_suspend.tv_sec) * 1000000 +(t_resume.tv_usec - t_suspend.tv_usec)) / 1000;
-			printk("Disp: diff_msec= %d\n", diff_msec);
-			if((diff_msec < 150) && (diff_msec >= 0))
-					msleep(150 - diff_msec);
-	}
-
-
 	if (dc->mode.pclk == 0) {
 		switch (dc->out->type) {
 		case TEGRA_DC_OUT_HDMI:
 		/* DC enable called but no videomode is loaded.
 		     Check if HDMI is connected, then set fallback mdoe */
 		if (tegra_dc_hpd(dc)) {
-			if (_tegra_dc_set_default_videomode(dc))
-				return false;
+			return tegra_dc_set_fb_mode(dc,
+					&tegra_dc_hdmi_fallback_mode, 0);
 		} else
 			return false;
 
@@ -1484,6 +1466,16 @@ static bool _tegra_dc_enable(struct tegra_dc *dc)
 			return false;
 		}
 	}
+
+	return false;
+}
+
+static bool _tegra_dc_enable(struct tegra_dc *dc)
+{
+	bool enabled = false;
+
+	if (dc->mode.pclk == 0)
+		return false;
 
 	if (!dc->out)
 		return false;
@@ -1904,8 +1896,10 @@ static int tegra_dc_probe(struct nvhost_device *ndev,
 	}
 
 	mutex_lock(&dc->lock);
-	if (dc->pdata->flags & TEGRA_DC_FLAG_ENABLED)
+	if (dc->pdata->flags & TEGRA_DC_FLAG_ENABLED) {
 		dc->enabled = _tegra_dc_enable(dc);
+		_tegra_dc_set_default_videomode(dc);
+	}
 	mutex_unlock(&dc->lock);
 
 	/* interrupt handler must be registered before tegra_fb_register() */
@@ -2055,8 +2049,10 @@ static int tegra_dc_resume(struct nvhost_device *ndev)
 	mutex_lock(&dc->lock);
 	dc->suspended = false;
 
-	if (dc->enabled)
+	if (dc->enabled) {
 		_tegra_dc_enable(dc);
+		_tegra_dc_set_default_videomode(dc);
+	}
 
 	if (dc->out && dc->out->hotplug_init)
 		dc->out->hotplug_init();
