@@ -63,8 +63,6 @@
 
 #define enterprise_lcd_te		TEGRA_GPIO_PJ1
 
-#define enterprise_bl_pwm		TEGRA_GPIO_PH3
-
 #ifdef CONFIG_TEGRA_DC
 static struct regulator *enterprise_dsi_reg;
 static struct regulator *enterprise_lcd_reg;
@@ -494,10 +492,6 @@ static int enterprise_dsi_panel_enable(void)
 			"DSI regulator avdd_dsi_csi could not be enabled\n");
 		return ret;
 	}
-
-#if IS_EXTERNAL_PWM
-	tegra_gpio_disable(enterprise_bl_pwm);
-#endif
 
 #if DSI_PANEL_RESET
 	if (board_info.fab >= BOARD_FAB_A03) {
