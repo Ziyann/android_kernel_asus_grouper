@@ -583,3 +583,12 @@ config TEGRA_LP1_950
 	help
 		Enable support for LP1 Core voltage to set to lowest
 endif
+
+config TEGRA_DC_USE_HW_BPP
+	bool "Default Bits Per Pixel value from tegra DC hardware"
+	depends on TEGRA_DC
+	default n
+        help
+	  Programs platform data to inform DC driver to use current
+	  hardware value for bits per pixel setting.  Useful for
+          preserving and displaying framebuffer content from bootloader.
