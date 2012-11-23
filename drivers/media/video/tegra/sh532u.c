@@ -1,7 +1,7 @@
 /*
  * SH532U focuser driver.
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (C) 2011-2013 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -386,7 +386,7 @@ static void sh532u_gpio_exit(struct sh532u_info *info)
 {
 	unsigned i;
 
-	for (i = 0; i <= ARRAY_SIZE(sh532u_gpios); i++) {
+	for (i = 0; i < ARRAY_SIZE(sh532u_gpios); i++) {
 		if (info->gpio[i].flag && info->gpio[i].own) {
 			gpio_free(info->gpio[i].gpio);
 			info->gpio[i].own = false;
