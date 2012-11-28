@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_dvfs.c
  *
- * Copyright (C) 2010-2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -551,8 +551,10 @@ static void __init init_dvfs_cold(struct dvfs *d, int nominal_mv_index)
 			cpu_cold_freqs[i] = d->freqs[i] - offs;
 		else {
 			cpu_cold_freqs[i] = d->freqs[i];
-			pr_warn("tegra3_dvfs: cold offset %lu is too high for"
-				" regular dvfs limit %lu\n", offs, d->freqs[i]);
+			if (d->freqs[i] > 1 * MHZ)
+				pr_warn(
+				"%s: offset %lu too high for dvfs limit %lu\n",
+				__func__, offs, d->freqs[i]);
 		}
 
 		if (i)
