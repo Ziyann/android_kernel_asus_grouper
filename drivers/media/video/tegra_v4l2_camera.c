@@ -1085,7 +1085,7 @@ static int tegra_camera_videobuf_setup(struct vb2_queue *vq,
 	if (!*num_buffers)
 		*num_buffers = 2;
 
-	dev_dbg(icd->parent, "num_buffers=%u, size=%u\n",
+	dev_dbg(icd->parent, "num_buffers=%u, size=%lu\n",
 		*num_buffers, sizes[0]);
 
 	tegra_camera_capture_setup(pcdev);
