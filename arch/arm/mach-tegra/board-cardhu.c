@@ -1,8 +1,8 @@
 /*
  * arch/arm/mach-tegra/board-cardhu.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.  All rights reserved.
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1057,6 +1057,11 @@ static int __init cardhu_touch_init(void)
 	struct board_info BoardInfo, DisplayBoardInfo;
 
 	tegra_get_board_info(&BoardInfo);
+
+	/* Beaver board does not have any touch hardware*/
+	if (BoardInfo.board_id == BOARD_PM315)
+		return 0;
+
 	tegra_get_display_board_info(&DisplayBoardInfo);
 	if (DisplayBoardInfo.board_id == BOARD_DISPLAY_PM313) {
 		tegra_clk_init_from_table(spi_clk_init_table);

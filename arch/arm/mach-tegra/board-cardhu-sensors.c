@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-sensors.c
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -995,7 +995,8 @@ static const struct i2c_board_info cardhu_i2c2_board_info_tca6416[] = {
 static int __init pmu_tca6416_init(void)
 {
 	if ((board_info.board_id == BOARD_E1198) ||
-		(board_info.board_id == BOARD_E1291))
+		(board_info.board_id == BOARD_E1291) ||
+			(board_info.board_id == BOARD_PM315))
 			return 0;
 
 	pr_info("Registering pmu pca6416\n");
@@ -1009,7 +1010,8 @@ static int __init cam_tca6416_init(void)
 	/* Boards E1198 and E1291 are of Cardhu personality
 	 * and donot have TCA6416 exp for camera */
 	if ((board_info.board_id == BOARD_E1198) ||
-		(board_info.board_id == BOARD_E1291))
+			(board_info.board_id == BOARD_E1291) ||
+			(board_info.board_id == BOARD_PM315))
 		return 0;
 
 	pr_info("Registering cam pca6416\n");
@@ -1148,8 +1150,10 @@ int __init cardhu_sensors_init(void)
 	cardhu_camera_init();
 	cam_tca6416_init();
 
-	i2c_register_board_info(2, cardhu_i2c3_board_info,
-		ARRAY_SIZE(cardhu_i2c3_board_info));
+	if (board_info.board_id != BOARD_PM315) {
+		i2c_register_board_info(2, cardhu_i2c3_board_info,
+			ARRAY_SIZE(cardhu_i2c3_board_info));
+	}
 
 	i2c_register_board_info(2, cardhu_i2c_board_info_tps61050,
 		ARRAY_SIZE(cardhu_i2c_board_info_tps61050));
