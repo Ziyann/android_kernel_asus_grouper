@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/iovmm.h
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include <linux/rwsem.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>
+#include <mach/iomap.h>
 
 #ifndef _MACH_TEGRA_IOVMM_H_
 #define _MACH_TEGRA_IOVMM_H_
@@ -374,7 +375,7 @@ static inline void tegra_iovmm_resume(void)
 
 #define tegra_iovmm_zap_vm(v)	tegra_iommu_zap_vm(v)
 
-#define tegra_iovmm_get_vm_size(c)	dma_iova_get_free_total((c)->dev)
+#define tegra_iovmm_get_vm_size(c)	TEGRA_IOMMU_SIZE
 #define tegra_iovmm_get_max_free(c)	dma_iova_get_free_max((c)->dev)
 
 #define tegra_iovmm_vm_insert_pfn(area, handle, pfn)			\
