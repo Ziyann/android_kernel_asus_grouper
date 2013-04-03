@@ -1153,10 +1153,10 @@ int __init cardhu_sensors_init(void)
 	if (board_info.board_id != BOARD_PM315) {
 		i2c_register_board_info(2, cardhu_i2c3_board_info,
 			ARRAY_SIZE(cardhu_i2c3_board_info));
-	}
 
-	i2c_register_board_info(2, cardhu_i2c_board_info_tps61050,
-		ARRAY_SIZE(cardhu_i2c_board_info_tps61050));
+		i2c_register_board_info(2, cardhu_i2c_board_info_tps61050,
+			ARRAY_SIZE(cardhu_i2c_board_info_tps61050));
+	}
 
 #ifdef CONFIG_VIDEO_OV14810
 	/* This is disabled by default; To enable this change Kconfig;
