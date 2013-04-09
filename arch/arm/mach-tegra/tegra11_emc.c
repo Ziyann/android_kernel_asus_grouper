@@ -1494,7 +1494,6 @@ int __init tegra11_emc_init(void)
 {
 	int ret = platform_driver_register(&tegra11_emc_driver);
 	if (!ret) {
-		tegra_clk_preset_emc_monitor();
 		if (dram_type == DRAM_TYPE_LPDDR2)
 			tegra_emc_iso_usage_table_init(
 				tegra11_lpddr3_emc_iso_usage,
@@ -1503,6 +1502,13 @@ int __init tegra11_emc_init(void)
 			tegra_emc_iso_usage_table_init(
 				tegra11_ddr3_emc_iso_usage,
 				ARRAY_SIZE(tegra11_ddr3_emc_iso_usage));
+
+		if (emc_enable) {
+			unsigned long rate = tegra_emc_round_rate_updown(
+				emc->boot_rate, false);
+			if (!IS_ERR_VALUE(rate))
+				tegra_clk_preset_emc_monitor(rate);
+		}
 	}
 	return ret;
 }
