@@ -92,6 +92,7 @@ struct tegra_dc_hdmi_data {
 
 #ifdef CONFIG_SWITCH
 	struct switch_dev		hpd_switch;
+	struct switch_dev		audio_switch;
 #endif
 	struct tegra_hdmi_out		info;
 
@@ -831,6 +832,8 @@ void tegra_dc_hdmi_detect_config(struct tegra_dc *dc,
 #ifdef CONFIG_SWITCH
 	hdmi->hpd_switch.state = 0;
 	switch_set_state(&hdmi->hpd_switch, 1);
+	hdmi->audio_switch.state = 0;
+	switch_set_state(&hdmi->audio_switch, tegra_edid_audio_supported(hdmi->edid) ? 1 : 0);
 #endif
 	dev_info(&dc->ndev->dev, "display detected\n");
 
@@ -862,6 +865,8 @@ bool tegra_dc_hdmi_detect_test(struct tegra_dc *dc, unsigned char *edid_ptr)
 #ifdef CONFIG_SWITCH
 		hdmi->hpd_switch.state = 0;
 		switch_set_state(&hdmi->hpd_switch, 1);
+		hdmi->audio_switch.state = 0;
+		switch_set_state(&hdmi->audio_switch, tegra_edid_audio_supported(hdmi->edid) ? 1 : 0);
 #endif
 		dev_info(&dc->ndev->dev, "display detected\n");
 
@@ -884,6 +889,7 @@ fail:
 	hdmi->eld_retrieved = false;
 #ifdef CONFIG_SWITCH
 	switch_set_state(&hdmi->hpd_switch, 0);
+	switch_set_state(&hdmi->audio_switch, 0);
 #endif
 	tegra_nvhdcp_set_plug(hdmi->nvhdcp, 0);
 	return false;
@@ -917,6 +923,8 @@ static bool tegra_dc_hdmi_detect(struct tegra_dc *dc)
 #ifdef CONFIG_SWITCH
 		hdmi->hpd_switch.state = 0;
 		switch_set_state(&hdmi->hpd_switch, 1);
+		hdmi->audio_switch.state = 0;
+		switch_set_state(&hdmi->audio_switch, tegra_edid_audio_supported(hdmi->edid) ? 1 : 0);
 #endif
 		dev_info(&dc->ndev->dev, "display detected\n");
 
@@ -948,6 +956,7 @@ fail:
 	hdmi->eld_retrieved = false;
 #ifdef CONFIG_SWITCH
 	switch_set_state(&hdmi->hpd_switch, 0);
+	switch_set_state(&hdmi->audio_switch, 0);
 #endif
 	tegra_nvhdcp_set_plug(hdmi->nvhdcp, 0);
 	return false;
@@ -1032,6 +1041,20 @@ static ssize_t underscan_show(struct device *dev,
 }
 
 static DEVICE_ATTR(underscan, S_IRUGO | S_IWUSR, underscan_show, NULL);
+
+static ssize_t hdmi_audio_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct tegra_dc_hdmi_data *hdmi =
+			container_of(dev_get_drvdata(dev), struct tegra_dc_hdmi_data, audio_switch);
+
+	if (hdmi->edid)
+		return sprintf(buf, "%d\n", tegra_edid_audio_supported(hdmi->edid));
+	else
+		return 0;
+}
+
+static DEVICE_ATTR(hdmi_audio, S_IRUGO | S_IWUSR, hdmi_audio_show, NULL);
 #endif
 
 static int tegra_dc_hdmi_init(struct tegra_dc *dc)
@@ -1167,6 +1190,14 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 		ret = device_create_file(hdmi->hpd_switch.dev,
 			&dev_attr_underscan);
 	BUG_ON(ret != 0);
+
+	hdmi->audio_switch.name = "hdmi_audio";
+	ret = switch_dev_register(&hdmi->audio_switch);
+
+	if (!ret)
+		ret = device_create_file(hdmi->audio_switch.dev,
+			&dev_attr_hdmi_audio);
+	BUG_ON(ret != 0);
 #endif
 
 	dc->out->depth = 24;
@@ -1235,6 +1266,7 @@ static void tegra_dc_hdmi_destroy(struct tegra_dc *dc)
 	cancel_delayed_work_sync(&hdmi->work);
 #ifdef CONFIG_SWITCH
 	switch_dev_unregister(&hdmi->hpd_switch);
+	switch_dev_unregister(&hdmi->audio_switch);
 #endif
 	iounmap(hdmi->base);
 	release_resource(hdmi->base_res);
