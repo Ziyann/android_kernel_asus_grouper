@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -343,14 +343,14 @@ static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
 
 	/* For RAW8 and RAW10 output, we always output 16-bit (2 bytes). */
 	{
-		.fourcc			= V4L2_PIX_FMT_SGRBG8,
+		.fourcc			= V4L2_PIX_FMT_SBGGR8,
 		.name			= "Bayer 8 GRGR.. BGBG..",
 		.bits_per_sample	= 16,
 		.packing		= SOC_MBUS_PACKING_EXTEND16,
 		.order			= SOC_MBUS_ORDER_LE,
 	},
 	{
-		.fourcc			= V4L2_PIX_FMT_SGRBG10,
+		.fourcc			= V4L2_PIX_FMT_SBGGR10,
 		.name			= "Bayer 10 GRGR.. BGBG..",
 		.bits_per_sample	= 16,
 		.packing		= SOC_MBUS_PACKING_EXTEND16,
@@ -446,10 +446,10 @@ static u32 tegra_camera_header_for_wrong_fmt(struct tegra_camera_dev *pcdev)
 	case V4L2_MBUS_FMT_YVYU8_2X8:
 		hdr = 30;
 		break;
-	case V4L2_MBUS_FMT_SGRBG8_1X8:
+	case V4L2_MBUS_FMT_SBGGR8_1X8:
 		hdr = 42;
 		break;
-	case V4L2_MBUS_FMT_SGRBG10_1X10:
+	case V4L2_MBUS_FMT_SBGGR10_1X10:
 		hdr = 43;
 		break;
 	default:
@@ -647,8 +647,8 @@ static void tegra_camera_capture_output_channel_setup(
 	case V4L2_PIX_FMT_YVU420:
 		output_format = 0x6; /* YUV420 planar */
 		break;
-	case V4L2_PIX_FMT_SGRBG8:
-	case V4L2_PIX_FMT_SGRBG10:
+	case V4L2_PIX_FMT_SBGGR8:
+	case V4L2_PIX_FMT_SBGGR10:
 		/* Use second output channel for RAW8/RAW10 */
 		pcdev->output_channel = 1;
 
@@ -747,8 +747,8 @@ static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
 	case V4L2_MBUS_FMT_YVYU8_2X8:
 		input_control |= 0x1 << 8;
 		break;
-	case V4L2_MBUS_FMT_SGRBG8_1X8:
-	case V4L2_MBUS_FMT_SGRBG10_1X10:
+	case V4L2_MBUS_FMT_SBGGR8_1X8:
+	case V4L2_MBUS_FMT_SBGGR10_1X10:
 		input_control |= 0x2 << 2;	/* Input Format = Bayer */
 		break;
 	default:
@@ -802,8 +802,8 @@ static void tegra_camera_capture_buffer_setup(struct tegra_camera_dev *pcdev,
 	case V4L2_PIX_FMT_VYUY:
 	case V4L2_PIX_FMT_YUYV:
 	case V4L2_PIX_FMT_YVYU:
-	case V4L2_PIX_FMT_SGRBG8:
-	case V4L2_PIX_FMT_SGRBG10:
+	case V4L2_PIX_FMT_SBGGR8:
+	case V4L2_PIX_FMT_SBGGR10:
 		/* output 1 */
 		if (!pcdev->output_channel) {
 			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_FIRST,
@@ -1123,8 +1123,8 @@ static void tegra_camera_init_buffer(struct tegra_camera_dev *pcdev,
 	case V4L2_PIX_FMT_VYUY:
 	case V4L2_PIX_FMT_YUYV:
 	case V4L2_PIX_FMT_YVYU:
-	case V4L2_PIX_FMT_SGRBG8:
-	case V4L2_PIX_FMT_SGRBG10:
+	case V4L2_PIX_FMT_SBGGR8:
+	case V4L2_PIX_FMT_SBGGR10:
 		buf->buffer_addr = vb2_dma_nvmap_plane_paddr(&buf->vb, 0);
 		buf->start_addr = buf->buffer_addr;
 
@@ -1483,8 +1483,8 @@ static int tegra_camera_get_formats(struct soc_camera_device *icd,
 	case V4L2_MBUS_FMT_VYUY8_2X8:
 	case V4L2_MBUS_FMT_YUYV8_2X8:
 	case V4L2_MBUS_FMT_YVYU8_2X8:
-	case V4L2_MBUS_FMT_SGRBG8_1X8:
-	case V4L2_MBUS_FMT_SGRBG10_1X10:
+	case V4L2_MBUS_FMT_SBGGR8_1X8:
+	case V4L2_MBUS_FMT_SBGGR10_1X10:
 		formats += ARRAY_SIZE(tegra_camera_formats);
 		for (k = 0;
 		     xlate && (k < ARRAY_SIZE(tegra_camera_formats));
