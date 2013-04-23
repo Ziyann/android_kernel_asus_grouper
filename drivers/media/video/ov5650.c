@@ -91,6 +91,15 @@ static struct ov5650_reg *test_pattern_modes[] = {
 	tp_checker_seq,
 };
 
+enum {
+	TP_NONE = 1,
+	TP_COLORBARS = 2,
+	TP_CHECKER = 3,
+};
+
+static int test_mode = 2;
+module_param(test_mode, int, 0644);
+
 static struct ov5650_reg reset_seq[] = {
 	{0x3008, 0x82},
 	{OV5650_TABLE_WAIT_MS, 5},
@@ -218,7 +227,7 @@ static struct ov5650_reg mode_1296x972[] = {
 	{0x3800, 0x03},
 	{0x3801, 0x3c},
 	{0x3802, 0x00},
-	{0x3803, 0x06},
+	{0x3803, 0x62},
 	{0x3804, 0x05},
 	{0x3805, 0x10},
 	{0x3806, 0x03},
@@ -454,7 +463,7 @@ static struct ov5650_reg mode_1920x1080[] = {
 	{0x3800, 0x02},
 	{0x3801, 0x94},
 	{0x3802, 0x00},
-	{0x3803, 0x0c},
+	{0x3803, 0x00},
 	{0x3804, 0x07},
 	{0x3805, 0x80},
 	{0x3806, 0x04},
@@ -1092,7 +1101,7 @@ static void ov5650_set_default_fmt(struct ov5650_priv *priv)
 
 	mf->width = ov5650_frmsizes[OV5650_MODE_2592x1944].width;
 	mf->height = ov5650_frmsizes[OV5650_MODE_2592x1944].height;
-	mf->code = V4L2_MBUS_FMT_SGRBG10_1X10;
+	mf->code = V4L2_MBUS_FMT_SBGGR10_1X10;
 	mf->field = V4L2_FIELD_NONE;
 	mf->colorspace = V4L2_COLORSPACE_SRGB;
 }
@@ -1120,6 +1129,21 @@ static int ov5650_s_stream(struct v4l2_subdev *sd, int enable)
 		ret = ov5650_write_table(priv, mode_end, NULL, 0);
 		if (ret)
 			return ret;
+
+		switch (test_mode) {
+		case TP_NONE:
+			ret = ov5650_write_table(priv, tp_none_seq, NULL, 0);
+			break;
+		case TP_COLORBARS:
+			ret = ov5650_write_table(priv, tp_cbars_seq, NULL, 0);
+			break;
+		case TP_CHECKER:
+			ret = ov5650_write_table(priv, tp_checker_seq, NULL, 0);
+			break;
+		}
+		if (ret)
+			return ret;
+
 	} else
 		ov5650_set_default_fmt(priv);
 
@@ -1178,9 +1202,9 @@ static int ov5650_try_fmt(struct v4l2_subdev *sd,
 	mf->width = ov5650_frmsizes[mode].width;
 	mf->height = ov5650_frmsizes[mode].height;
 
-	if (mf->code != V4L2_MBUS_FMT_SGRBG8_1X8 &&
-		mf->code != V4L2_MBUS_FMT_SGRBG10_1X10)
-		mf->code = V4L2_MBUS_FMT_SGRBG10_1X10;
+	if (mf->code != V4L2_MBUS_FMT_SBGGR8_1X8 &&
+		mf->code != V4L2_MBUS_FMT_SBGGR10_1X10)
+		mf->code = V4L2_MBUS_FMT_SBGGR10_1X10;
 
 	mf->field = V4L2_FIELD_NONE;
 	mf->colorspace = V4L2_COLORSPACE_SRGB;
@@ -1198,10 +1222,10 @@ static int ov5650_enum_fmt(struct v4l2_subdev *sd, unsigned int index,
 
 	switch (index) {
 	case 0:
-		*code = V4L2_MBUS_FMT_SGRBG10_1X10;
+		*code = V4L2_MBUS_FMT_SBGGR10_1X10;
 		break;
 	case 1:
-		*code = V4L2_MBUS_FMT_SGRBG8_1X8;
+		*code = V4L2_MBUS_FMT_SBGGR8_1X8;
 		break;
 	}
 
