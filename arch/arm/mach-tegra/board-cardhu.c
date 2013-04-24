@@ -45,7 +45,6 @@
 
 #include <sound/wm8903.h>
 #include <sound/max98095.h>
-#include <media/tegra_dtv.h>
 
 #include <asm/hardware/gic.h>
 
