@@ -549,10 +549,24 @@ static void dalmore_usb_init(void)
 	}
 }
 
+/* Dalmore use SPDIF_IN for VBUS_EN1 OC detection and controlling */
+static void dalmore_set_vbus_en1_tristate(bool on)
+{
+	pr_debug("%s: set usb_vbus_en1 tristate %s\n", __func__,
+				(on) ? "on" : "off");
+	if (on)
+		tegra_pinmux_set_tristate(TEGRA_PINGROUP_SPDIF_IN,
+				TEGRA_TRI_TRISTATE);
+	else
+		tegra_pinmux_set_tristate(TEGRA_PINGROUP_SPDIF_IN,
+			TEGRA_TRI_NORMAL);
+}
+
 static struct tegra_xusb_board_data xusb_bdata = {
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P1,
 	/* ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map */
 	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 0),
+	.set_vbus_en1_tristate = &dalmore_set_vbus_en1_tristate,
 };
 
 static void dalmore_xusb_init(void)

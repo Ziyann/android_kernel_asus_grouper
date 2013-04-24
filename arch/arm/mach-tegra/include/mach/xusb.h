@@ -19,6 +19,8 @@
 #ifndef _XUSB_H
 #define _XUSB_H
 
+/* chip quirks */
+#define TEGRA_XUSB_IGNORE_CLK_CHANGE	BIT(0)
 /*
  * BIT0 - BIT7 : SS ports
  * BIT8 - BIT15 : USB2 UTMI ports
@@ -47,6 +49,7 @@ struct tegra_xusb_board_data {
 	 */
 	u8	ss_portmap;
 	u8	ulpicap;
+	void (*set_vbus_en1_tristate)(bool on);
 };
 
 struct tegra_xusb_platform_data {
