@@ -1,0 +1,61 @@
+NVIDIA TEGRA114 Display Serial Interface
+========================================
+
+1) The dsi node:
+ dsi node must be contained in host1x parent node. This node represents NVIDIA Tegra114 Display
+ Serial Interface.
+
+ Required properties
+ - name: dsi
+ - compatible: Should contain "nvidia,tegra114-dsi".
+ - reg: Physical base address and length of the controller's registers.
+ - nvidia,panel: phandle for panel device data.
+ - nvidia,dsi-n-data-lanes: Number of DSI lanes in use. Should be one of 2, 3, 4, and 8
+ - nvidia,dsi-video-burst-mode: Video mode, Should be "none_burst_sync_end" or "none_burst" or
+   "burst_lowest_speed" or "burst_low_speed" or "burst_mid_speed" or "burst_fast_speed" or
+   "burst_fastest_speed".
+ - nvidia,dsi-pixel-format: DSI pixel data format. Should be "24_p" or "16_p" or "18_p" or "18_np".
+   p indicates packed.
+ - nvidia,dsi-ref-rate: Refresh rate.
+ - nvidia,dsi-virtual-ch: DSI virtual channel number. Should be "vc0" or  "vc1" or "vc2" or "vc3".
+ - nvidia,dsi-instance: Should be 0 or 1: DSI controller or DSIB controller.
+ - nvidia,dsi-panel-reset: Indicate if dsi output device requires hardware reset or not.
+ - nvidia,dsi-power-saving-suspend: With enabled, set dsi controller ultra low power mode in suspend.
+ - nvidia,dsi-video-data-type: The DSI operates in two transmission modes: video and host/command.
+   Should be "video" or "cmd".
+ - nvidia,dsi-video-clk-mode: Control for the hs clock lane. Continuous means hs clock on all the time.
+   Txonly means only hs clock active during hs transmissions. Should be "txonly" or "continuous".
+ - nvidia,dsi-phy-hsdexit : dsi phy timing, t_hsdexit_ns.
+ - nvidia,dsi-phy-hstrail : dsi phy timing, t_hstrail_ns.
+ - nvidia,dsi-phy-datzero : dsi phy timing, t_datzero_ns.
+ - nvidia,dsi-phy-hsprepare : dsi phy timing, t_hsprepare_ns.
+ - nvidia,dsi-phy-clktrail : dsi phy timing, t_clktrail_ns.
+ - nvidia,dsi-phy-clkpost : dsi phy timing, t_clkpost_ns.
+ - nvidia,dsi-phy-clkzero : dsi phy timing, t_clkzero_ns.
+ - nvidia,dsi-phy-tlpx : dsi phy timing, t_tlpx_ns.
+ - nvidia,dsi-phy-clkprepare : dsi phy timing, t_clkprepare_ns.
+ - nvidia,dsi-phy-clkpre : dsi phy timing, t_clkpre_ns.
+ - nvidia,dsi-phy-wakeup : dsi phy timing, t_wakeup_ns.
+ - nvidia,dsi-phy-taget : dsi phy timing, t_taget_ns.
+ - nvidia,dsi-phy-tasure : dsi phy timing, t_tasure_ns.
+ - nvidia,dsi-phy-tago : dsi phy timing, t_tago_ns.
+
+Example
+	host1x {
+		dsi {
+			compatible = "nvidia,tegra114-dsi";
+			reg = <0x54300000 0x00040000>;
+			status = "okay";
+			nvidia,panel = <&panel>;
+			nvidia,dsi-n-data-lanes = <4>;
+			nvidia,dsi-video-burst-mode = "none_burst_sync_end";
+			nvidia,dsi-pixel-format = "24_p";
+			nvidia,dsi-ref-rate = <60>;
+			nvidia,dsi-virtual-ch = "vc0";
+			nvidia,dsi-instance = <0>; /* 0 or 1 */
+			nvidia,dsi-panel-reset = <1>;
+			nvidia,dsi-power-saving-suspend = <1>;
+			nvidia,dsi-video-data-type = "video";
+			nvidia,dsi-video-clk-mode = "txonly";
+		};
+	};

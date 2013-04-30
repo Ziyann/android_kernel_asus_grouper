@@ -38,6 +38,7 @@
 #include <mach/csi.h>
 #include <mach/iomap.h>
 #include <linux/nvhost.h>
+#include <linux/of_address.h>
 
 #include "dc_reg.h"
 #include "dc_priv.h"
@@ -3888,6 +3889,7 @@ static int _tegra_dc_dsi_init(struct tegra_dc *dc)
 	struct tegra_dc_dsi_data *dsi;
 	struct resource *res;
 	struct resource *base_res;
+	struct resource dsi_res;
 	void __iomem *base;
 	struct clk *dc_clk = NULL;
 	struct clk *dsi_clk = NULL;
@@ -3897,6 +3899,9 @@ static int _tegra_dc_dsi_init(struct tegra_dc *dc)
 	char *ganged_reg_name[2] = {"ganged_dsia_regs", "ganged_dsib_regs"};
 	char *dsi_clk_name[2] = {"dsia", "dsib"};
 	char *dsi_lp_clk_name[2] = {"dsialp", "dsiblp"};
+	struct device_node *np = dc->ndev->dev.of_node;
+	struct device_node *np_dsi =
+		of_find_compatible_node(NULL, NULL, "nvidia,tegra114-dsi");
 
 	dsi = kzalloc(sizeof(*dsi), GFP_KERNEL);
 	if (!dsi) {
@@ -3911,10 +3916,17 @@ static int _tegra_dc_dsi_init(struct tegra_dc *dc)
 
 	dsi->max_instances = dc->out->dsi->ganged_type ? MAX_DSI_INSTANCE : 1;
 	for (i = 0; i < dsi->max_instances; i++) {
-		res = platform_get_resource_byname(dc->ndev,
-					IORESOURCE_MEM,
-					dc->out->dsi->ganged_type ?
-					ganged_reg_name[i] : "dsi_regs");
+		if (np && np_dsi) {
+			of_address_to_resource(np_dsi, i, &dsi_res);
+			res = &dsi_res;
+		} else {
+			res = platform_get_resource_byname(dc->ndev,
+						IORESOURCE_MEM,
+						dc->out->dsi->ganged_type ?
+						ganged_reg_name[i] :
+						"dsi_regs");
+		}
+
 		if (!res) {
 			dev_err(&dc->ndev->dev, "dsi: no mem resource\n");
 			err = -ENOENT;

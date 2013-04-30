@@ -20,6 +20,7 @@
 #include "mipi_cal.h"
 #include "mipi_cal_regs.h"
 #include "dsi.h"
+#include <linux/of_address.h>
 
 int tegra_mipi_cal_init_hw(struct tegra_mipi_cal *mipi_cal)
 {
@@ -63,10 +64,16 @@ struct tegra_mipi_cal *tegra_mipi_cal_init_sw(struct tegra_dc *dc)
 {
 	struct tegra_mipi_cal *mipi_cal;
 	struct resource *res;
+	struct resource mipi_res;
+	struct resource *base_res;
 	struct clk *clk;
 	struct clk *fixed_clk;
 	void __iomem *base;
 	int err = 0;
+	struct device_node *np = dc->ndev->dev.of_node;
+	struct device_node *np_mipi_cal =
+		of_find_compatible_node(NULL,
+			NULL, "nvidia,tegra114-mipical");
 
 	mipi_cal = devm_kzalloc(&dc->ndev->dev, sizeof(*mipi_cal), GFP_KERNEL);
 	if (!mipi_cal) {
@@ -75,15 +82,22 @@ struct tegra_mipi_cal *tegra_mipi_cal_init_sw(struct tegra_dc *dc)
 		goto fail;
 	}
 
-	res = platform_get_resource_byname(dc->ndev,
+	if (np && np_mipi_cal) {
+		of_address_to_resource(np_mipi_cal, 0, &mipi_res);
+		res = &mipi_res;
+	} else {
+		res = platform_get_resource_byname(dc->ndev,
 				IORESOURCE_MEM, "mipi_cal");
+	}
 	if (!res) {
 		dev_err(&dc->ndev->dev, "mipi_cal: no entry in resource\n");
 		err = -ENOENT;
 		goto fail_free_mipi_cal;
 	}
 
-	base = devm_request_and_ioremap(&dc->ndev->dev, res);
+	base_res = request_mem_region(res->start,
+		resource_size(res), dc->ndev->name);
+	base = ioremap(res->start, resource_size(res));
 	if (!base) {
 		dev_err(&dc->ndev->dev, "mipi_cal: bus to virtual mapping failed\n");
 		err = -EBUSY;
@@ -113,8 +127,8 @@ struct tegra_mipi_cal *tegra_mipi_cal_init_sw(struct tegra_dc *dc)
 	return mipi_cal;
 
 fail_free_map:
-	devm_iounmap(&dc->ndev->dev, base);
-	devm_release_mem_region(&dc->ndev->dev, res->start, resource_size(res));
+	iounmap(base);
+	release_resource(base_res);
 fail_free_res:
 	release_resource(res);
 fail_free_mipi_cal:
@@ -135,9 +149,9 @@ void tegra_mipi_cal_destroy(struct tegra_dc *dc)
 	mutex_lock(&mipi_cal->lock);
 
 	clk_put(mipi_cal->clk);
-	devm_iounmap(&dc->ndev->dev, mipi_cal->base);
-	devm_release_mem_region(&dc->ndev->dev, mipi_cal->res->start,
-					resource_size(mipi_cal->res));
+	iounmap(mipi_cal->base);
+	release_resource(mipi_cal->base_res);
+
 	release_resource(mipi_cal->res);
 
 	mutex_unlock(&mipi_cal->lock);

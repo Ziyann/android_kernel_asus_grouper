@@ -675,6 +675,16 @@ struct tegra_fb_data {
 
 #define TEGRA_FB_FLIP_ON_PROBE		(1 << 0)
 
+struct of_tegra_dc_data {
+	unsigned long		fb_size;
+	unsigned long		fb_start;
+	unsigned long		carveout_size;
+	unsigned long		carveout_start;
+	struct regulator	**of_regulators;
+	int			*of_gpios;
+	int			dc_controller;
+};
+
 struct tegra_dc_platform_data {
 	unsigned long		flags;
 	unsigned long		emc_clk_rate;
@@ -685,6 +695,7 @@ struct tegra_dc_platform_data {
 	bool			cmu_enable;
 	struct tegra_dc_cmu	*cmu;
 #endif
+	struct of_tegra_dc_data of_data;
 };
 
 #define TEGRA_DC_FLAG_ENABLED		(1 << 0)
@@ -794,4 +805,29 @@ struct tegra_hdmi_out {
 	struct tmds_config *tmds_config;
 	int n_tmds_config;
 };
+
+struct of_tegra_lcd_devdata {
+	int	(*enable)(struct device *);
+	int	(*postpoweron)(struct device *);
+	int	(*prepoweroff)(void);
+	int	(*disable)(void);
+
+	int	(*hotplug_init)(struct device *);
+	int	(*postsuspend)(void);
+
+	struct tegra_dsi_cmd	*dsi_init_cmd;          /* required */
+	u16			n_init_cmd;                     /* required */
+	struct tegra_dsi_cmd	*dsi_early_suspend_cmd;
+	u16			n_early_suspend_cmd;
+	struct tegra_dsi_cmd	*dsi_late_resume_cmd;
+	u16			n_late_resume_cmd;
+	struct tegra_dsi_cmd	*dsi_suspend_cmd;       /* required */
+	u16			n_suspend_cmd;                  /* required */
+	const u32		*pkt_seq;
+};
+
+void lcd_devdata_to_dc_set_callback(struct device*(*func)
+	(struct device_node *));
+struct device *lcd_devdata_to_dc_callback_run(struct device_node *dn);
+
 #endif

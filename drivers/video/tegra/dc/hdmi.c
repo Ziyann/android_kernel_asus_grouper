@@ -49,6 +49,8 @@
 #include "hdmi.h"
 #include "edid.h"
 #include "nvhdcp.h"
+#include <linux/of.h>
+#include <linux/of_address.h>
 
 /* datasheet claims this will always be 216MHz */
 #define HDMI_AUDIOCLK_FREQ		216000000
@@ -1061,6 +1063,7 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 {
 	struct tegra_dc_hdmi_data *hdmi;
 	struct resource *res;
+	struct resource hdmi_res;
 	struct resource *base_res;
 #ifdef CONFIG_SWITCH
 	int ret;
@@ -1071,13 +1074,20 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 	struct clk *disp2_clk = NULL;
 	struct tegra_hdmi_out *hdmi_out = NULL;
 	int err;
+	struct device_node *np = dc->ndev->dev.of_node;
+	struct device_node *np_hdmi =
+		of_find_compatible_node(NULL, NULL, "nvidia,tegra114-hdmi");
 
 	hdmi = kzalloc(sizeof(*hdmi), GFP_KERNEL);
 	if (!hdmi)
 		return -ENOMEM;
-
-	res = platform_get_resource_byname(dc->ndev,
-		IORESOURCE_MEM, "hdmi_regs");
+	if (np && np_hdmi) {
+		of_address_to_resource(np_hdmi, 0, &hdmi_res);
+		res = &hdmi_res;
+	} else {
+		res = platform_get_resource_byname(dc->ndev,
+			IORESOURCE_MEM, "hdmi_regs");
+	}
 	if (!res) {
 		dev_err(&dc->ndev->dev, "hdmi: no mem resource\n");
 		err = -ENOENT;
