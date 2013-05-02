@@ -846,13 +846,12 @@ static int __parse_dt_timer_trip(struct device_node *np,
 static struct therm_est_data *therm_est_get_pdata(struct device *dev)
 {
 	struct therm_est_data *data;
-	struct device_node *np;
+	struct device_node *np = dev->of_node;
 	struct device_node *ch;
 	u32 val;
 	int i, j, k, l;
 	int ret;
 
-	np = of_find_compatible_node(NULL, NULL, "nvidia,therm-est");
 	if (!np)
 		return dev->platform_data;
 
@@ -1064,10 +1063,19 @@ static void __devexit therm_est_shutdown(struct platform_device *pdev)
 	therm_est_remove(pdev);
 }
 
+#ifdef CONFIG_OF
+static const struct of_device_id therm_est_dt_match[] = {
+	{ .compatible = "nvidia,therm-est" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, therm_est_dt_match);
+#endif
+
 static struct platform_driver therm_est_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name  = "therm_est",
+		.of_match_table = of_match_ptr(therm_est_dt_match),
 	},
 	.probe  = therm_est_probe,
 	.remove = __devexit_p(therm_est_remove),
