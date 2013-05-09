@@ -887,10 +887,9 @@ static struct regulator_consumer_supply fixed_reg_vpp_fuse_supply[] = {
 	REGULATOR_SUPPLY("vpp_fuse", NULL),
 };
 
-/* EN_USB3_VBUS From TEGRA GPIO PM5 */
+/* EN_USB3_VBUS From TEGRA GPIO PK6 */
 static struct regulator_consumer_supply fixed_reg_usb3_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
 };
 
 /* EN_1V8_TS From TEGRA_GPIO_PH5 */
@@ -988,7 +987,6 @@ FIXED_REG(10,	avdd_hdmi_pll,	avdd_hdmi_pll,
 
 #define DALMORE_COMMON_FIXED_REG		\
 	ADD_FIXED_REG(usb1_vbus),		\
-	ADD_FIXED_REG(usb3_vbus),		\
 	ADD_FIXED_REG(vdd_hdmi_5v0),		\
 	ADD_FIXED_REG(lcd_bl_en),
 
@@ -1238,9 +1236,25 @@ static int __init dalmore_fixed_regulator_init(void)
 {
 	struct board_info board_info;
 	u8 power_config;
+	int ret;
+	int usb_port_owner_info;
 
 	if (!machine_is_dalmore())
 		return 0;
+
+	/*
+	 * XUSB hardware controls VBUS directly.
+	 * XHCI driver will not use regulator_enable()/regulator_disable() to
+	 * control VBUS. Furthermore, XUSB hardware requires GPIO_PK6 to be
+	 * disabled. Thus, register usb3_vbus fixed regulator only when XUSB
+	 * doesn't own UTMI2.
+	 */
+	usb_port_owner_info = tegra_get_usb_port_owner_info();
+	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
+		ret = platform_device_register(ADD_FIXED_REG(usb3_vbus));
+		if (ret)
+			return ret;
+	}
 
 	power_config = get_power_config();
 	tegra_get_board_info(&board_info);
