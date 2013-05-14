@@ -27,8 +27,10 @@ struct tegra_cec {
 	int			tegra_cec_irq;
 	wait_queue_head_t	rx_waitq;
 	wait_queue_head_t	tx_waitq;
+	wait_queue_head_t	init_waitq;
 	unsigned int		rx_wake;
 	unsigned int		tx_wake;
+	unsigned int		init_done;
 	struct work_struct	work;
 };
 static int tegra_cec_remove(struct platform_device *pdev);
