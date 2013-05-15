@@ -1,21 +1,19 @@
 /*
  * arch/arm/mach-tegra/edp.c
  *
- * Copyright (C) 2011-2013, NVIDIA CORPORATION. All Rights Reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION. All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/kernel.h>
@@ -346,167 +344,6 @@ static const int power_cap_levels[] = { /* milliwatts (mW) */
 	17500
 };
 
-static struct tegra_edp_cpu_leakage_params leakage_params[] = {
-	{
-		.cpu_speedo_id	    = 0, /* A01 CPU */
-		.dyn_consts_n       = { 1091747, 2035205, 2978661, 3922119 },
-		.leakage_consts_n   = {  538991,  752463,  959441, 1150000 },
-		.leakage_consts_ijk = {
-			 /* i = 0 */
-			 { {  -42746668,   -5458429,   164998,  -1711, },
-			   {  178262421,   13375684,  -411791,   4590, },
-			   { -228866784,  -10482993,   331248,  -4062, },
-			   {   94301550,    2618719,   -85983,   1193, },
-			 },
-			 /* i = 1 */
-			 { { -256611791,   49677413, -1655785,  14917, },
-			   {  584675433, -132620939,  4541560, -41812, },
-			   { -398106336,  115987156, -4102328,  38737, },
-			   {   68897184,  -33030745,  1217839, -11801, },
-			 },
-			 /* i = 2 */
-			 { {  186324676,  -36019083,  1177969, -10669, },
-			   { -439237936,   98429131, -3276444,  30301, },
-			   {  315060898,  -88635036,  3004777, -28474, },
-			   {  -60854399,   26267188,  -907121,   8844, },
-			 },
-			 /* i = 3 */
-			 { {  -35432997,    6154621,  -202200,   1830, },
-			   {   87402153,  -16908683,   565152,  -5220, },
-			   {  -67775314,   15326770,  -521221,   4927, },
-			   {   15618709,   -4576116,   158401,  -1538, },
-			 },
-		 },
-		.max_current_cap = { /* values are from tegra4 datasheet */
-			{ .max_cur = 9000, .max_temp = 60,
-				{ 1900000, 1900000, 1600000, 1600000 }
-			},
-			{ .max_cur = 9000, .max_temp = 75,
-				{ 1900000, 1900000, 1530000, 1530000 }
-			},
-			{ .max_cur = 9000, .max_temp = 90,
-				{ 1900000, 1900000, 1500000, 1500000 }
-			},
-			{ .max_cur = 12000, .max_temp = 90,
-				{ 1900000, 1900000, 1700000, 1700000 }
-			},
-			{ .max_cur = 15000, .max_temp = 90,
-				{ 1900000, 1900000, 1900000, 1900000 }
-			},
-		},
-		.volt_temp_cap = { 70, 1300 },
-	},
-	{
-		.cpu_speedo_id	    = 1, /* A01P+ CPU */
-		.dyn_consts_n       = { 1091747, 2035205, 2978661, 3922119 },
-		.leakage_consts_n   = {  538991,  752463,  959441, 1150000 },
-		.leakage_consts_ijk = {
-			 /* i = 0 */
-			 { {  -42746668,   -5458429,   164998,  -1711, },
-			   {  178262421,   13375684,  -411791,   4590, },
-			   { -228866784,  -10482993,   331248,  -4062, },
-			   {   94301550,    2618719,   -85983,   1193, },
-			 },
-			 /* i = 1 */
-			 { { -256611791,   49677413, -1655785,  14917, },
-			   {  584675433, -132620939,  4541560, -41812, },
-			   { -398106336,  115987156, -4102328,  38737, },
-			   {   68897184,  -33030745,  1217839, -11801, },
-			 },
-			 /* i = 2 */
-			 { {  186324676,  -36019083,  1177969, -10669, },
-			   { -439237936,   98429131, -3276444,  30301, },
-			   {  315060898,  -88635036,  3004777, -28474, },
-			   {  -60854399,   26267188,  -907121,   8844, },
-			 },
-			 /* i = 3 */
-			 { {  -35432997,    6154621,  -202200,   1830, },
-			   {   87402153,  -16908683,   565152,  -5220, },
-			   {  -67775314,   15326770,  -521221,   4927, },
-			   {   15618709,   -4576116,   158401,  -1538, },
-			 },
-		 },
-		.safety_cap = { 1810500, 1810500, 1606500, 1606500 },
-		.max_current_cap = { /* values are from tegra4 datasheet */
-			{ .max_cur = 7500, .max_temp = 90,
-				{ 1800000, 1700000, 1320000, 1320000 }
-			},
-			{ .max_cur = 7500, .max_temp = 75,
-				{ 1800000, 1700000, 1420000, 1420000 }
-			},
-			{ .max_cur = 7500, .max_temp = 60,
-				{ 1800000, 1800000, 1420000, 1420000 }
-			},
-			{ .max_cur = 7500, .max_temp = 45,
-				{ 1800000, 1800000, 1530000, 1530000 }
-			},
-			{ .max_cur = 9000, .max_temp = 90,
-				{ 1800000, 1800000, 1500000, 1500000 }
-			},
-			{ .max_cur = 9000, .max_temp = 75,
-				{ 1800000, 1800000, 1530000, 1530000 }
-			},
-			{ .max_cur = 9000, .max_temp = 60,
-				{ 1800000, 1800000, 1600000, 1600000 }
-			},
-			{ .max_cur = 12000, .max_temp = 45,
-				{ 1800000, 1800000, 1600000, 1600000 }
-			},
-		},
-		.volt_temp_cap = { 70, 1300 },
-	},
-	{
-		.cpu_speedo_id	    = 2, /* A01P+ fast CPU */
-		.dyn_consts_n       = { 1091747, 2035205, 2978661, 3922119 },
-		.leakage_consts_n   = {  538991,  752463,  959441, 1150000 },
-		.leakage_consts_ijk = {
-			 /* i = 0 */
-			 { {  -42746668,   -5458429,   164998,  -1711, },
-			   {  178262421,   13375684,  -411791,   4590, },
-			   { -228866784,  -10482993,   331248,  -4062, },
-			   {   94301550,    2618719,   -85983,   1193, },
-			 },
-			 /* i = 1 */
-			 { { -256611791,   49677413, -1655785,  14917, },
-			   {  584675433, -132620939,  4541560, -41812, },
-			   { -398106336,  115987156, -4102328,  38737, },
-			   {   68897184,  -33030745,  1217839, -11801, },
-			 },
-			 /* i = 2 */
-			 { {  186324676,  -36019083,  1177969, -10669, },
-			   { -439237936,   98429131, -3276444,  30301, },
-			   {  315060898,  -88635036,  3004777, -28474, },
-			   {  -60854399,   26267188,  -907121,   8844, },
-			 },
-			 /* i = 3 */
-			 { {  -35432997,    6154621,  -202200,   1830, },
-			   {   87402153,  -16908683,   565152,  -5220, },
-			   {  -67775314,   15326770,  -521221,   4927, },
-			   {   15618709,   -4576116,   158401,  -1538, },
-			 },
-		 },
-		.safety_cap = { 1912500, 1912500, 1912500, 1912500 },
-		.max_current_cap = { /* values are from tegra4 datasheet */
-			{ .max_cur = 9000, .max_temp = 90,
-				{ 1900000, 1900000, 1500000, 1500000 }
-			},
-			{ .max_cur = 9000, .max_temp = 75,
-				{ 1900000, 1900000, 1530000, 1530000 }
-			},
-			{ .max_cur = 9000, .max_temp = 60,
-				{ 1900000, 1900000, 1600000, 1600000 }
-			},
-			{ .max_cur = 12000, .max_temp = 90,
-				{ 1900000, 1900000, 1700000, 1700000 }
-			},
-			{ .max_cur = 15000, .max_temp = 90,
-				{ 1900000, 1900000, 1900000, 1900000 }
-			},
-		},
-		.volt_temp_cap = { 70, 1300 },
-	},
-};
-
 static struct tegra_edp_freq_voltage_table *freq_voltage_lut_saved;
 static unsigned int freq_voltage_lut_size_saved;
 static struct tegra_edp_freq_voltage_table *freq_voltage_lut;
@@ -516,7 +353,7 @@ static inline s64 edp_pow(s64 val, int pwr)
 {
 	s64 retval = 1;
 
-	while (pwr) {
+	while (val && pwr) {
 		if (pwr & 1)
 			retval *= val;
 		pwr >>= 1;
@@ -600,20 +437,30 @@ static unsigned int edp_calculate_maxf(
 							  edp_pow(1000, i));
 					leakage_calc_step *=
 						edp_pow(voltage_mV, j);
-					/* Convert (mV)^i to (V)^i */
+					/* Convert (mV)^j to (V)^j */
 					leakage_calc_step =
 						div64_s64(leakage_calc_step,
 							  edp_pow(1000, j));
 					leakage_calc_step *=
 						edp_pow(temp_C, k);
-					/* leakage_consts_ijk was X 100,000 */
+					/* Convert (C)^k to (scaled_C)^k */
 					leakage_calc_step =
 						div64_s64(leakage_calc_step,
-							  100000);
+						edp_pow(params->temp_scaled,
+							k));
+					/* leakage_consts_ijk was scaled */
+					leakage_calc_step =
+						div64_s64(leakage_calc_step,
+							  params->ijk_scaled);
 					leakage_mA += leakage_calc_step;
 				}
 			}
 		}
+
+		/* if specified, set floor for leakage current */
+		if (params->leakage_min && leakage_mA <= params->leakage_min)
+			leakage_mA = params->leakage_min;
+
 		/* leakage cannot be negative => leakage model has error */
 		if (leakage_mA <= 0) {
 			pr_err("VDD_CPU EDP failed: IDDQ too high (%d mA)\n",
@@ -623,16 +470,17 @@ static unsigned int edp_calculate_maxf(
 		}
 
 		leakage_mA *= params->leakage_consts_n[n_cores_idx];
-		/* leakage_const_n was pre-multiplied by 1,000,000 */
-		leakage_mA = div64_s64(leakage_mA, 1000000);
+
+		/* leakage_const_n was scaled */
+		leakage_mA = div64_s64(leakage_mA, params->consts_scaled);
 
 		/* Calculate dynamic current */
 		dyn_mA = voltage_mV * freq_KHz / 1000;
 		/* Convert mV to V */
 		dyn_mA = div64_s64(dyn_mA, 1000);
 		dyn_mA *= params->dyn_consts_n[n_cores_idx];
-		/* dyn_const_n was pre-multiplied by 1,000,000 */
-		dyn_mA = div64_s64(dyn_mA, 1000000);
+		/* dyn_const_n was scaled */
+		dyn_mA = div64_s64(dyn_mA, params->dyn_scaled);
 
 		if (power_mW != -1) {
 			leakage_mW = leakage_mA * voltage_mV;
@@ -694,10 +542,22 @@ unsigned int tegra_edp_find_maxf(int volt)
 
 static int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
 {
-	int i;
+	int i, array_size;
+	struct tegra_edp_cpu_leakage_params *params;
 
-	for (i = 0; i < ARRAY_SIZE(leakage_params); i++)
-		if (cpu_speedo_id == leakage_params[i].cpu_speedo_id) {
+	switch (tegra_chip_id) {
+	case TEGRA_CHIPID_TEGRA11:
+		params = tegra11x_get_leakage_params(0, &array_size);
+		break;
+	case TEGRA_CHIPID_TEGRA3:
+	case TEGRA_CHIPID_TEGRA2:
+	default:
+		array_size = 0;
+		break;
+	}
+
+	for (i = 0; i < array_size; i++)
+		if (cpu_speedo_id == params[i].cpu_speedo_id) {
 			*cpu_speedo_idx = i;
 			return 0;
 		}
@@ -728,7 +588,15 @@ static int init_cpu_edp_limits_calculated(void)
 	if (ret)
 		return ret;
 
-	params = &leakage_params[cpu_speedo_idx];
+	switch (tegra_chip_id) {
+	case TEGRA_CHIPID_TEGRA11:
+		params = tegra11x_get_leakage_params(cpu_speedo_idx, NULL);
+		break;
+	case TEGRA_CHIPID_TEGRA3:
+	case TEGRA_CHIPID_TEGRA2:
+	default:
+		return -EINVAL;
+	}
 
 	edp_calculated_limits = kmalloc(sizeof(struct tegra_edp_limits)
 					* ARRAY_SIZE(temperatures), GFP_KERNEL);
