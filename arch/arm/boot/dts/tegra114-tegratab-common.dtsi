@@ -873,4 +873,9 @@
 	i2c@7000d000 {
 		status = "okay";
 	};
+
+	mipical {
+		compatible = "nvidia,tegra114-mipical";
+		reg = <0x700e3000 0x00040000>;
+	};
 };
