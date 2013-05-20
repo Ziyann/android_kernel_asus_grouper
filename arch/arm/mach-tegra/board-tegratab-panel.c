@@ -428,6 +428,21 @@ static void tegratab_panel_select(void)
 	}
 
 }
+
+static void fb2_copy_or_clear(void)
+{
+	/*
+	 * If the bootloader fb2 is valid, copy it to the fb2, or else
+	 * clear fb2 to avoid garbage on dispaly2.
+	 */
+	if (tegra_bootloader_fb2_size)
+		tegra_move_framebuffer(tegra_fb2_start,
+			tegra_bootloader_fb2_start,
+			min(tegra_fb2_size, tegra_bootloader_fb2_size));
+	else
+		tegra_clear_framebuffer(tegra_fb2_start, tegra_fb2_size);
+}
+
 int __init tegratab_panel_init(void)
 {
 	int err = 0;
@@ -466,26 +481,47 @@ int __init tegratab_panel_init(void)
 	gpio_request(tegratab_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(tegratab_hdmi_hpd);
 
-	res = platform_get_resource_byname(&tegratab_disp1_device,
+	if (!of_have_populated_dt()) {
+		res = platform_get_resource_byname(&tegratab_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
-	res->start = tegra_fb_start;
-	res->end = tegra_fb_start + tegra_fb_size - 1;
+		res->start = tegra_fb_start;
+		res->end = tegra_fb_start + tegra_fb_size - 1;
+	}
 
 	/* Copy the bootloader fb to the fb. */
 	__tegra_move_framebuffer(&tegratab_nvmap_device,
 		tegra_fb_start, tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
 
-	tegratab_disp1_device.dev.parent = &phost1x->dev;
-	err = platform_device_register(&tegratab_disp1_device);
-	if (err) {
-		pr_err("disp1 device registration failed\n");
-		return err;
-	}
+	if (!of_have_populated_dt()) {
+		fb2_copy_or_clear();
+		res = platform_get_resource_byname(&tegratab_disp2_device,
+			IORESOURCE_MEM, "fbmem");
+		res->start = tegra_fb2_start;
+		res->end = tegra_fb2_start + tegra_fb2_size - 1;
 
-	err = tegra_init_hdmi(&tegratab_disp2_device, phost1x);
-	if (err)
-		return err;
+		tegratab_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&tegratab_disp1_device);
+		if (err) {
+			pr_err("disp1 device registration failed\n");
+			return err;
+		}
+
+		tegratab_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&tegratab_disp2_device);
+		if (err) {
+			pr_err("disp2 device registration failed\n");
+			return err;
+		}
+	} else {
+#ifdef CONFIG_OF
+		struct device_node *hdmi_node = NULL;
+
+		hdmi_node = of_find_node_by_path("/host1x/hdmi");
+		if (hdmi_node && of_device_is_available(hdmi_node))
+#endif
+			fb2_copy_or_clear();
+	}
 
 #ifdef CONFIG_TEGRA_NVAVP
 	nvavp_device.dev.parent = &phost1x->dev;

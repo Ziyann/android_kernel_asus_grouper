@@ -66,6 +66,7 @@
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/hardware.h>
+#include <mach/dc.h>
 
 #include "board-touch-raydium.h"
 #include "board.h"
@@ -80,6 +81,11 @@
 #include "pm-irq.h"
 #include "common.h"
 #include "tegra-board-id.h"
+
+#ifdef CONFIG_USE_OF
+struct tegra_dc_platform_data tegratab_dc0_platform_data;
+struct tegra_dc_platform_data tegratab_dc1_platform_data;
+#endif
 
 #if defined CONFIG_TI_ST || defined CONFIG_TI_ST_MODULE
 struct ti_st_plat_data tegratab_wilink_pdata = {
@@ -178,6 +184,7 @@ static __initdata struct tegra_clk_init_table P1640_wifi_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
+#ifdef CONFIG_USE_OF
 static struct tegra_i2c_platform_data tegratab_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
@@ -223,6 +230,7 @@ static struct tegra_i2c_platform_data tegratab_i2c5_platform_data = {
 	.sda_gpio		= {TEGRA_GPIO_I2C5_SDA, 0},
 	.arb_recovery = arb_lost_recovery,
 };
+#endif
 
 static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
@@ -727,6 +735,7 @@ static void __init tegra_tegratab_early_init(void)
 #endif
 }
 
+#ifdef CONFIG_USE_OF
 struct of_dev_auxdata tegratab_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-host1x", TEGRA_HOST1X_BASE, "host1x",
 				NULL),
@@ -742,6 +751,10 @@ struct of_dev_auxdata tegratab_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
+		&tegratab_dc0_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
+		&tegratab_dc1_platform_data),
 	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c000, "tegra11-i2c.0",
 		&tegratab_i2c1_platform_data),
 	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c400, "tegra11-i2c.1",
@@ -754,6 +767,7 @@ struct of_dev_auxdata tegratab_auxdata_lookup[] __initdata = {
 		&tegratab_i2c5_platform_data),
 	{},
 };
+#endif
 
 static void __init tegra_tegratab_late_init(void)
 {
@@ -804,6 +818,16 @@ static void __init tegra_tegratab_dt_init(void)
 	tegra_tegratab_early_init();
 
 #ifdef CONFIG_USE_OF
+#if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
+	tegratab_dc0_platform_data.of_data.fb_size = SZ_16M + SZ_2M;
+	tegratab_dc1_platform_data.of_data.fb_size = SZ_16M;
+#else
+	tegratab_dc0_platform_data.of_data.fb_size = SZ_16M + SZ_2M;
+	tegratab_dc1_platform_data.of_data.fb_size = SZ_4M;
+#endif
+	tegratab_dc0_platform_data.of_data.fb_start = tegra_fb_start;
+	tegratab_dc1_platform_data.of_data.fb_start = tegra_fb2_start;
+
 	of_platform_populate(NULL, of_default_bus_match_table,
 		tegratab_auxdata_lookup, &platform_bus);
 #endif
