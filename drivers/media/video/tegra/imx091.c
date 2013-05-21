@@ -1505,8 +1505,15 @@ static void imx091_gpio_init(struct imx091_info *info)
 			 info->pdata->num, imx091_gpios[i].label);
 		err = gpio_request_one(info->gpio[type].gpio, flags, label);
 		if (err) {
-			dev_err(&info->i2c_client->dev, "%s ERR %s %u\n",
+			if (err & -EBUSY) {
+				dev_info(&info->i2c_client->dev,
+				"%s INFO %s %u\n",
 				__func__, label, info->gpio[type].gpio);
+			} else {
+				dev_err(&info->i2c_client->dev,
+				"%s ERR %s %u\n",
+				__func__, label, info->gpio[type].gpio);
+			}
 		} else {
 			info->gpio[type].own = true;
 			dev_dbg(&info->i2c_client->dev, "%s %s %u\n",
