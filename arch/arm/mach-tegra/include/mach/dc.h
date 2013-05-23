@@ -578,8 +578,9 @@ struct tegra_dc_cmu {
 
 struct tegra_dc_win {
 	u8			idx;
-	u8			fmt;
 	u8			ppflags; /* see TEGRA_WIN_PPFLAG* */
+	u8			global_alpha;
+	u32			fmt;
 	u32			flags;
 
 	void			*virt_addr;
@@ -597,7 +598,6 @@ struct tegra_dc_win {
 	unsigned		out_w;
 	unsigned		out_h;
 	unsigned		z;
-	u8			global_alpha;
 
 	struct tegra_dc_csc	csc;
 
