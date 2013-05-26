@@ -1,7 +1,7 @@
 /*
  * include/linux/tegra_nvavp.h
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -27,6 +27,7 @@ enum {
 	NVAVP_MODULE_ID_VDE	= 28,
 	NVAVP_MODULE_ID_MPE	= 29,
 	NVAVP_MODULE_ID_EMC	= 75,
+	NVAVP_MODULE_ID_VDE_EMC	= 175,
 };
 
 struct nvavp_cmdbuf {

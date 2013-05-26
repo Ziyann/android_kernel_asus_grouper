@@ -115,6 +115,9 @@ struct nvavp_info {
 	/* used for dvfs */
 	struct clk			*sclk;
 	struct clk			*emc_clk;
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	struct clk			*vde_emc_clk;
+#endif
 	unsigned long			sclk_rate;
 	unsigned long			emc_clk_rate;
 
@@ -262,6 +265,10 @@ static struct clk *nvavp_clk_get(struct nvavp_info *nvavp, int id)
 		return nvavp->vde_clk;
 	if (id == NVAVP_MODULE_ID_EMC)
 		return nvavp->emc_clk;
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	if (id == NVAVP_MODULE_ID_VDE_EMC)
+		return nvavp->vde_emc_clk;
+#endif
 
 	return NULL;
 }
@@ -329,6 +336,13 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: resetting emc_clk "
 				"and sclk\n", __func__);
 	}
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	/* Disable vde emc clock */
+	if (tegra_is_clk_enabled(nvavp->vde_emc_clk)) {
+		clk_set_rate(nvavp->vde_emc_clk, 0);
+		clk_disable_unprepare(nvavp->vde_emc_clk);
+	}
+#endif
 }
 
 static u32 nvavp_check_idle(struct nvavp_info *nvavp, int channel_id)
@@ -1143,6 +1157,33 @@ static int nvavp_set_clock_ioctl(struct file *filp, unsigned int cmd,
 	if (copy_to_user((void __user *)arg, &config, sizeof(struct nvavp_clock_args)))
 		return -EFAULT;
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	if (config.id == NVAVP_MODULE_ID_EMC) {
+		/*
+		 * WAR for bug 1266369
+		 * vde.emc clock enabled only when playback is going on.
+		 * dc check whether vde.emc clock is enabled or not.
+		 * If vde.emc clock in on, then it set iso efficiency to 45%.
+		 * vde.emc clock is enabled when user mode driver ask for non-zero
+		 * emc_clk_rate and disabled when it asks 0 clk_rate.
+		 * we set minimum clk_rate for vde.emc as clk_rate for vde.emc is
+		 * not used.
+		 */
+		c = nvavp_clk_get(nvavp, NVAVP_MODULE_ID_VDE_EMC);
+		if (nvavp->emc_clk_rate) {
+			if (!tegra_is_clk_enabled(c)) {
+				clk_prepare_enable(c);
+				clk_set_rate(c, 0);
+			}
+		} else {
+			if (tegra_is_clk_enabled(c)) {
+				clk_set_rate(c, 0);
+				clk_disable_unprepare(c);
+			}
+		}
+	}
+#endif
+
 	return 0;
 }
 
@@ -1743,6 +1784,15 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 		goto err_get_emc_clk;
 	}
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	nvavp->vde_emc_clk = clk_get(&ndev->dev, "emc_vde");
+	if (IS_ERR(nvavp->vde_emc_clk)) {
+		dev_err(&ndev->dev, "cannot get emc clock\n");
+		ret = -ENOENT;
+		goto err_get_vde_emc_clk;
+	}
+#endif
+
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	nvavp->bsea_clk = clk_get(&ndev->dev, "bsea");
 	if (IS_ERR(nvavp->bsea_clk)) {
@@ -1824,6 +1874,10 @@ err_get_vcp_clk:
 	clk_put(nvavp->bsea_clk);
 err_get_bsea_clk:
 #endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	clk_put(nvavp->vde_emc_clk);
+err_get_vde_emc_clk:
+#endif
 	clk_put(nvavp->emc_clk);
 err_get_emc_clk:
 	clk_put(nvavp->sclk);
@@ -1881,6 +1935,9 @@ static int tegra_nvavp_remove(struct platform_device *ndev)
 	clk_put(nvavp->vde_clk);
 	clk_put(nvavp->cop_clk);
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	clk_put(nvavp->vde_emc_clk);
+#endif
 	clk_put(nvavp->emc_clk);
 	clk_put(nvavp->sclk);
 
