@@ -6957,6 +6957,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE, 0),
 	SHARED_EMC_CLK("edp.emc",	"edp.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
 	SHARED_EMC_CLK("battery.emc", "battery_edp",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
+	SHARED_EMC_CLK("vde.emc",	"tegra-avp",		"emc_vde",	&tegra_clk_emc, NULL, 0, 0, BIT(EMC_USER_VDE)),
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	DUAL_CBUS_CLK("3d.cbus",	"tegra_gr3d",		"gr3d",	&tegra_clk_c2bus, "3d",  0, 0),
@@ -7146,6 +7147,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("vcp", "nvavp", "vcp"),
 	CLK_DUPLICATE("avp.sclk", "nvavp", "sclk"),
 	CLK_DUPLICATE("avp.emc", "nvavp", "emc"),
+	CLK_DUPLICATE("vde.emc", "nvavp", "emc_vde"),
 	CLK_DUPLICATE("vde.cbus", "nvavp", "vde"),
 	CLK_DUPLICATE("i2c5", "tegra_cl_dvfs", "i2c"),
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),

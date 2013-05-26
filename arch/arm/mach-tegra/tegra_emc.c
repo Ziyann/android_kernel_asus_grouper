@@ -105,6 +105,7 @@ static const char *emc_user_names[EMC_USER_NUM] = {
 	USER_NAME(MSENC),
 	USER_NAME(2D),
 	USER_NAME(3D),
+	USER_NAME(VDE),
 };
 
 static int emc_usage_table_show(struct seq_file *s, void *data)
