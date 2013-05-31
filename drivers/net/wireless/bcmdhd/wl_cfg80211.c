@@ -5634,7 +5634,12 @@ wl_cfg80211_change_station(
 	u8 *mac,
 	struct station_parameters *params)
 {
+	struct wl_priv *wl = wiphy_priv(wiphy);
 	int err;
+
+	/* Processing only primary interface */
+	if (dev == wl->p2p_net)
+		return -ENOTSUPP;
 
 	/* Processing only authorize/de-authorize flag for now */
 	if (!(params->sta_flags_mask & BIT(NL80211_STA_FLAG_AUTHORIZED)))

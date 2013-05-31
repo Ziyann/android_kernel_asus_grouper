@@ -2641,6 +2641,8 @@ exit:
 	dhd->pub.rxcnt_timeout = 0;
 	dhd->pub.txcnt_timeout = 0;
 
+	dhd->pub.hang_was_sent = 0;
+
 	DHD_OS_WAKE_UNLOCK(&dhd->pub);
 	return 0;
 }
@@ -3020,7 +3022,10 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen, void *dev)
 #ifdef PROP_TXSTATUS_VSDB
 	dhd->pub.wlfc_enabled = FALSE;
 #else
-	dhd->pub.wlfc_enabled = TRUE;
+	if (disable_proptx)
+		dhd->pub.wlfc_enabled = FALSE;
+	else
+		dhd->pub.wlfc_enabled = TRUE;
 #endif /* PROP_TXSTATUS_VSDB */
 #endif /* PROP_TXSTATUS */
 
@@ -3449,7 +3454,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	dhd->wlfc_enabled = FALSE;
 	/* enable WLFC only if the firmware is VSDB */
 #else
-	dhd->wlfc_enabled = TRUE;
+	if (disable_proptx)
+		dhd->wlfc_enabled = FALSE;
+	else
+		dhd->wlfc_enabled = TRUE;
 #endif /* PROP_TXSTATUS_VSDB */
 #endif /* PROP_TXSTATUS */
 	DHD_TRACE(("Enter %s\n", __FUNCTION__));
