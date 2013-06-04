@@ -1375,6 +1375,7 @@ dhdsdio_bussleep(dhd_bus_t *bus, bool sleep)
 			/* Leave interrupts enabled since device can exit sleep and
 			 * interrupt host
 			 */
+			W_SDREG(bus->hostintmask & ~I_CHIPACTIVE, &bus->regs->hostintmask, retries);
 			err = dhdsdio_clk_devsleep_iovar(bus, TRUE /* sleep */);
 		}
 
@@ -1412,6 +1413,7 @@ dhdsdio_bussleep(dhd_bus_t *bus, bool sleep)
 			}
 		} else {
 			err = dhdsdio_clk_devsleep_iovar(bus, FALSE /* wake */);
+			W_SDREG(bus->hostintmask, &bus->regs->hostintmask, retries);
 		}
 
 		if (err == 0) {
