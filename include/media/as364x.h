@@ -72,6 +72,7 @@ struct as364x_platform_data {
 	struct nvc_torch_pin_state pinstate; /* see notes in driver */
 	unsigned gpio_strobe; /* GPIO connected to the ACT signal */
 	bool strobe_low_act; /* strobe state active low */
+	struct edp_client edpc_config;
 
 	int (*power_on_callback)(struct as364x_power_rail *pw);
 	int (*power_off_callback)(struct as364x_power_rail *pw);
