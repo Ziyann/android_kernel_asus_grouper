@@ -42,6 +42,12 @@
 #define TEGRATAB_WLAN_PWR	TEGRA_GPIO_PCC5
 #define TEGRATAB_WLAN_RST	TEGRA_GPIO_PX7
 #define TEGRATAB_WLAN_WOW	TEGRA_GPIO_PU5
+#if defined(CONFIG_WLCORE_EDP_SUPPORT)
+#define ON 808 /* 808.236 mW */
+#define OFF 0
+static unsigned int wl_states[] = {ON, OFF};
+#endif
+
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
 static int tegratab_wifi_status_register(void (*callback)(int , void *),
@@ -55,6 +61,18 @@ static struct wl12xx_platform_data tegratab_wl12xx_wlan_data __initdata = {
 	.board_tcxo_clock = 1,
 	.set_power = tegratab_wifi_power,
 	.set_carddetect = tegratab_wifi_set_carddetect,
+#if defined(CONFIG_WLCORE_EDP_SUPPORT)
+	.edp_info = {
+		.client_info = {
+			.name = "wl_edp_client",
+			.states = wl_states,
+			.num_states = ARRAY_SIZE(wl_states),
+			.e0_index = 0,
+			.priority = EDP_MAX_PRIO,
+		},
+		.registered = false,
+	},
+#endif
 };
 
 static struct resource sdhci_resource0[] = {
