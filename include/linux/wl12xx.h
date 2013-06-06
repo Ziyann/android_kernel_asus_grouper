@@ -47,6 +47,22 @@ enum {
 	WL12XX_TCXOCLOCK_33_6	= 7, /* 33.6 MHz */
 };
 
+#ifdef CONFIG_WLCORE_EDP_SUPPORT
+#include <linux/edp.h>
+#include <linux/mutex.h>
+
+typedef enum wl_edp_state {
+	WL_EDP_STATE_ON = 0,
+	WL_EDP_STATE_OFF
+} wl_edp_state;
+
+struct edp_client_info {
+	struct edp_client client_info;
+	struct mutex edp_lock;
+	bool registered;
+};
+#endif
+
 struct wl12xx_platform_data {
 	int (*set_power)(int power_on);
 	int (*set_carddetect)(int val);
@@ -59,6 +75,9 @@ struct wl12xx_platform_data {
 	bool pwr_in_suspend;
 
 	struct wl1271_if_operations *ops;
+#ifdef CONFIG_WLCORE_EDP_SUPPORT
+	struct edp_client_info edp_info;
+#endif
 };
 
 /* Platform does not support level trigger interrupts */
