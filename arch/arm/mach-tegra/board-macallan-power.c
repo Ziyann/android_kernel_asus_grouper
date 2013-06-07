@@ -695,6 +695,8 @@ int __init macallan_regulator_init(void)
 			/* Only register fuel gauge when using battery. */
 			macallan_max17048_boardinfo[0].irq =
 						gpio_to_irq(TEGRA_GPIO_PQ5);
+			/* set device shutdown threshold to 3.5V */
+			macallan_max17048_pdata.model_data->valert = 0xAFFF;
 			i2c_register_board_info(0, macallan_max17048_boardinfo,
 						1);
 		}
