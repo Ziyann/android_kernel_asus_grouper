@@ -373,8 +373,6 @@ static const struct ov5693_reg ov5693_2592x1944_i2c[] = {
 	{0x5849, 0x0c},
 	{0x5e00, 0x00},
 	{0x5e10, 0x0c},
-	{0x0100, 0x01},
-
 	{OV5693_TABLE_END, 0x0000}
 };
 
@@ -622,7 +620,6 @@ static const struct ov5693_reg ov5693_1296x972_i2c[] = {
 	{0x5849, 0x0c},
 	{0x5e00, 0x00},
 	{0x5e10, 0x0c},
-	{0x0100, 0x01},
 	{OV5693_TABLE_END, 0x0000}
 };
 
@@ -869,7 +866,6 @@ static const struct ov5693_reg ov5693_1920x1080_i2c[] = {
 	{0x5849, 0x0c},
 	{0x5e00, 0x00},
 	{0x5e10, 0x0c},
-	{0x0100, 0x01},
 	{OV5693_TABLE_END, 0x0000}
 };
 
@@ -1117,8 +1113,6 @@ static const struct ov5693_reg ov5693_1280x720_120fps_i2c[] = {
 	{0x5849, 0x0c},
 	{0x5e00, 0x00},
 	{0x5e10, 0x0c},
-	{0x0100, 0x01},
-	{0x350b, 0xF8},
 	{OV5693_TABLE_END, 0x0000}
 };
 
@@ -1366,7 +1360,6 @@ static const struct ov5693_reg ov5693_2592x1944_HDR_24fps_i2c[] = {
 	{0x5849, 0x0c},
 	{0x5e00, 0x00},
 	{0x5e10, 0x0c},
-	{0x0100, 0x01},
 	{OV5693_TABLE_END, 0x0000}
 };
 
@@ -1614,7 +1607,6 @@ static const struct ov5693_reg ov5693_1920x1080_HDR_30fps_i2c[] = {
 	{0x5849, 0x0c},
 	{0x5e00, 0x00},
 	{0x5e10, 0x0c},
-	{0x0100, 0x01},
 	{OV5693_TABLE_END, 0x0000}
 };
 
@@ -1862,7 +1854,6 @@ static const struct ov5693_reg ov5693_1296x972_HDR_30fps_i2c[] = {
 	{0x5849, 0x0c},
 	{0x5e00, 0x00},
 	{0x5e10, 0x0c},
-	{0x0100, 0x01},
 	{OV5693_TABLE_END, 0x0000}
 };
 
@@ -2110,7 +2101,6 @@ static const struct ov5693_reg ov5693_1280x720_HDR_60fps_i2c[] = {
 	{0x5849, 0x0c},
 	{0x5e00, 0x00},
 	{0x5e10, 0x0c},
-	{0x0100, 0x01},
 	{OV5693_TABLE_END, 0x0000}
 };
 
@@ -2155,28 +2145,15 @@ static int ov5693_i2c_wr_table(struct ov5693_info *info,
 	u8 i2c_buf[OV5693_SIZEOF_I2C_BUF];
 
 	u8 *b_ptr = i2c_buf;
-	u8 reset_status = 1;
-	u8 reset_tries_left = OV5693_TABLE_RESET_TIMEOUT;
 
 	for (next = table; next->addr != OV5693_TABLE_END; next++) {
 		if (next->addr == OV5693_TABLE_WAIT_MS) {
 			msleep(next->val);
 			continue;
 		} else if (next->addr == OV5693_TABLE_RESET) {
-			err = regmap_write(info->regmap, 0x0103, 0x01);
+			err = regmap_write(info->regmap, 0x0100, 0x00);
 			if (err)
 				return err;
-			while (reset_status) {
-				usleep_range(200, 300);
-				if (reset_tries_left < 1)
-					return -EIO;
-				err = ov5693_i2c_rd8(info, 0x0103,
-							&reset_status);
-				if (err)
-					return err;
-				reset_status &= 0x01;
-				reset_tries_left -= 1;
-			}
 			continue;
 		}
 
@@ -2370,7 +2347,7 @@ static int ov5693_set_gain(struct ov5693_info *info, u32 gain, bool group_hold)
 	return err;
 }
 
-static int ov5693_awb_wr(struct ov5693_info *info, bool group_hold)
+static int ov5693_awb_wr(struct ov5693_info *info)
 {
 	struct ov5693_reg reg_list[10];
 	int rg, bg, rg_typical, bg_typical;
@@ -2415,13 +2392,12 @@ static int ov5693_awb_wr(struct ov5693_info *info, bool group_hold)
 			} else {
 				R_gain = 0x400;
 				G_gain = G_gain_R;
-				B_gain = G_gain * rg_typical / rg;
+				B_gain = G_gain * bg_typical / bg;
 			}
 		}
 	}
 
 	offset = 0;
-	OV5693_ENTER_GROUP_HOLD(group_hold);
 	if (R_gain > 0x400) {
 		reg_list[offset].addr = 0x3400;
 		reg_list[offset].val  = R_gain >> 8;
@@ -2439,14 +2415,13 @@ static int ov5693_awb_wr(struct ov5693_info *info, bool group_hold)
 		offset++;
 	}
 	if (B_gain > 0x400) {
-		reg_list[offset].addr = 0x3402;
+		reg_list[offset].addr = 0x3404;
 		reg_list[offset].val  = B_gain >> 8;
 		offset++;
-		reg_list[offset].addr = 0x3403;
+		reg_list[offset].addr = 0x3405;
 		reg_list[offset].val  = B_gain & 0x00ff;
 		offset++;
 	}
-	OV5693_LEAVE_GROUP_HOLD(group_hold);
 	reg_list[offset].addr = OV5693_TABLE_END;
 	offset++;
 
@@ -2455,9 +2430,9 @@ static int ov5693_awb_wr(struct ov5693_info *info, bool group_hold)
 	return err;
 }
 
-static int ov5693_lsc_wr(struct ov5693_info *info, bool group_hold)
+static int ov5693_lsc_wr(struct ov5693_info *info)
 {
-	struct ov5693_reg reg_list[67];
+	struct ov5693_reg reg_list[64];
 	int offset;
 	int err;
 	int i;
@@ -2466,7 +2441,6 @@ static int ov5693_lsc_wr(struct ov5693_info *info, bool group_hold)
 		return 0;
 
 	offset = 0;
-	OV5693_ENTER_GROUP_HOLD(group_hold);
 	reg_list[offset].addr = 0x5000;
 	reg_list[offset].val  = 0x86;
 	offset++;
@@ -2475,7 +2449,6 @@ static int ov5693_lsc_wr(struct ov5693_info *info, bool group_hold)
 		reg_list[offset].val  = info->cal.lenc[i];
 		offset++;
 	}
-	OV5693_LEAVE_GROUP_HOLD(group_hold);
 	reg_list[offset].addr = OV5693_TABLE_END;
 	offset++;
 
@@ -2854,18 +2827,25 @@ static int ov5693_set_mode(struct ov5693_info *info,
 			"%s set_mode error\n", __func__);
 		goto ov5693_mode_wr_err;
 	}
-	err = ov5693_awb_wr(info, true);
+	err = ov5693_awb_wr(info);
 	if (err < 0) {
 		info->mode_valid = false;
 		dev_err(&info->i2c_client->dev,
 			"%s:%d awb cal write error\n", __func__, __LINE__);
 		goto ov5693_mode_wr_err;
 	}
-	err = ov5693_lsc_wr(info, true);
+	err = ov5693_lsc_wr(info);
 	if (err < 0) {
 		info->mode_valid = false;
 		dev_err(&info->i2c_client->dev,
 			"%s:%d lsc cal write error\n", __func__, __LINE__);
+		goto ov5693_mode_wr_err;
+	}
+	err = regmap_write(info->regmap, 0x0100, 0x01);
+	if (err) {
+		info->mode_valid = false;
+		dev_err(&info->i2c_client->dev,
+			"%s:%d stream on failed\n", __func__, __LINE__);
 		goto ov5693_mode_wr_err;
 	}
 
