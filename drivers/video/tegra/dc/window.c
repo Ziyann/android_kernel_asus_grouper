@@ -322,6 +322,7 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 	bool update_blend_par = false;
 	bool update_blend_seq = false;
 	int i;
+	struct tegra_dc_win *all_wins[DC_N_WINDOWS];
 
 	dc = windows[0]->dc;
 	trace_update_windows(dc);
@@ -528,7 +529,10 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 		}
 	}
 
-	tegra_dc_set_dynamic_emc(windows, n);
+	/* Consider all windows while calculating emc bandwidth requirement */
+	for (i = 0; i < DC_N_WINDOWS; i++)
+		all_wins[i] = &(dc->windows[i]);
+	tegra_dc_set_dynamic_emc(all_wins, DC_N_WINDOWS);
 
 	tegra_dc_writel(dc, update_mask << 8, DC_CMD_STATE_CONTROL);
 
