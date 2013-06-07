@@ -724,7 +724,7 @@ static int setup_dma(struct tegra_dtv_context *dtv_ctx)
 			dtv_ctx->stream.buf_phy[i];
 	}
 	dtv_ctx->stream.dma_chan = tegra_dma_allocate_channel(
-		TEGRA_DMA_MODE_CONTINUOUS_SINGLE,
+		TEGRA_DMA_MODE_CONTINUOUS_DOUBLE,
 		"tegra_dtv_rx", dtv_ctx->dma_req_sel);
 	if (!dtv_ctx->stream.dma_chan) {
 		pr_err("%s : cannot allocate input DMA channel: %ld\n",
