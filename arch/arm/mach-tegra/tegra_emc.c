@@ -29,6 +29,7 @@
 #include "tegra_emc.h"
 
 static u8 emc_iso_share = 100;
+static unsigned long last_iso_bw;
 
 static struct emc_iso_usage emc_usage_table[TEGRA_EMC_ISO_USE_CASES_MAX_NUM];
 
@@ -43,7 +44,7 @@ void __init tegra_emc_iso_usage_table_init(struct emc_iso_usage *table,
 		       size * sizeof(struct emc_iso_usage));
 }
 
-static u8 tegra_emc_get_iso_share(u32 usage_flags)
+static u8 tegra_emc_get_iso_share(u32 usage_flags, unsigned long iso_bw)
 {
 	int i;
 	u8 iso_share = 100;
@@ -56,6 +57,9 @@ static u8 tegra_emc_get_iso_share(u32 usage_flags)
 
 			if (!flags)
 				continue;
+
+			if (iso_usage->iso_share_calculator)
+				share = iso_usage->iso_share_calculator(iso_bw);
 			if (!share) {
 				WARN(1, "%s: entry %d: iso_share 0\n",
 				     __func__, i);
@@ -63,10 +67,10 @@ static u8 tegra_emc_get_iso_share(u32 usage_flags)
 			}
 
 			if ((flags & usage_flags) == flags)
-				iso_share = min(iso_share,
-						iso_usage->iso_usage_share);
+				iso_share = min(iso_share, share);
 		}
 	}
+	last_iso_bw = iso_bw;
 	emc_iso_share = iso_share;
 	return iso_share;
 }
@@ -74,7 +78,7 @@ static u8 tegra_emc_get_iso_share(u32 usage_flags)
 unsigned long tegra_emc_apply_efficiency(unsigned long total_bw,
 	unsigned long iso_bw, unsigned long max_rate, u32 usage_flags)
 {
-	u8 efficiency = tegra_emc_get_iso_share(usage_flags);
+	u8 efficiency = tegra_emc_get_iso_share(usage_flags, iso_bw);
 	if (iso_bw && efficiency && (efficiency < 100)) {
 		iso_bw /= efficiency;
 		iso_bw = (iso_bw < max_rate / 100) ?
@@ -107,12 +111,19 @@ static int emc_usage_table_show(struct seq_file *s, void *data)
 {
 	int i, j;
 
-	seq_printf(s, "EMC USAGE\t\tISO SHARE %%\n");
+	seq_printf(s, "EMC USAGE\t\tISO SHARE %% @ last bw %lu\n", last_iso_bw);
 
 	for (i = 0; i < TEGRA_EMC_ISO_USE_CASES_MAX_NUM; i++) {
 		u32 flags = emc_usage_table[i].emc_usage_flags;
 		u8 share = emc_usage_table[i].iso_usage_share;
+		bool fixed_share = true;
 		bool first = false;
+
+		if (emc_usage_table[i].iso_share_calculator) {
+			share = emc_usage_table[i].iso_share_calculator(
+				last_iso_bw);
+			fixed_share = false;
+		}
 
 		seq_printf(s, "[%d]: ", i);
 		if (!flags) {
@@ -128,7 +139,8 @@ static int emc_usage_table_show(struct seq_file *s, void *data)
 				   emc_user_names[j]);
 			first = true;
 		}
-		seq_printf(s, "\r\t\t\t= %d\n", share);
+		seq_printf(s, "\r\t\t\t= %d(%s across bw)\n",
+			   share, fixed_share ? "fixed" : "vary");
 	}
 	return 0;
 }
