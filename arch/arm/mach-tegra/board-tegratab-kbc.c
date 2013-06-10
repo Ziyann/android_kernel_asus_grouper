@@ -39,7 +39,7 @@
 		.desc = #_id,                   \
 		.type = EV_KEY,                 \
 		.wakeup = _iswake,              \
-		.debounce_interval = 10,        \
+		.debounce_interval = 30,        \
 	}
 
 #define GPIO_SW(_id, _gpio, _active_low, _iswake)   \
