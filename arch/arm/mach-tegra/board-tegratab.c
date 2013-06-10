@@ -328,7 +328,6 @@ static struct platform_device tegra_rtc_device = {
 
 static struct tegra_asoc_platform_data tegratab_audio_pdata = {
 	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
-	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
 	.gpio_hp_mute		= -1,
 	.gpio_int_mic_en	= TEGRA_GPIO_INT_MIC_EN,
 	.gpio_ext_mic_en	= TEGRA_GPIO_EXT_MIC_EN,
@@ -553,9 +552,16 @@ static void tegratab_audio_init(void)
 	if (board_info.board_id == BOARD_P1640) {
 		tegratab_audio_pdata.codec_name = "rt5639.0-001c";
 		tegratab_audio_pdata.codec_dai_name = "rt5639-aif1";
+		if (board_info.fab == BOARD_FAB_A00)
+			tegratab_audio_pdata.gpio_hp_det = TEGRA_GPIO_HP_DET;
+		else {/* from A01, CDC_IRQ from codec is used as interrupt */
+			tegratab_audio_pdata.gpio_hp_det = TEGRA_GPIO_CDC_IRQ;
+			tegratab_audio_pdata.use_codec_jd_irq = true;
+		}
 	} else {
 		tegratab_audio_pdata.codec_name = "rt5640.0-001c";
 		tegratab_audio_pdata.codec_dai_name = "rt5640-aif1";
+		tegratab_audio_pdata.gpio_hp_det = TEGRA_GPIO_HP_DET;
 	}
 }
 
