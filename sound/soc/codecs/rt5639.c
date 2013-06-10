@@ -109,9 +109,26 @@ static struct rt5639_init_reg init_list[] = {
 	{RT5639_IRQ_CTRL2	, 0x8000},/*set MICBIAS short current to IRQ */
 					/*( if sticky set regBE : 8800 ) */
 #endif
-	{RT5639_JD_CTRL         , 0x6000},/* JD2 as jack detection source */
+	{RT5639_JD_CTRL		, 0x6000},/* JD2 as jack detection source */
 };
 #define RT5639_INIT_REG_LEN ARRAY_SIZE(init_list)
+
+static struct rt5639_init_reg irq_jd_init_list[] = {
+   {RT5639_GPIO_CTRL1  , 0x8400},/* set GPIO1 to IRQ */
+   {RT5639_GPIO_CTRL3  , 0x0004},/* set GPIO1 output */
+   {RT5639_IRQ_CTRL1   , 0x8000},/* enable JD IRQ and set active low */
+};
+#define RT5639_IRQ_JD_INIT_REG_LEN ARRAY_SIZE(irq_jd_init_list)
+
+int rt5639_irq_jd_reg_init(struct snd_soc_codec *codec)
+{
+   int i;
+
+   for (i = 0; i < RT5639_IRQ_JD_INIT_REG_LEN; i++)
+       snd_soc_write(codec, irq_jd_init_list[i].reg, irq_jd_init_list[i].val);
+
+   return 0;
+}
 
 static int rt5639_reg_init(struct snd_soc_codec *codec)
 {

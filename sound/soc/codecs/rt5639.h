@@ -2143,4 +2143,5 @@ struct rt5639_priv {
 int rt5639_conn_mux_path(struct snd_soc_codec *codec,
 		char *widget_name, char *path_name);
 
+int rt5639_irq_jd_reg_init(struct snd_soc_codec *codec);
 #endif /* __RT5639_H__ */
