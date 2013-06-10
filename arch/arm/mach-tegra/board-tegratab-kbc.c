@@ -68,6 +68,14 @@ static struct gpio_keys_button tegratab_p1640_keys[] = {
 	[4] = GPIO_SW(SW_TABLET_MODE, PQ1, 0, 0),
 };
 
+static struct gpio_keys_button tegratab_p1640_a01_keys[] = {
+	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
+	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
+	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ2, 0),
+	[3] = GPIO_SW(SW_LID, PC7, 1, 1),
+	[4] = GPIO_SW(SW_TABLET_MODE, PO5, 0, 1),
+};
+
 static int tegratab_wakeup_key(void)
 {
 	int wakeup_key;
@@ -78,6 +86,8 @@ static int tegratab_wakeup_key(void)
 		wakeup_key = KEY_POWER;
 	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PC7))
 		wakeup_key = SW_LID;
+	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PO5))
+		wakeup_key = SW_TABLET_MODE;
 	else
 		wakeup_key = KEY_RESERVED;
 
@@ -105,8 +115,15 @@ int __init tegratab_kbc_init(void)
 	tegra_get_board_info(&board_info);
 
 	if (board_info.board_id == BOARD_P1640) {
-		tegratab_keys_pdata.buttons = tegratab_p1640_keys;
-		tegratab_keys_pdata.nbuttons = ARRAY_SIZE(tegratab_p1640_keys);
+		if (board_info.fab == BOARD_FAB_A00) {
+			tegratab_keys_pdata.buttons = tegratab_p1640_keys;
+			tegratab_keys_pdata.nbuttons =
+			   ARRAY_SIZE(tegratab_p1640_keys);
+		} else {
+			tegratab_keys_pdata.buttons = tegratab_p1640_a01_keys;
+			tegratab_keys_pdata.nbuttons =
+			   ARRAY_SIZE(tegratab_p1640_a01_keys);
+		}
 	}
 
 	platform_device_register(&tegratab_keys_device);
