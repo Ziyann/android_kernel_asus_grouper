@@ -123,6 +123,7 @@ struct dw9718_info {
 	struct nv_focuser_config nv_config;
 	atomic_t in_use;
 	bool reset_flag;
+	int pwr_api;
 	int pwr_dev;
 	int status;
 	u32 cur_pos;
@@ -353,16 +354,35 @@ static int dw9718_power_get(struct dw9718_info *info)
 	return 0;
 }
 
+static int dw9718_pm_api_wr(struct dw9718_info *info, int pwr)
+{
+	int err = 0;
+
+	if (!pwr || (pwr > NVC_PWR_ON))
+		return 0;
+
+	if (pwr > info->pwr_dev)
+		err = dw9718_pm_wr(info, pwr);
+	if (!err)
+		info->pwr_api = pwr;
+	else
+		info->pwr_api = NVC_PWR_ERR;
+	if (info->pdata->cfg & NVC_CFG_NOERR)
+		return 0;
+
+	return err;
+}
+
 static int dw9718_pm_dev_wr(struct dw9718_info *info, int pwr)
 {
-	if (pwr < info->pwr_dev)
-		pwr = info->pwr_dev;
+	if (pwr < info->pwr_api)
+		pwr = info->pwr_api;
 	return dw9718_pm_wr(info, pwr);
 }
 
 static void dw9718_pm_exit(struct dw9718_info *info)
 {
-	dw9718_pm_wr(info, NVC_PWR_OFF_FORCE);
+	dw9718_pm_dev_wr(info, NVC_PWR_OFF_FORCE);
 	dw9718_power_put(&info->power);
 }
 
@@ -376,8 +396,8 @@ static int dw9718_reset(struct dw9718_info *info, u32 level)
 		err |= dw9718_i2c_wr8(info, DW9718_POWER_DN, 0x00);
 		usleep_range(100, 120);
 	} else
-		err = dw9718_pm_wr(info, NVC_PWR_OFF_FORCE);
-
+		err = dw9718_pm_dev_wr(info, NVC_PWR_OFF_FORCE);
+	err |= dw9718_pm_wr(info, info->pwr_api);
 	return err;
 }
 
@@ -607,7 +627,7 @@ static int dw9718_param_wr(struct dw9718_info *info, unsigned long arg)
 		case NVC_SYNC_STEREO:
 			if (info->s_info != NULL) {
 				/* sync power */
-				info->s_info->pwr_dev = info->pwr_dev;
+				info->s_info->pwr_api = info->pwr_api;
 				/* move slave lens to master position */
 				err = dw9718_position_wr(info->s_info,
 					(s32)info->cur_pos);
@@ -685,13 +705,13 @@ static long dw9718_ioctl(struct file *file,
 		pwr = (int)arg * 2;
 		dev_dbg(&info->i2c_client->dev, "%s PWR_WR: %d\n",
 				__func__, pwr);
-		err = dw9718_pm_dev_wr(info, pwr);
+		err = dw9718_pm_api_wr(info, pwr);
 		return err;
 	case NVC_IOCTL_PWR_RD:
 		if (info->s_mode == NVC_SYNC_SLAVE)
-			pwr = info->s_info->pwr_dev;
+			pwr = info->s_info->pwr_api / 2;
 		else
-			pwr = info->pwr_dev;
+			pwr = info->pwr_api / 2;
 		dev_dbg(&info->i2c_client->dev, "%s PWR_RD: %d\n",
 				__func__, pwr);
 		if (copy_to_user((void __user *)arg,
@@ -904,6 +924,7 @@ static int dw9718_probe(
 	spin_unlock(&dw9718_spinlock);
 	dw9718_power_get(info);
 	dw9718_sdata_init(info);
+	info->pwr_api = NVC_PWR_OFF;
 	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
 		err = dw9718_detect(info);
 		if (err < 0) {
