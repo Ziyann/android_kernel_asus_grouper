@@ -386,7 +386,7 @@ static __initdata struct tegra_pingroup_config tegratab_ffd_pinmux_common[] = {
 
 	/* UARTD pinmux */
 	DEFAULT_PINMUX(GMI_A16,       UARTD,       NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GMI_A17,       UARTD,       NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(GMI_A17,       UARTD,       PULL_UP,   NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_A18,       UARTD,       NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_A19,       UARTD,       NORMAL,    NORMAL,   OUTPUT),
 
