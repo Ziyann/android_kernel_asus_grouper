@@ -382,6 +382,25 @@ static struct palmas_pmic_platform_data pmic_platform = {
 	.disable_smps10_boost_suspend = true,
 };
 
+
+#define PALMAS_GPADC_IIO_MAP(_ch, _dev_name, _name)		\
+	{							\
+		.adc_channel_label = _ch,			\
+		.consumer_dev_name = _dev_name,			\
+		.consumer_channel = _name,			\
+	}
+
+static struct iio_map palmas_adc_iio_maps[] = {
+	PALMAS_GPADC_IIO_MAP("IN1", "generic-adc-thermal.0", "thermistor"),
+	PALMAS_GPADC_IIO_MAP("IN3", "generic-adc-thermal.1", "tdiode"),
+	PALMAS_GPADC_IIO_MAP(NULL, NULL, NULL),
+};
+
+static struct palmas_gpadc_platform_data palmas_adc_pdata = {
+	.channel3_current_uA = 400,
+	.iio_maps = palmas_adc_iio_maps,
+};
+
 static struct palmas_pinctrl_config palmas_pincfg[] = {
 	PALMAS_PINMUX(POWERGOOD, POWERGOOD, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(VAC, VAC, DEFAULT, DEFAULT),
@@ -412,6 +431,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_platform,
+	.adc_pdata = &palmas_adc_pdata,
 	.use_power_off = true,
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
 	.extcon_pdata = &palmas_extcon_pdata,
