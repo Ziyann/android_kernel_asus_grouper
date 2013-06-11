@@ -480,7 +480,6 @@ return 0;
 
 static bool utmi_phy_remotewake_detected(struct tegra_usb_phy *phy)
 {
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	void __iomem *base = phy->regs;
 	unsigned  int inst = phy->inst;
 	u32 val;
@@ -488,22 +487,20 @@ static bool utmi_phy_remotewake_detected(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	val = readl(base + UTMIP_PMC_WAKEUP0);
 	if (val & EVENT_INT_ENB) {
-		val = readl(pmc_base + UTMIP_STATUS);
+		val = tegra_usb_pmc_reg_read(UTMIP_STATUS);
 		if (UTMIP_WAKE_ALARM(inst) & val) {
-			val = readl(pmc_base + PMC_SLEEP_CFG);
-			val &= ~UTMIP_WAKE_VAL(inst, 0xF);
-			val |= UTMIP_WAKE_VAL(inst, WAKE_VAL_NONE);
-			writel(val, pmc_base + PMC_SLEEP_CFG);
+			tegra_usb_pmc_reg_update(PMC_SLEEP_CFG,
+				UTMIP_WAKE_VAL(inst, 0xF),
+				UTMIP_WAKE_VAL(inst, WAKE_VAL_NONE));
 
-			val = readl(pmc_base + PMC_TRIGGERS);
-			val |= UTMIP_CLR_WAKE_ALARM(inst);
-			writel(val, pmc_base + PMC_TRIGGERS);
+			tegra_usb_pmc_reg_update(PMC_TRIGGERS, 0,
+				UTMIP_CLR_WAKE_ALARM(inst));
 
 			val = readl(base + UTMIP_PMC_WAKEUP0);
 			val &= ~EVENT_INT_ENB;
 			writel(val, base + UTMIP_PMC_WAKEUP0);
 
-			val = readl(pmc_base + UTMIP_STATUS);
+			val = tegra_usb_pmc_reg_read(UTMIP_STATUS);
 			if (phy->port_speed < USB_PHY_PORT_SPEED_UNKNOWN) {
 				pr_info("%s: utmip remote wake detected\n",
 								__func__);
@@ -520,7 +517,6 @@ static bool utmi_phy_remotewake_detected(struct tegra_usb_phy *phy)
 static void utmi_phy_enable_trking_data(struct tegra_usb_phy *phy)
 {
 	void __iomem *base = IO_ADDRESS(TEGRA_USB_BASE);
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	static bool init_done = false;
 	u32 val;
 
@@ -532,9 +528,8 @@ static void utmi_phy_enable_trking_data(struct tegra_usb_phy *phy)
 
 	clk_enable(phy->utmi_pad_clk);
 	/* Bias pad MASTER_ENABLE=1 */
-	val = readl(pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
-	val |= BIAS_MASTER_PROG_VAL;
-	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
+	tegra_usb_pmc_reg_update(PMC_UTMIP_BIAS_MASTER_CNTRL, 0,
+			BIAS_MASTER_PROG_VAL);
 
 	/* Setting the tracking length time */
 	val = readl(base + UTMIP_BIAS_CFG1);
@@ -555,17 +550,15 @@ static void utmi_phy_enable_trking_data(struct tegra_usb_phy *phy)
 	udelay(25);
 
 	/* Bias pad MASTER_ENABLE=0 */
-	val = readl(pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
-	val &= ~BIAS_MASTER_PROG_VAL;
-	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
+	tegra_usb_pmc_reg_update(PMC_UTMIP_BIAS_MASTER_CNTRL,
+			BIAS_MASTER_PROG_VAL, 0);
 
 	/* Wait for 1usec */
 	udelay(1);
 
 	/* Bias pad MASTER_ENABLE=1 */
-	val = readl(pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
-	val |= BIAS_MASTER_PROG_VAL;
-	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
+	tegra_usb_pmc_reg_update(PMC_UTMIP_BIAS_MASTER_CNTRL, 0,
+			BIAS_MASTER_PROG_VAL);
 
 	/* Read RCTRL and TCTRL from UTMIP space */
 	val = readl(base + UTMIP_BIAS_STS0);
@@ -578,10 +571,9 @@ static void utmi_phy_enable_trking_data(struct tegra_usb_phy *phy)
 	writel(val, base + UTMIP_BIAS_CFG1);
 
 	/* Program thermally encoded RCTRL_VAL, TCTRL_VAL into PMC space */
-	val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
 	val = PMC_TCTRL_VAL(pmc_data[phy->inst].utmip_tctrl_val) |
 		PMC_RCTRL_VAL(pmc_data[phy->inst].utmip_rctrl_val);
-	writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	tegra_usb_pmc_reg_update(PMC_UTMIP_TERM_PAD_CFG, 0xffffffff, val);
 	clk_disable(phy->utmi_pad_clk);
 	init_done = true;
 }
@@ -729,8 +721,7 @@ static unsigned int utmi_phy_xcvr_setup_value(struct tegra_usb_phy *phy)
 
 static int utmi_phy_open(struct tegra_usb_phy *phy)
 {
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-	unsigned long parent_rate, val;
+	unsigned long parent_rate;
 	int i;
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
 
@@ -758,13 +749,12 @@ static int utmi_phy_open(struct tegra_usb_phy *phy)
 	}
 
 	/* Power-up the VBUS, ID detector for UTMIP PHY */
-	val = readl(pmc_base + PMC_USB_AO);
-	val &= ~(PMC_USB_AO_VBUS_WAKEUP_PD_P0);
 	if (phy->pdata->id_det_type == TEGRA_USB_ID)
-		val &= ~PMC_USB_AO_ID_PD_P0;
+		tegra_usb_pmc_reg_update(PMC_USB_AO,
+			PMC_USB_AO_VBUS_WAKEUP_PD_P0 | PMC_USB_AO_ID_PD_P0, 0);
 	else
-		val |= PMC_USB_AO_ID_PD_P0;
-	writel(val, (pmc_base + PMC_USB_AO));
+		tegra_usb_pmc_reg_update(PMC_USB_AO,
+			PMC_USB_AO_VBUS_WAKEUP_PD_P0, PMC_USB_AO_ID_PD_P0);
 
 	pmc->pmc_ops->powerup_pmc_wake_detect(pmc);
 
@@ -775,7 +765,6 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
 
 	DBG("%s inst:[%d]\n", __func__, phy->inst);
@@ -787,7 +776,7 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 		writel(val, base + USB_SUSP_CTRL);
 	}
 
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG);
 	if (val & UTMIP_MASTER_ENABLE(phy->inst)) {
 		val = readl(base + UTMIP_PMC_WAKEUP0);
 		val &= ~EVENT_INT_ENB;
@@ -866,13 +855,12 @@ exit:
 static int utmi_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 {
 	unsigned long val;
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned  int inst = phy->inst;
 	void __iomem *base = phy->regs;
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG);
 	if (val & UTMIP_MASTER_ENABLE(inst)) {
 		if (!remote_wakeup) {
 			val = readl(base + UTMIP_PMC_WAKEUP0);
@@ -1185,11 +1173,10 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 static void utmi_phy_restore_start(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	int inst = phy->inst;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	val = readl(pmc_base + UTMIP_STATUS);
+	val = tegra_usb_pmc_reg_read(UTMIP_STATUS);
 	/* Check whether we wake up from the remote resume.
 	   For lp1 case, pmc is not responsible for waking the
 	   system, it's the flow controller and hence
@@ -1563,7 +1550,6 @@ static bool utmi_phy_nv_charger_detect(struct tegra_usb_phy *phy)
 
 static bool uhsic_phy_remotewake_detected(struct tegra_usb_phy *phy)
 {
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	void __iomem *base = phy->regs;
 	u32 val;
 	unsigned int inst = phy->inst;
@@ -1571,17 +1557,15 @@ static bool uhsic_phy_remotewake_detected(struct tegra_usb_phy *phy)
 	val = readl(base + UHSIC_PMC_WAKEUP0);
 	if (!(val & EVENT_INT_ENB))
 		return false;
-	val = readl(pmc_base + UHSIC_STATUS(inst));
+	val = tegra_usb_pmc_reg_read(UHSIC_STATUS(inst));
 	if (!(UHSIC_WAKE_ALARM(inst) & val))
 		return false;
-	val = readl(pmc_base + PMC_UHSIC_SLEEP_CFG(inst));
-	val &= ~UHSIC_WAKE_VAL(inst, WAKE_VAL_ANY);
-	val |= UHSIC_WAKE_VAL(inst, WAKE_VAL_NONE);
-	writel(val, pmc_base + PMC_UHSIC_SLEEP_CFG(inst));
+	tegra_usb_pmc_reg_update(PMC_UHSIC_SLEEP_CFG(inst),
+		UHSIC_WAKE_VAL(inst, WAKE_VAL_ANY),
+		UHSIC_WAKE_VAL(inst, WAKE_VAL_NONE));
 
-	val = readl(pmc_base + PMC_UHSIC_TRIGGERS(inst));
-	val |= UHSIC_CLR_WAKE_ALARM(inst);
-	writel(val, pmc_base + PMC_UHSIC_TRIGGERS(inst));
+	tegra_usb_pmc_reg_update(PMC_UHSIC_TRIGGERS(inst),
+		0, UHSIC_CLR_WAKE_ALARM(inst));
 
 	val = readl(base + UHSIC_PMC_WAKEUP0);
 	val &= ~EVENT_INT_ENB;
@@ -1611,12 +1595,11 @@ static int uhsic_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 static void uhsic_phy_restore_start(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	void __iomem *base = phy->regs;
 	unsigned int inst = phy->inst;
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
 
-	val = readl(pmc_base + UHSIC_STATUS(inst));
+	val = tegra_usb_pmc_reg_read(UHSIC_STATUS(inst));
 
 	/* check whether we wake up from the remote resume */
 	if (UHSIC_WALK_PTR_VAL(inst) & val) {
