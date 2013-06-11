@@ -1074,6 +1074,8 @@ static int __devinit palmas_i2c_probe(struct i2c_client *i2c,
 
 	children[PALMAS_PMIC_ID].platform_data = pdata->pmic_pdata;
 	children[PALMAS_PMIC_ID].pdata_size = sizeof(*pdata->pmic_pdata);
+	children[PALMAS_GPADC_ID].platform_data = pdata->adc_pdata;
+	children[PALMAS_GPADC_ID].pdata_size = sizeof(*pdata->adc_pdata);
 
 	ret = mfd_add_devices(palmas->dev, -1,
 			      children, ARRAY_SIZE(palmas_children),
