@@ -180,6 +180,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.edp_support = true,
 	.edp_states = {966, 0},
+	.en_freq_scaling = true,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
