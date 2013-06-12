@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Command DMA
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -26,8 +26,8 @@
 #define NVHOST_SYNC_QUEUE_SIZE 512
 
 /* Number of gathers we allow to be queued up per channel. Must be a
- * power of two. Currently sized such that pushbuffer is 4KB (512*8B). */
-#define NVHOST_GATHER_QUEUE_SIZE 512
+ * power of two. Currently sized such that pushbuffer is 8KB (1024*8B). */
+#define NVHOST_GATHER_QUEUE_SIZE 1024
 
 /* 8 bytes per slot. (This number does not include the final RESTART.) */
 #define PUSH_BUFFER_SIZE (NVHOST_GATHER_QUEUE_SIZE * 8)
