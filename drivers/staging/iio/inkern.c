@@ -10,12 +10,12 @@
 #include <linux/export.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
+#include <linux/iio/machine.h>
+#include <linux/iio/consumer.h>
 
 #include "iio.h"
 #include "iio_core.h"
-#include "machine.h"
 #include "driver.h"
-#include "consumer.h"
 
 struct iio_map_internal {
 	struct iio_dev *indio_dev;
