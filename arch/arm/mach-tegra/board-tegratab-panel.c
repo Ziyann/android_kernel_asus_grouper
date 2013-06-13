@@ -346,7 +346,7 @@ static struct platform_device tegratab_nvmap_device = {
 };
 
 static struct tegra_dc_sd_settings tegratab_sd_settings = {
-	.enable = 1,
+	.enable = 0,
 	.use_auto_pwm = false,
 	.hw_update_delay = 0,
 	.bin_width = -1,
