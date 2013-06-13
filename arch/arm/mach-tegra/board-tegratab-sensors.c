@@ -49,6 +49,7 @@
 #include <media/ov7695.h>
 #include <generated/mach-types.h>
 #include <linux/power/sbs-battery.h>
+#include <linux/generic_adc_thermal.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -671,6 +672,125 @@ static int __init tegratab_skin_init(void)
 late_initcall(tegratab_skin_init);
 #endif
 
+struct ntc_thermistor_adc_table {
+	int temp; /* degree C */
+	int adc;
+};
+
+/* This values are only for TegraTab platform. */
+static struct ntc_thermistor_adc_table thermistor_table[] = {
+	{ -40, 3251 }, { -39, 3246 }, { -38, 3241 }, { -37, 3236 },
+	{ -36, 3230 }, { -35, 3224 }, { -34, 3218 }, { -33, 3212 },
+	{ -32, 3204 }, { -31, 3197 }, { -30, 3189 }, { -29, 3180 },
+	{ -28, 3171 }, { -27, 3162 }, { -26, 3152 }, { -25, 3141 },
+	{ -24, 3130 }, { -23, 3118 }, { -22, 3106 }, { -21, 3093 },
+	{ -20, 3079 }, { -19, 3065 }, { -18, 3050 }, { -17, 3034 },
+	{ -16, 3017 }, { -15, 3000 }, { -14, 2981 }, { -13, 2962 },
+	{ -12, 2942 }, { -11, 2921 }, { -10, 2900 }, {  -9, 2877 },
+	{  -8, 2854 }, {  -7, 2830 }, {  -6, 2804 }, {  -5, 2778 },
+	{  -4, 2751 }, {  -3, 2723 }, {  -2, 2695 }, {  -1, 2665 },
+	{   0, 2634 }, {   1, 2603 }, {   2, 2571 }, {   3, 2538 },
+	{   4, 2504 }, {   5, 2469 }, {   6, 2433 }, {   7, 2397 },
+	{   8, 2360 }, {   9, 2323 }, {  10, 2285 }, {  11, 2246 },
+	{  12, 2207 }, {  13, 2167 }, {  14, 2127 }, {  15, 2086 },
+	{  16, 2045 }, {  17, 2004 }, {  18, 1963 }, {  19, 1921 },
+	{  20, 1880 }, {  21, 1838 }, {  22, 1796 }, {  23, 1755 },
+	{  24, 1713 }, {  25, 1672 }, {  26, 1630 }, {  27, 1590 },
+	{  28, 1549 }, {  29, 1509 }, {  30, 1469 }, {  31, 1429 },
+	{  32, 1390 }, {  33, 1352 }, {  34, 1314 }, {  35, 1276 },
+	{  36, 1240 }, {  37, 1203 }, {  38, 1168 }, {  39, 1133 },
+	{  40, 1099 }, {  41, 1066 }, {  42, 1033 }, {  43, 1001 },
+	{  44,  970 }, {  45,  939 }, {  46,  909 }, {  47,  880 },
+	{  48,  852 }, {  49,  824 }, {  50,  797 }, {  51,  771 },
+	{  52,  746 }, {  53,  721 }, {  54,  697 }, {  55,  674 },
+	{  56,  651 }, {  57,  630 }, {  58,  608 }, {  59,  588 },
+	{  60,  568 }, {  61,  549 }, {  62,  530 }, {  63,  512 },
+	{  64,  495 }, {  65,  478 }, {  66,  461 }, {  67,  446 },
+	{  68,  430 }, {  69,  416 }, {  70,  401 }, {  71,  388 },
+	{  72,  374 }, {  73,  361 }, {  74,  349 }, {  75,  337 },
+	{  76,  326 }, {  77,  315 }, {  78,  304 }, {  79,  293 },
+	{  80,  283 }, {  81,  274 }, {  82,  265 }, {  83,  256 },
+	{  84,  247 }, {  85,  239 }, {  86,  231 }, {  87,  223 },
+	{  88,  215 }, {  89,  208 }, {  90,  201 }, {  91,  195 },
+	{  92,  188 }, {  93,  182 }, {  94,  176 }, {  95,  170 },
+	{  96,  164 }, {  97,  159 }, {  98,  154 }, {  99,  149 },
+	{ 100,  144 }, { 101,  139 }, { 102,  135 }, { 103,  130 },
+	{ 104,  126 }, { 105,  122 }, { 106,  118 }, { 107,  115 },
+	{ 108,  111 }, { 109,  107 }, { 110,  104 }, { 111,  101 },
+	{ 112,   98 }, { 113,   95 }, { 114,   92 }, { 115,   89 },
+	{ 116,   86 }, { 117,   83 }, { 118,   81 }, { 119,   78 },
+	{ 120,   76 }, { 121,   74 }, { 122,   71 }, { 123,   69 },
+	{ 124,   67 }, { 125,   65 },
+};
+
+static int gadc_thermal_thermistor_adc_to_temp(
+		struct gadc_thermal_platform_data *pdata, int val)
+{
+	int table_size = ARRAY_SIZE(thermistor_table);
+	int temp = 0, adc_hi, adc_lo;
+	int i;
+
+	for (i = 0; i < table_size; i++)
+		if (val >= thermistor_table[i].adc)
+			break;
+
+	if (i == 0) {
+		temp = thermistor_table[0].temp * 1000;
+	} else if (i >= table_size - 1) {
+		temp = thermistor_table[table_size - 1].temp * 1000;
+	} else {
+		adc_hi = thermistor_table[i - 1].adc;
+		adc_lo = thermistor_table[i].adc;
+		temp = thermistor_table[i - 1].temp * 1000;
+		temp += ((val - adc_lo) * 1000 / (adc_hi - adc_lo));
+	}
+
+	return temp;
+};
+
+static int gadc_thermal_tdiode_adc_to_temp(
+		struct gadc_thermal_platform_data *pdata, int val)
+{
+	/* TODO: add adc raw to temp conversion. */
+	pr_warn("%s: No adc raw to temp conversion.\n", __func__);
+	return val;
+};
+
+static struct gadc_thermal_platform_data gadc_thermal_thermistor_pdata = {
+	.iio_channel_name = "thermistor",
+	.tz_name = "Tboard-adc",
+	.temp_offset = 0,
+	.adc_to_temp = gadc_thermal_thermistor_adc_to_temp,
+};
+
+static struct gadc_thermal_platform_data gadc_thermal_tdiode_pdata = {
+	.iio_channel_name = "tdiode",
+	.tz_name = "Tdiode-adc",
+	.temp_offset = 0,
+	.adc_to_temp = gadc_thermal_tdiode_adc_to_temp,
+};
+
+static struct platform_device gadc_thermal_thermistor = {
+	.name   = "generic-adc-thermal",
+	.id     = 0,
+	.dev	= {
+		.platform_data = &gadc_thermal_thermistor_pdata,
+	},
+};
+
+static struct platform_device gadc_thermal_tdiode = {
+	.name   = "generic-adc-thermal",
+	.id     = 1,
+	.dev	= {
+		.platform_data = &gadc_thermal_tdiode_pdata,
+	},
+};
+
+static struct platform_device *gadc_thermal_devices[] = {
+	&gadc_thermal_thermistor,
+	&gadc_thermal_tdiode,
+};
+
 int __init tegratab_sensors_init(void)
 {
 	int err;
@@ -682,6 +802,9 @@ int __init tegratab_sensors_init(void)
 		pr_err("%s: nct1008 register failed.\n", __func__);
 		return err;
 	}
+
+	platform_add_devices(gadc_thermal_devices,
+			     ARRAY_SIZE(gadc_thermal_devices));
 
 	tegratab_camera_init();
 	mpuirq_init();
