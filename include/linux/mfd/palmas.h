@@ -20,6 +20,7 @@
 #include <linux/leds.h>
 #include <linux/regmap.h>
 #include <linux/regulator/driver.h>
+#include <linux/iio/machine.h>
 
 #define PALMAS_NUM_CLIENTS		3
 
@@ -208,6 +209,8 @@ struct palmas_rtc_platform_data {
 struct palmas_gpadc_platform_data {
 	int channel0_current_uA;
 	int channel3_current_uA;
+
+	struct iio_map *iio_maps;
 };
 
 struct palmas_pinctrl_config {

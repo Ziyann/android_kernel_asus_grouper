@@ -32,6 +32,7 @@
 #include <linux/completion.h>
 
 #include "../iio.h"
+#include "../driver.h"
 
 #define MOD_NAME "palmas-gpadc"
 #define ADC_CONVERTION_TIMEOUT	(msecs_to_jiffies(5000))
@@ -305,6 +306,7 @@ static const struct iio_info palmas_gpadc_iio_info = {
 	.info_mask = 0 | IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,	\
 	.indexed = 1,						\
 	.channel = PALMAS_ADC_CH_##chan,			\
+	.datasheet_name = #chan,				\
 }
 
 static const struct iio_chan_spec palmas_gpadc_iio_channel[] = {
@@ -347,6 +349,15 @@ static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	if (adc_pdata->iio_maps) {
+		ret = iio_map_array_register(iodev, adc_pdata->iio_maps);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "iio_map_array_register failed\n");
+			goto out;
+		}
+	} else
+		dev_warn(&pdev->dev, "No iio maps\n");
+
 	adc = iio_priv(iodev);
 	adc->dev = &pdev->dev;
 	adc->palmas = dev_get_drvdata(pdev->dev.parent);
@@ -362,7 +373,7 @@ static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(adc->dev,
 			"request irq %d failed: %dn", adc->irq, ret);
-		goto out;
+		goto out_unregister_map;
 	}
 
 	if (adc_pdata->channel0_current_uA == 0)
@@ -406,6 +417,9 @@ static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
 
 out_irq_free:
 	free_irq(adc->irq, adc);
+out_unregister_map:
+	if (adc_pdata->iio_maps)
+		iio_map_array_unregister(iodev, adc_pdata->iio_maps);
 out:
 	iio_free_device(iodev);
 	return ret;
@@ -415,7 +429,10 @@ static int __devexit palmas_gpadc_remove(struct platform_device *pdev)
 {
 	struct iio_dev *iodev = dev_get_drvdata(&pdev->dev);
 	struct palmas_gpadc *adc = iio_priv(iodev);
+	struct palmas_platform_data *pdata = dev_get_platdata(pdev->dev.parent);
 
+	if (pdata->adc_pdata->iio_maps)
+		iio_map_array_unregister(iodev, pdata->adc_pdata->iio_maps);
 	iio_device_unregister(iodev);
 	free_irq(adc->irq, adc);
 	iio_free_device(iodev);
