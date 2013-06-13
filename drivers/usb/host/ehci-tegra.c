@@ -645,7 +645,7 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
-	if (pdata->u_data.host.turn_off_vbus_on_lp0 && pdata->port_otg)
+	if (pdata->u_data.host.turn_off_vbus_on_lp0)
 		tegra_usb_enable_vbus(tegra->phy, true);
 	return tegra_usb_phy_power_on(tegra->phy);
 }
@@ -661,8 +661,7 @@ static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 		return -EBUSY;
 	else {
 		err = tegra_usb_phy_power_off(tegra->phy);
-		if (pdata->u_data.host.turn_off_vbus_on_lp0 &&
-			pdata->port_otg) {
+		if (pdata->u_data.host.turn_off_vbus_on_lp0) {
 			tegra_usb_enable_vbus(tegra->phy, false);
 			tegra_usb_phy_pmc_disable(tegra->phy);
 		}
