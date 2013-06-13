@@ -105,6 +105,9 @@
 #define AD5816_MODE_ARC10		0x00
 #define AD5816_MODE_ARC20		0x01
 
+#define AD5816_DRV_MODE_SWITCHED	(0x0 << 1)
+#define AD5816_DRV_MODE_LINEAR		(0x1 << 1)
+
 /* Need to decide exact value of VCM_THRESHOLD and its use */
 /* define AD5816_VCM_THRESHOLD	20 */
 
@@ -451,6 +454,8 @@ static void ad5816_get_focuser_capabilities(struct ad5816_info *info)
 				__func__, info->pdata->arc_mode);
 			break;
 		}
+		/* set drive mode to linear*/
+		info->nv_config.slew_rate |= AD5816_DRV_MODE_LINEAR << 8;
 		/* Fres = 1S/(51.2uS x (VCM_FREQ + 128)) */
 		/* VCM_FREQ = 1000000 / (51.2 * Fres) - 128 */
 		if (info->nv_config.slew_rate && info->pdata->lens_freq)
