@@ -39,6 +39,15 @@ config SPEAR_THERMAL
 	  Enable this to plug the SPEAr thermal sensor driver into the Linux
 	  thermal framework
 
+config GENERIC_ADC_THERMAL
+	tristate
+	prompt "Generic ADC thermal sensor support using IIO framework"
+	depends on THERMAL
+	depends on IIO
+	help
+	  Enable support for the generic ADC thermal sensor driver
+	  using IIO framework.
+
 config FAIR_SHARE
 	bool "Fair-share thermal governor"
 	depends on THERMAL
