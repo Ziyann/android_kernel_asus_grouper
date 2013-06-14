@@ -435,6 +435,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.use_power_off = true,
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
 	.extcon_pdata = &palmas_extcon_pdata,
+	.long_press_delay = PALMAS_LONG_PRESS_KEY_TIME_8SECONDS,
 };
 
 struct palmas_clk32k_init_data tegratab_palmas_clk32k_idata[] = {
@@ -612,6 +613,10 @@ int __init tegratab_palmas_regulator_init(void)
 		palmas_pdata.clk32k_init_data_size =
 				ARRAY_SIZE(tegratab_palmas_clk32k_idata);
 	}
+
+	if (get_androidboot_mode_charger())
+		palmas_pdata.long_press_delay =
+				PALMAS_LONG_PRESS_KEY_TIME_12SECONDS;
 
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
