@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11x_la_priv.h
  *
- * Copyright (C) 2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -156,7 +156,7 @@ struct la_client_info la_info_array[] = {
 	LA_INFO(32,	150,	VDE_2,	23 : 16,	VDE_DBGW,	false,	131),
 	LA_INFO(16,	150,	VDE_3,	7 : 0,		VDE_MBEW,	false,	70),
 	LA_INFO(32,	150,	VDE_3,	23 : 16,	VDE_TPMW,	false,	76),
-	LA_INFO(128,	1050,	VI_0,	23 : 16,	VI_WSB,		true,	0),
+	LA_INFO(128,	1050,	VI_0,	7 : 0,		VI_WSB,		true,	0),
 	LA_INFO(128,	1050,	VI_1,	7 : 0,		VI_WU,		true,	0),
 	LA_INFO(128,	1050,	VI_1,	23 : 16,	VI_WV,		true,	0),
 	LA_INFO(128,	1050,	VI_2,	7 : 0,		VI_WY,		true,	0),
