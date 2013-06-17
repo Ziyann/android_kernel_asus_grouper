@@ -258,6 +258,9 @@ struct palmas_platform_data {
 
 	/* Long press delay for hard shutdown */
 	int long_press_delay;
+
+	/* system off type by long press key */
+	int poweron_lpk;
 };
 
 /* Define the palmas IRQ numbers */
@@ -1292,6 +1295,11 @@ struct palmas_pmic {
 #define PALMAS_SWOFF_HWRST_VSYS_LO_SHIFT			1
 #define PALMAS_SWOFF_HWRST_GPADC_SHUTDOWN			0x01
 #define PALMAS_SWOFF_HWRST_GPADC_SHUTDOWN_SHIFT			0
+
+/* Register bit values for poweron_lpk */
+#define PALMAS_SWOFF_COLDRST_PWRON_LPK_DEFAULT		-1
+#define PALMAS_SWOFF_COLDRST_PWRON_LPK_SHUTDOWN	0
+#define PALMAS_SWOFF_COLDRST_PWRON_LPK_RESTART		1
 
 /* Bit definitions for SWOFF_COLDRST */
 #define PALMAS_SWOFF_COLDRST_PWRON_LPK				0x80

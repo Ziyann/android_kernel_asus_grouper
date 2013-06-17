@@ -1061,6 +1061,19 @@ static int __devinit palmas_i2c_probe(struct i2c_client *i2c,
 		}
 	}
 
+	/* Programming the system off type by Long press key */
+	if (pdata->poweron_lpk != PALMAS_SWOFF_COLDRST_PWRON_LPK_DEFAULT) {
+		ret = palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
+					PALMAS_SWOFF_COLDRST,
+					PALMAS_SWOFF_COLDRST_PWRON_LPK,
+					pdata->poweron_lpk <<
+					PALMAS_SWOFF_COLDRST_PWRON_LPK_SHIFT);
+		if (ret) {
+			dev_err(palmas->dev,
+			"Failed to update poweron_lpk err: %d\n", ret);
+			goto err;
+		}
+	}
 	palmas_init_ext_control(palmas);
 
 	palmas_clk32k_init(palmas, pdata);
