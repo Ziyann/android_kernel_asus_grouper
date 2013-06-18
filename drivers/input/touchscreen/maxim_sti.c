@@ -1428,6 +1428,16 @@ static int remove(struct spi_device *spi)
 	return 0;
 }
 
+static void shutdown(struct spi_device *spi)
+{
+	struct maxim_sti_pdata  *pdata = spi->dev.platform_data;
+	struct dev_data         *dd = spi_get_drvdata(spi);
+
+	pdata->reset(pdata, 0);
+	usleep_range(100, 120);
+	regulator_control(dd, false);
+}
+
 /****************************************************************************\
 * Module initialization                                                      *
 \****************************************************************************/
@@ -1442,6 +1452,7 @@ MODULE_DEVICE_TABLE(spi, id);
 static struct spi_driver driver = {
 	.probe          = probe,
 	.remove         = remove,
+	.shutdown       = shutdown,
 	.id_table       = id,
 	.driver = {
 		.name   = MAXIM_STI_NAME,
