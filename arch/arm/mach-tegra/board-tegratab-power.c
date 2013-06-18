@@ -443,6 +443,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
 	.extcon_pdata = &palmas_extcon_pdata,
 	.long_press_delay = PALMAS_LONG_PRESS_KEY_TIME_8SECONDS,
+	.poweron_lpk = PALMAS_SWOFF_COLDRST_PWRON_LPK_RESTART,
 };
 
 struct palmas_clk32k_init_data tegratab_palmas_clk32k_idata[] = {
