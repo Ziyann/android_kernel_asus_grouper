@@ -61,6 +61,7 @@
 /* BQ2419X VBUS regulator */
 static struct regulator_consumer_supply tegratab_bq2419x_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 };
 
 static struct regulator_consumer_supply tegratab_bq2419x_batt_supply[] = {

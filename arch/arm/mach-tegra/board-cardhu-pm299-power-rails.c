@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-pm299-power-rails.c
  *
- * Copyright (C) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -509,6 +509,7 @@ static struct regulator_consumer_supply fixed_reg_en_vbrtr_supply[] = {
 /* EN_USB1_VBUS_OC*/
 static struct regulator_consumer_supply fixed_reg_en_usb1_vbus_oc_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 };
 
 /*EN_USB3_VBUS_OC*/

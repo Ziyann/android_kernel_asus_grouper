@@ -258,6 +258,7 @@ static struct regulator_consumer_supply smb349_vbus_supply[] = {
 
 static struct regulator_consumer_supply smb349_otg_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 };
 
 static struct smb349_charger_platform_data smb349_charger_pdata = {

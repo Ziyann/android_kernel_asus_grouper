@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-enterprise-power.c
  *
- * Copyright (C) 2011 NVIDIA, Inc.
+ * Copyright (c) 2011-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -258,6 +258,7 @@ static struct regulator_consumer_supply tps80031_ldousb_supply_a03[] = {
 
 static struct regulator_consumer_supply tps80031_vbus_supply_common[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 };
 
 static struct regulator_consumer_supply tps80031_battery_charge_supply[] = {
