@@ -136,12 +136,12 @@ int ad5823_release(struct inode *inode, struct file *file)
 {
 	struct ad5823_info *info = file->private_data;
 
+	if (info->pdata->power_off)
+		info->pdata->power_off(info->pdata);
+
 	if (info->regulator)
 		regulator_disable(info->regulator);
 	file->private_data = NULL;
-
-	if (info->pdata->power_off)
-		info->pdata->power_off(info->pdata);
 
 	return 0;
 }
