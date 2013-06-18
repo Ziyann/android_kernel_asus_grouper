@@ -22,6 +22,7 @@ endif
 
 # for supporting different type of bcm943341_wbfgn_x board.
 DHDCFLAGS += -DNV_BCM943341_WBFGN_MULTI_MODULE_SUPPORT
+DHDCFLAGS += -DQUEUE_BW
 
 ifeq ($(CONFIG_BCMDHD_HW_OOB),y)
 DHDCFLAGS += -DHW_OOB -DOOB_INTR_ONLY
