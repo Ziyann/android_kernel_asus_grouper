@@ -152,30 +152,50 @@ scrub:
 static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 					int enable)
 {
+	unsigned int val, mask;
 	int ret;
-	u8 current_val;
 
-	current_val = (adc->ich0 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT)
-		| (adc->ich3 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+	if (enable) {
+		mask = PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_MASK |
+			PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK |
+			PALMAS_GPADC_CTRL1_GPADC_FORCE;
+		val = (adc->ich0 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT) |
+			(adc->ich3 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+		val |= PALMAS_GPADC_CTRL1_GPADC_FORCE;
+		ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_CTRL1, mask, val);
+		if (ret < 0) {
+			dev_err(adc->dev, "CTRL1 update failed: %d\n", ret);
+			return ret;
+		}
 
-	ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_CTRL1, current_val);
-	if (ret < 0) {
-		dev_err(adc->dev, "CTRL1 write failed: %d\n", ret);
-		goto scrub;
-	}
-
-	if (enable)
-		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_SW_SELECT, adc_chan |
-				PALMAS_GPADC_SW_SELECT_SW_CONV_EN);
-	else
+		mask = PALMAS_GPADC_SW_SELECT_SW_CONV0_SEL_MASK |
+			PALMAS_GPADC_SW_SELECT_SW_CONV_EN;
+		val = adc_chan | PALMAS_GPADC_SW_SELECT_SW_CONV_EN;
+		ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_SW_SELECT, mask, val);
+		if (ret < 0) {
+			dev_err(adc->dev, "SW_SELECT update failed: %d\n", ret);
+			return ret;
+		}
+	} else {
 		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
 				PALMAS_GPADC_SW_SELECT, 0);
-	if (ret < 0)
-		dev_err(adc->dev, "SW_SELECT write failed: %d\n", ret);
-scrub:
-	return ret;
+		if (ret < 0) {
+			dev_err(adc->dev, "SW_SELECT write failed: %d\n", ret);
+			return ret;
+		}
+
+		ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_CTRL1,
+				PALMAS_GPADC_CTRL1_GPADC_FORCE, 0);
+		if (ret < 0) {
+			dev_err(adc->dev, "CTRL1 update failed: %d\n", ret);
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
 static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
