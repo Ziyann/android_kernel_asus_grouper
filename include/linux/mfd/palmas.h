@@ -209,6 +209,7 @@ struct palmas_rtc_platform_data {
 struct palmas_gpadc_platform_data {
 	int channel0_current_uA;
 	int channel3_current_uA;
+	bool extended_delay;
 
 	struct iio_map *iio_maps;
 };
