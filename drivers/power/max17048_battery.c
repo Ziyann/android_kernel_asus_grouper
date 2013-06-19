@@ -509,7 +509,9 @@ static irqreturn_t max17048_irq(int id, void *dev)
 	struct max17048_chip *chip = dev;
 	struct i2c_client *client = chip->client;
 	u16 val;
+	u16 valrt;
 	int ret;
+	struct max17048_battery_model *mdata = chip->pdata->model_data;
 
 	val = max17048_read_word(client, MAX17048_STATUS);
 	if (val < 0) {
@@ -526,13 +528,20 @@ static irqreturn_t max17048_irq(int id, void *dev)
 		dev_info(&client->dev, "%s(): STATUS_VH\n", __func__);
 	if (val & MAX17048_STATUS_VL) {
 		dev_info(&client->dev, "%s(): STATUS_VL\n", __func__);
-		/* Forced set SOC 0 to power off */
+		/* Forced set SOC to 0 for power off */
 		chip->soc = 0;
 		chip->lasttime_soc = chip->soc;
 		chip->status = chip->lasttime_status;
 		chip->health = POWER_SUPPLY_HEALTH_DEAD;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
 		power_supply_changed(&chip->battery);
+
+		/* Clear VL for prevent continuous irq */
+		valrt = mdata->valert & 0x00FF;
+		ret = max17048_write_word(client, MAX17048_VALRT,
+				valrt);
+		if (ret < 0)
+			dev_err(&client->dev, "failed write MAX17048_VALRT\n");
 	}
 	if (val & MAX17048_STATUS_VR)
 		dev_info(&client->dev, "%s(): STATUS_VR\n", __func__);
@@ -553,6 +562,15 @@ static irqreturn_t max17048_irq(int id, void *dev)
 				"%s(): STATUS_SC, SOC: %d\n",
 				__func__, chip->soc);
 		power_supply_changed(&chip->battery);
+
+		/* Set VL again when soc is above 1% */
+		if (chip->soc >= 1) {
+			ret = max17048_write_word(client, MAX17048_VALRT,
+					mdata->valert);
+			if (ret < 0)
+				dev_err(&client->dev,
+					"failed write MAX17048_VALRT\n");
+		}
 	}
 	if (val & MAX17048_STATUS_ENVR)
 		dev_info(&client->dev, "%s(): STATUS_ENVR\n", __func__);
