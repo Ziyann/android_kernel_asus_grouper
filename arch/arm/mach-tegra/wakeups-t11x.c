@@ -158,7 +158,7 @@ static int tegra_wake_event_irq[] = {
 	-EINVAL, /* UART3 CTS */		/* wake55 */
 	-EAGAIN, /* SDMMC3 CD */		/* wake56 */
 	-EINVAL, /* spdif_in */			/* wake57 */
-	-EINVAL, /* XUSB superspeed wake */	/* wake58 */
+	INT_XUSB_PADCTL, /* XUSB superspeed wake */	/* wake58 */
 };
 
 static int last_gpio = -1;
