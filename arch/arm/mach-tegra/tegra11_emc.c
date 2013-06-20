@@ -1441,7 +1441,14 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 
 		if (table_rate == boot_rate)
 			emc_stats.last_sel = i;
-
+#ifdef CONFIG_ANDROID
+		if (get_androidboot_mode_charger() &&
+		   (table_rate == boot_rate)) {
+			/* EMC max rate = bootloader emc rate */
+			max_entry = true;
+			break;
+		}
+#endif
 		if (emc_max_dvfs_sel) {
 			/* EMC max rate = max table entry above boot pll_m */
 			if (table_rate >= max_rate) {
