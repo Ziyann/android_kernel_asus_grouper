@@ -232,9 +232,9 @@ void iio_st_channel_release_all(struct iio_channel *channels)
 }
 EXPORT_SYMBOL_GPL(iio_st_channel_release_all);
 
-int iio_st_read_channel_raw(struct iio_channel *chan, int *val)
+int iio_st_read_channel_raw(struct iio_channel *chan, int *val, int *val2)
 {
-	int val2, ret;
+	int ret;
 
 	mutex_lock(&chan->indio_dev->info_exist_lock);
 	if (chan->indio_dev->info == NULL) {
@@ -243,7 +243,7 @@ int iio_st_read_channel_raw(struct iio_channel *chan, int *val)
 	}
 
 	ret = chan->indio_dev->info->read_raw(chan->indio_dev, chan->channel,
-					      val, &val2, 0);
+					      val, val2, 0);
 err_unlock:
 	mutex_unlock(&chan->indio_dev->info_exist_lock);
 
