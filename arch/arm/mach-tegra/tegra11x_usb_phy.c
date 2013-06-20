@@ -1464,8 +1464,6 @@ static void utmi_phy_pmc_disable(struct tegra_usb_phy *phy)
 }
 static bool utmi_phy_nv_charger_detect(struct tegra_usb_phy *phy)
 {
-	int status1;
-	int status2;
 	int status3;
 	bool ret;
 
@@ -1475,24 +1473,13 @@ static bool utmi_phy_nv_charger_detect(struct tegra_usb_phy *phy)
 		return false;
 
 	ret = false;
-	/* Turn off all terminations except DP pulldown */
-	status1 = utmi_phy_get_dp_dm_status(phy,
-			DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
-			FORCE_PULLDN_DP | DISABLE_PULLDN_DM);
-
-	/* Turn off all terminations except for DP pullup */
-	status2 = utmi_phy_get_dp_dm_status(phy,
-			FORCE_PULLUP_DP | DISABLE_PULLUP_DM |
-			DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
 
 	/* Check for NV charger DISABLE all terminations */
 	status3 = utmi_phy_get_dp_dm_status(phy,
 			DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
 			DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
 
-	if ((status1 == (USB_PORTSC_LINE_DP_SET | USB_PORTSC_LINE_DM_SET)) &&
-	    (status2 == (USB_PORTSC_LINE_DP_SET | USB_PORTSC_LINE_DM_SET)) &&
-	    (status3 == (USB_PORTSC_LINE_DP_SET | USB_PORTSC_LINE_DM_SET)))
+	if (status3 == (USB_PORTSC_LINE_DP_SET | USB_PORTSC_LINE_DM_SET))
 		ret = true;
 
 	/* Restore standard termination by hardware. */
