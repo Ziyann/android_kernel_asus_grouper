@@ -69,6 +69,7 @@
 #define KBC_ROW_SHIFT	3
 #define DEFAULT_SCAN_COUNT 2
 #define DEFAULT_INIT_DLY   5
+#define FIFO_ENTRY_COUNT(val) (((val) >> 4) & 0xF)
 
 struct tegra_kbc {
 	void __iomem *mmio;
@@ -410,6 +411,14 @@ static void tegra_kbc_keypress_timer(unsigned long data)
 
 		/* All keys are released so enable the keypress interrupt */
 		tegra_kbc_set_fifo_interrupt(kbc, true);
+		/*
+		 * FIFO_CNT interrupt cannot be cleared until entry register
+		 * is read. If not cleared, it will raise another interrupt.
+		*/
+		val = readl(kbc->mmio + KBC_INT_0);
+		if (!FIFO_ENTRY_COUNT(val))
+			writel(val, kbc->mmio + KBC_INT_0);
+		readl(kbc->mmio + KBC_CONTROL_0); //unblock posted write
 	}
 
 	spin_unlock_irqrestore(&kbc->lock, flags);
@@ -441,7 +450,7 @@ static irqreturn_t tegra_kbc_isr(int irq, void *args)
 		/* We can be here only through system resume path */
 		kbc->keypress_caused_wake = true;
 	}
-
+	readl(kbc->mmio + KBC_CONTROL_0); //unblock posted write
 	spin_unlock_irqrestore(&kbc->lock, flags);
 
 	return IRQ_HANDLED;
@@ -532,7 +541,6 @@ static int tegra_kbc_start(struct tegra_kbc *kbc)
 	val |= KBC_FIFO_TH_CNT_SHIFT(1); /* set fifo interrupt threshold to 1 */
 	val |= KBC_CONTROL_FIFO_CNT_INT_EN;  /* interrupt on FIFO threshold */
 	val |= KBC_CONTROL_KBC_EN;     /* enable */
-	val |= KBC_CONTROL_KP_INT_EN;
 	writel(val, kbc->mmio + KBC_CONTROL_0);
 
 	writel(DEFAULT_INIT_DLY, kbc->mmio + KBC_INIT_DLY_0);
@@ -933,7 +941,6 @@ static int tegra_kbc_suspend(struct device *dev)
 		kbc->keypress_caused_wake = false;
 		/* Enable keypress interrupt before going into suspend. */
 		tegra_kbc_set_keypress_interrupt(kbc, true);
-		enable_irq(kbc->irq);
 		enable_irq_wake(kbc->irq);
 	} else {
 		if (kbc->idev->users)
@@ -943,16 +950,20 @@ static int tegra_kbc_suspend(struct device *dev)
 
 	return 0;
 }
-
+extern int tegra_pm_irq_get_wakeup_irq(void);
 static int tegra_kbc_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_kbc *kbc = platform_get_drvdata(pdev);
 	int err = 0;
+	int irq;
 
 	if (!kbc->is_open)
 		return tegra_kbc_start(kbc);
 
+	irq = tegra_pm_irq_get_wakeup_irq();
+	if (irq == kbc->irq)
+		kbc->keypress_caused_wake = true;
 	mutex_lock(&kbc->idev->mutex);
 	if (device_may_wakeup(&pdev->dev)) {
 		disable_irq_wake(kbc->irq);
@@ -977,6 +988,7 @@ static int tegra_kbc_resume(struct device *dev)
 			input_report_key(kbc->idev, kbc->wakeup_key, 0);
 			input_sync(kbc->idev);
 		}
+		enable_irq(kbc->irq);
 	} else {
 		if (kbc->idev->users)
 			err = tegra_kbc_start(kbc);
@@ -986,8 +998,12 @@ static int tegra_kbc_resume(struct device *dev)
 	return err;
 }
 #endif
-
-static SIMPLE_DEV_PM_OPS(tegra_kbc_pm_ops, tegra_kbc_suspend, tegra_kbc_resume);
+static const struct dev_pm_ops tegra_kbc_pm_ops = {
+#ifdef CONFIG_PM_SLEEP
+	.suspend = tegra_kbc_suspend,
+	.resume_noirq = tegra_kbc_resume,
+#endif
+};
 
 static const struct of_device_id tegra_kbc_of_match[] = {
 	{ .compatible = "nvidia,tegra20-kbc", },
