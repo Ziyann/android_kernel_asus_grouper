@@ -36,7 +36,8 @@
 
 #define MOD_NAME "palmas-gpadc"
 #define ADC_CONVERTION_TIMEOUT	(msecs_to_jiffies(5000))
-#define TO_BE_CALCULATED 0
+#define TO_BE_CALCULATED	0
+#define PRECISION_MULTIPLIER	1000000LL
 
 struct palmas_gpadc_info {
 /* calibration codes and regs */
@@ -44,8 +45,8 @@ struct palmas_gpadc_info {
 	int x2;
 	u8 trim1_reg;
 	u8 trim2_reg;
-	int gain;
-	int offset;
+	s64 gain;
+	s64 offset;
 	bool is_correct_code;
 };
 
@@ -119,7 +120,7 @@ static int palmas_gpadc_start_mask_interrupt(struct palmas_gpadc *adc, int mask)
 
 static int palmas_gpadc_calibrate(struct palmas_gpadc *adc, int adc_chan)
 {
-	int k;
+	s64 k;
 	int d1;
 	int d2;
 	int ret;
@@ -140,12 +141,14 @@ static int palmas_gpadc_calibrate(struct palmas_gpadc *adc, int adc_chan)
 		goto scrub;
 	}
 
-	/*Gain Calculation*/
-	k = (1000 + (1000 * (d2 - d1)) / (x2 - x1));
+	/* Gain Calculation */
+	k = PRECISION_MULTIPLIER;
+	k += div64_s64(PRECISION_MULTIPLIER * (d2 - d1), x2 - x1);
 	adc->adc_info[adc_chan].gain = k;
-	/*offset Calculation*/
-	adc->adc_info[adc_chan].offset = (d1 * 1000) - ((k - 1000) * x1);
 
+	/* offset Calculation */
+	adc->adc_info[adc_chan].offset = (d1 * PRECISION_MULTIPLIER);
+	adc->adc_info[adc_chan].offset -= ((k - PRECISION_MULTIPLIER) * x1);
 scrub:
 	return ret;
 }
@@ -267,6 +270,7 @@ static int palmas_gpadc_get_calibrated_code(struct palmas_gpadc *adc,
 						int adc_chan)
 {
 	int ret;
+	s64 code;
 
 	ret = palmas_gpadc_start_convertion(adc, adc_chan);
 	if (ret < 0) {
@@ -274,14 +278,16 @@ static int palmas_gpadc_get_calibrated_code(struct palmas_gpadc *adc,
 		return ret;
 	}
 
-	if (((ret*1000) - adc->adc_info[adc_chan].offset) < 0) {
+	code = ret * PRECISION_MULTIPLIER;
+	if ((code - adc->adc_info[adc_chan].offset) < 0) {
 		dev_err(adc->dev, "No Input Connected\n");
 		return 0;
 	}
 
-	if (!(adc->adc_info[adc_chan].is_correct_code))
-		ret  = ((ret*1000) - adc->adc_info[adc_chan].offset) /
-						adc->adc_info[adc_chan].gain;
+	if (!(adc->adc_info[adc_chan].is_correct_code)) {
+		code -= adc->adc_info[adc_chan].offset;
+		ret = div_s64(code, adc->adc_info[adc_chan].gain);
+	}
 
 	return ret;
 }
