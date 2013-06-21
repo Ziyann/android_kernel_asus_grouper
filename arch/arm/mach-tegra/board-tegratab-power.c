@@ -929,5 +929,14 @@ int __init tegratab_soctherm_init(void)
 	tegra_add_vc_trips(tegratab_soctherm_data.therm[THERM_CPU].trips,
 			&tegratab_soctherm_data.therm[THERM_CPU].num_trips);
 
+	if (board_info.board_id != BOARD_E1569 &&
+			(board_info.board_id == BOARD_P1640 &&
+			(board_info.fab != BOARD_FAB_A00 &&
+			board_info.fab != BOARD_FAB_A01))) {
+		tegra_add_cdev_trips(
+			tegratab_soctherm_data.therm[THERM_CPU].trips,
+			&tegratab_soctherm_data.therm[THERM_CPU].num_trips);
+	}
+
 	return tegra11_soctherm_init(&tegratab_soctherm_data);
 }

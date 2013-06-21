@@ -758,14 +758,14 @@ static int gadc_thermal_tdiode_adc_to_temp(
 
 static struct gadc_thermal_platform_data gadc_thermal_thermistor_pdata = {
 	.iio_channel_name = "thermistor",
-	.tz_name = "Tboard-adc",
+	.tz_name = "Tboard",
 	.temp_offset = 0,
 	.adc_to_temp = gadc_thermal_thermistor_adc_to_temp,
 };
 
 static struct gadc_thermal_platform_data gadc_thermal_tdiode_pdata = {
 	.iio_channel_name = "tdiode",
-	.tz_name = "Tdiode-adc",
+	.tz_name = "Tdiode",
 	.temp_offset = 0,
 	.adc_to_temp = gadc_thermal_tdiode_adc_to_temp,
 };
@@ -797,14 +797,23 @@ int __init tegratab_sensors_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	err = tegratab_nct1008_init();
-	if (err) {
-		pr_err("%s: nct1008 register failed.\n", __func__);
-		return err;
+	if (board_info.board_id == BOARD_E1569 ||
+			(board_info.board_id == BOARD_P1640 &&
+			(board_info.fab == BOARD_FAB_A00 ||
+			board_info.fab == BOARD_FAB_A01))) {
+		err = tegratab_nct1008_init();
+		if (err) {
+			pr_err("%s: nct1008 register failed.\n", __func__);
+			return err;
+		}
+	} else {
+		err = platform_add_devices(gadc_thermal_devices,
+					   ARRAY_SIZE(gadc_thermal_devices));
+		if (err) {
+			pr_err("%s: gadc_thermal register failed\n", __func__);
+			return err;
+		}
 	}
-
-	platform_add_devices(gadc_thermal_devices,
-			     ARRAY_SIZE(gadc_thermal_devices));
 
 	tegratab_camera_init();
 	mpuirq_init();
