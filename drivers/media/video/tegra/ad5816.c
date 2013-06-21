@@ -454,8 +454,6 @@ static void ad5816_get_focuser_capabilities(struct ad5816_info *info)
 				__func__, info->pdata->arc_mode);
 			break;
 		}
-		/* set drive mode to linear*/
-		info->nv_config.slew_rate |= AD5816_DRV_MODE_LINEAR << 8;
 		/* Fres = 1S/(51.2uS x (VCM_FREQ + 128)) */
 		/* VCM_FREQ = 1000000 / (51.2 * Fres) - 128 */
 		if (info->nv_config.slew_rate && info->pdata->lens_freq)
@@ -463,6 +461,9 @@ static void ad5816_get_focuser_capabilities(struct ad5816_info *info)
 				info->pdata->lens_freq / 2 - 1) /
 				info->pdata->lens_freq / 8 - 128;
 	}
+
+	/* set drive mode to linear */
+	info->nv_config.slew_rate |= AD5816_DRV_MODE_LINEAR << 8;
 
 	ad5816_dump_focuser_capabilities(info);
 }
