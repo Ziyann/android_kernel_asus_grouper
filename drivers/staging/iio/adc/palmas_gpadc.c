@@ -83,8 +83,9 @@ static struct palmas_gpadc_info palmas_gpadc_info[] = {
 struct palmas_gpadc {
 	struct device			*dev;
 	struct palmas			*palmas;
-	u8				ich0;
-	u8				ich3;
+	u8				ch0_current;
+	u8				ch3_current;
+	bool				ch3_dual_current;
 	bool				extended_delay;
 	int				irq;
 	struct palmas_gpadc_info	*adc_info;
@@ -173,8 +174,10 @@ static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 		mask = PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_MASK |
 			PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK |
 			PALMAS_GPADC_CTRL1_GPADC_FORCE;
-		val = (adc->ich0 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT) |
-			(adc->ich3 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+		val = (adc->ch0_current
+			<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT);
+		val |= (adc->ch3_current
+			<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
 		val |= PALMAS_GPADC_CTRL1_GPADC_FORCE;
 		ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
 				PALMAS_GPADC_CTRL1, mask, val);
@@ -212,19 +215,30 @@ static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 	return 0;
 }
 
-static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
+static int palmas_gpadc_set_current_src(struct palmas_gpadc *adc,
+					int ch0_current, int ch3_current)
 {
-	unsigned int adc_l;
-	unsigned int adc_h;
+	unsigned int val, mask;
 	int ret;
 
-	ret = palmas_gpadc_enable(adc, adc_chan, true);
-	if (ret < 0)
+	mask = PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_MASK |
+		PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK;
+	val = (ch0_current << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT) |
+		(ch3_current << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_CTRL1, mask, val);
+	if (ret < 0) {
+		dev_err(adc->dev, "CTRL1 update failed: %d\n", ret);
 		return ret;
+	}
 
-	ret = palmas_gpadc_start_mask_interrupt(adc, 0);
-	if (ret < 0)
-		return ret;
+	return 0;
+}
+
+static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
+{
+	unsigned int val;
+	int ret;
 
 	INIT_COMPLETION(adc->conv_completion);
 	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
@@ -233,7 +247,7 @@ static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 				PALMAS_GPADC_SW_SELECT_SW_START_CONV0);
 	if (ret < 0) {
 		dev_err(adc->dev, "ADC_SW_START write failed: %d\n", ret);
-		goto scrub;
+		return ret;
 	}
 
 	ret = wait_for_completion_timeout(&adc->conv_completion,
@@ -241,44 +255,25 @@ static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 	if (ret == 0) {
 		dev_err(adc->dev, "ADC conversion not completed\n");
 		ret = -ETIMEDOUT;
-		goto scrub;
+		return ret;
 	}
 
-	ret = palmas_read(adc->palmas, PALMAS_GPADC_BASE,
-			PALMAS_GPADC_SW_CONV0_LSB, &adc_l);
+	ret = palmas_bulk_read(adc->palmas, PALMAS_GPADC_BASE,
+			PALMAS_GPADC_SW_CONV0_LSB, &val, 2);
 	if (ret < 0) {
-		dev_err(adc->dev, "ADCDATAL read failed: %d\n", ret);
-		goto scrub;
+		dev_err(adc->dev, "ADCDATA read failed: %d\n", ret);
+		return ret;
 	}
 
-	ret = palmas_read(adc->palmas, PALMAS_GPADC_BASE,
-			PALMAS_GPADC_SW_CONV0_MSB, &adc_h);
-	if (ret < 0) {
-		dev_err(adc->dev, "ADCDATAH read failed: %d\n", ret);
-		goto scrub;
-	}
-
-	ret = ((adc_h & 0xF) << 8) | adc_l;
-
-scrub:
-	palmas_gpadc_enable(adc, adc_chan, false);
-	palmas_gpadc_start_mask_interrupt(adc, 1);
+	ret = (val & 0xFFF);
 	return ret;
 }
 
 static int palmas_gpadc_get_calibrated_code(struct palmas_gpadc *adc,
-						int adc_chan)
+					    int adc_chan, int val)
 {
-	int ret;
-	s64 code;
+	s64 code = val * PRECISION_MULTIPLIER;
 
-	ret = palmas_gpadc_start_convertion(adc, adc_chan);
-	if (ret < 0) {
-		dev_err(adc->dev, "ADC start coversion failed\n");
-		return ret;
-	}
-
-	code = ret * PRECISION_MULTIPLIER;
 	if ((code - adc->adc_info[adc_chan].offset) < 0) {
 		dev_err(adc->dev, "No Input Connected\n");
 		return 0;
@@ -286,10 +281,10 @@ static int palmas_gpadc_get_calibrated_code(struct palmas_gpadc *adc,
 
 	if (!(adc->adc_info[adc_chan].is_correct_code)) {
 		code -= adc->adc_info[adc_chan].offset;
-		ret = div_s64(code, adc->adc_info[adc_chan].gain);
+		val = div_s64(code, adc->adc_info[adc_chan].gain);
 	}
 
-	return ret;
+	return val;
 }
 
 static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
@@ -299,37 +294,69 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 	int ret;
 	int adc_chan = chan->channel;
 
-	if (chan->channel > PALMAS_ADC_CH_MAX)
+	if (adc_chan > PALMAS_ADC_CH_MAX)
 		return -EINVAL;
 
 	switch (mask) {
 	case 0:
+	case IIO_CHAN_INFO_CALIBSCALE:
 		mutex_lock(&indio_dev->mlock);
+		ret = palmas_gpadc_enable(adc, adc_chan, true);
+		if (ret < 0)
+			goto out_unlock;
+
+		ret = palmas_gpadc_start_mask_interrupt(adc, 0);
+		if (ret < 0)
+			goto out_disable;
+
 		ret = palmas_gpadc_start_convertion(adc, adc_chan);
 		if (ret < 0) {
 			dev_err(adc->dev, "ADC start coversion failed\n");
-			mutex_unlock(&indio_dev->mlock);
-			return ret;
+			goto out_mask_interrupt;
 		}
 
-		*val = ret;
-		mutex_unlock(&indio_dev->mlock);
-		return IIO_VAL_INT;
-	case IIO_CHAN_INFO_CALIBSCALE:
-		mutex_lock(&indio_dev->mlock);
-		ret = palmas_gpadc_get_calibrated_code(adc, adc_chan);
-		if (ret < 0) {
-			dev_err(adc->dev, "get_corrected_code failed\n");
-			mutex_unlock(&indio_dev->mlock);
-			return ret;
+		if (mask == IIO_CHAN_INFO_CALIBSCALE)
+			*val = palmas_gpadc_get_calibrated_code(adc, adc_chan,
+								ret);
+		else
+			*val = ret;
+
+		if ((adc_chan == PALMAS_ADC_CH_IN3) && adc->ch3_dual_current
+				&& val2) {
+			ret = palmas_gpadc_set_current_src(adc,
+					adc->ch0_current, adc->ch3_current + 1);
+			if (ret < 0) {
+				dev_err(adc->dev, "Current src set failed\n");
+				goto out_mask_interrupt;
+			}
+
+			ret = palmas_gpadc_start_convertion(adc, adc_chan);
+			if (ret < 0) {
+				dev_err(adc->dev,
+					"ADC start coversion failed\n");
+				goto out_mask_interrupt;
+			}
+
+			if (mask == IIO_CHAN_INFO_CALIBSCALE)
+				*val2 = palmas_gpadc_get_calibrated_code(adc,
+								adc_chan, ret);
+			else
+				*val2 = ret;
 		}
 
-		*val = ret;
-		mutex_unlock(&indio_dev->mlock);
-		return IIO_VAL_INT;
+		ret = IIO_VAL_INT;
+		goto out_mask_interrupt;
 	}
 
 	return -EINVAL;
+
+out_mask_interrupt:
+	palmas_gpadc_start_mask_interrupt(adc, 1);
+out_disable:
+	palmas_gpadc_enable(adc, adc_chan, false);
+out_unlock:
+	mutex_unlock(&indio_dev->mlock);
+	return ret;
 }
 
 static const struct iio_info palmas_gpadc_iio_info = {
@@ -413,23 +440,33 @@ static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
 		goto out_unregister_map;
 	}
 
-	if (adc_pdata->channel0_current_uA == 0)
-		adc->ich0 = 0;
-	else if (adc_pdata->channel0_current_uA <= 5)
-		adc->ich0 = 1;
-	else if (adc_pdata->channel0_current_uA <= 15)
-		adc->ich0 = 2;
+	if (adc_pdata->ch0_current_uA == 0)
+		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_0;
+	else if (adc_pdata->ch0_current_uA <= 5)
+		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_5;
+	else if (adc_pdata->ch0_current_uA <= 15)
+		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_15;
 	else
-		adc->ich0 = 3;
+		adc->ch0_current = PALMAS_ADC_CH0_CURRENT_SRC_20;
 
-	if (adc_pdata->channel3_current_uA == 0)
-		adc->ich3 = 0;
-	else if (adc_pdata->channel3_current_uA <= 10)
-		adc->ich3 = 1;
-	else if (adc_pdata->channel3_current_uA <= 400)
-		adc->ich3 = 2;
+	if (adc_pdata->ch3_current_uA == 0)
+		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_0;
+	else if (adc_pdata->ch3_current_uA <= 10)
+		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_10;
+	else if (adc_pdata->ch3_current_uA <= 400)
+		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_400;
 	else
-		adc->ich3 = 3;
+		adc->ch3_current = PALMAS_ADC_CH3_CURRENT_SRC_800;
+
+	/* If ch3_dual_current is true, it will measure ch3 input signal with
+	 * ch3_current and the next current of ch3_current. */
+	adc->ch3_dual_current = adc_pdata->ch3_dual_current;
+	if (adc->ch3_dual_current &&
+			(adc->ch3_current == PALMAS_ADC_CH3_CURRENT_SRC_800)) {
+		dev_warn(adc->dev,
+			"Disable ch3_dual_current by wrong current setting\n");
+		adc->ch3_dual_current = false;
+	}
 
 	adc->extended_delay = adc_pdata->extended_delay;
 

@@ -207,8 +207,9 @@ struct palmas_rtc_platform_data {
 };
 
 struct palmas_gpadc_platform_data {
-	int channel0_current_uA;
-	int channel3_current_uA;
+	int ch0_current_uA;	/* 0uA, 5uA, 15uA, 20uA */
+	int ch3_current_uA;	/* 0uA, 10uA, 400uA, 800uA */
+	bool ch3_dual_current;
 	bool extended_delay;
 
 	struct iio_map *iio_maps;
@@ -2805,6 +2806,22 @@ enum {
 	PALMAS_ADC_CH_IN15,
 
 	PALMAS_ADC_CH_MAX,
+};
+
+/* Palma GPADC Channel0 Current Source */
+enum {
+	PALMAS_ADC_CH0_CURRENT_SRC_0,
+	PALMAS_ADC_CH0_CURRENT_SRC_5,
+	PALMAS_ADC_CH0_CURRENT_SRC_15,
+	PALMAS_ADC_CH0_CURRENT_SRC_20,
+};
+
+/* Palma GPADC Channel3 Current Source */
+enum {
+	PALMAS_ADC_CH3_CURRENT_SRC_0,
+	PALMAS_ADC_CH3_CURRENT_SRC_10,
+	PALMAS_ADC_CH3_CURRENT_SRC_400,
+	PALMAS_ADC_CH3_CURRENT_SRC_800,
 };
 
 /* Palma Sleep requestor IDs IDs */
