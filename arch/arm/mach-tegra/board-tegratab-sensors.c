@@ -762,12 +762,30 @@ static int gadc_thermal_thermistor_adc_to_temp(
 	return temp;
 };
 
+#define TDIODE_PRECISION_MULTIPLIER	1000000000LL
+
 static int gadc_thermal_tdiode_adc_to_temp(
 		struct gadc_thermal_platform_data *pdata, int *val, int *val2)
 {
-	/* TODO: add adc raw to temp conversion. */
-	pr_warn("%s: No adc raw to temp conversion.\n", __func__);
-	return *val;
+	/*
+	 * Series resistance cancellation using multi-current ADC measurement.
+	 * diode temp = ((adc2 - k * adc1) - (b2 - k * b1)) / (m2 - k * m1)
+	 * - adc1 : ADC raw with current source 400uA
+	 * - m1, b1 : calculated with current source 400uA
+	 * - adc2 : ADC raw with current source 800uA
+	 * - m2, b2 : calculated with current source 800uA
+	 * - k : 2 (= 800uA / 400uA)
+	 */
+	const s64 m1 = -0.00571005 * TDIODE_PRECISION_MULTIPLIER;
+	const s64 b1 = 2524.29891 * TDIODE_PRECISION_MULTIPLIER;
+	const s64 m2 = -0.005519811 * TDIODE_PRECISION_MULTIPLIER;
+	const s64 b2 = 2579.354349 * TDIODE_PRECISION_MULTIPLIER;
+	s64 temp = TDIODE_PRECISION_MULTIPLIER;
+
+	temp *= (s64)((*val2) - 2 * (*val));
+	temp -= (b2 - 2 * b1);
+	temp = div64_s64(temp, (m2 - 2 * m1));
+	return temp;
 };
 
 static struct gadc_thermal_platform_data gadc_thermal_thermistor_pdata = {
