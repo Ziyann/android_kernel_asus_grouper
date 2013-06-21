@@ -123,6 +123,7 @@ static u64 resume_time;
 static u64 resume_entry_time;
 static u64 suspend_time;
 static u64 suspend_entry_time;
+static u64 suspend_end_time;
 #endif
 
 struct suspend_context tegra_sctx;
@@ -250,11 +251,13 @@ void tegra_log_resume_time(void)
 void tegra_log_suspend_time(void)
 {
 	suspend_entry_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
+	suspend_end_time = 0;
 }
 
 static void tegra_get_suspend_time(void)
 {
-	u64 suspend_end_time;
+	if (suspend_end_time)
+		return;
 	suspend_end_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
 
 	if (suspend_entry_time > suspend_end_time)
