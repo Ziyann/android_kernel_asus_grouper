@@ -46,22 +46,23 @@ static int gadc_thermal_get_temp(struct thermal_zone_device *tz,
 				 unsigned long *temp)
 {
 	struct gadc_thermal_driver_data *drvdata = tz->devdata;
-	int val;
+	struct gadc_thermal_platform_data *pdata = drvdata->pdata;
+	int val, val2 = 0;
 	int ret;
 
-	ret = iio_st_read_channel_raw(drvdata->channel, &val);
+	ret = iio_st_read_channel_raw(drvdata->channel, &val, &val2);
 	if (ret < 0) {
 		dev_err(drvdata->dev, "%s: Failed to read channel, %d\n",
 			__func__, ret);
 		return ret;
 	}
 
-	if (drvdata->pdata->adc_to_temp)
-		*temp = drvdata->pdata->adc_to_temp(drvdata->pdata, val);
+	if (pdata->adc_to_temp)
+		*temp = pdata->adc_to_temp(pdata, &val, &val2);
 	else
 		*temp = val;
 
-	*temp += drvdata->pdata->temp_offset;
+	*temp += pdata->temp_offset;
 	return 0;
 }
 
@@ -73,24 +74,24 @@ static struct thermal_zone_device_ops gadc_thermal_ops = {
 static int adc_temp_show(struct seq_file *s, void *p)
 {
 	struct gadc_thermal_driver_data *drvdata = s->private;
-	int adc, temp;
+	struct gadc_thermal_platform_data *pdata = drvdata->pdata;
+	int val, val2 = 0, temp;
 	int ret;
 
-	ret = iio_st_read_channel_raw(drvdata->channel, &adc);
+	ret = iio_st_read_channel_raw(drvdata->channel, &val, &val2);
 	if (ret < 0) {
 		dev_err(drvdata->dev, "%s: Failed to read channel, %d\n",
 			__func__, ret);
 		return ret;
 	}
 
-	if (drvdata->pdata->adc_to_temp)
-		temp = drvdata->pdata->adc_to_temp(drvdata->pdata, adc);
+	if (pdata->adc_to_temp)
+		temp = pdata->adc_to_temp(pdata, &val, &val2);
 	else
-		temp = adc;
+		temp = val;
 
-	temp += drvdata->pdata->temp_offset;
-
-	seq_printf(s, "%d %d\n", adc, temp);
+	temp += pdata->temp_offset;
+	seq_printf(s, "%d %d %d\n", val, val2, temp);
 	return 0;
 }
 

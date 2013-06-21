@@ -29,6 +29,6 @@ struct gadc_thermal_platform_data {
 	const char *iio_channel_name;
 	const char *tz_name;
 	int temp_offset; /* mC */
-	int (*adc_to_temp)(struct gadc_thermal_platform_data *pdata, int val);
+	int (*adc_to_temp)(struct gadc_thermal_platform_data *, int *, int *);
 };
 #endif /* GENERIC_ADC_THERMAL_H */

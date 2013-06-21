@@ -738,14 +738,14 @@ static struct ntc_thermistor_adc_table thermistor_table[] = {
 };
 
 static int gadc_thermal_thermistor_adc_to_temp(
-		struct gadc_thermal_platform_data *pdata, int val)
+		struct gadc_thermal_platform_data *pdata, int *val, int *val2)
 {
 	int table_size = ARRAY_SIZE(thermistor_table);
 	int temp = 0, adc_hi, adc_lo;
 	int i;
 
 	for (i = 0; i < table_size; i++)
-		if (val >= thermistor_table[i].adc)
+		if (*val >= thermistor_table[i].adc)
 			break;
 
 	if (i == 0) {
@@ -756,18 +756,18 @@ static int gadc_thermal_thermistor_adc_to_temp(
 		adc_hi = thermistor_table[i - 1].adc;
 		adc_lo = thermistor_table[i].adc;
 		temp = thermistor_table[i - 1].temp * 1000;
-		temp += ((val - adc_lo) * 1000 / (adc_hi - adc_lo));
+		temp += ((*val - adc_lo) * 1000 / (adc_hi - adc_lo));
 	}
 
 	return temp;
 };
 
 static int gadc_thermal_tdiode_adc_to_temp(
-		struct gadc_thermal_platform_data *pdata, int val)
+		struct gadc_thermal_platform_data *pdata, int *val, int *val2)
 {
 	/* TODO: add adc raw to temp conversion. */
 	pr_warn("%s: No adc raw to temp conversion.\n", __func__);
-	return val;
+	return *val;
 };
 
 static struct gadc_thermal_platform_data gadc_thermal_thermistor_pdata = {
