@@ -781,9 +781,8 @@ int __init tegratab_regulator_init(void)
 
 int __init tegratab_power_off_init(void)
 {
-	/* Use PMU reset only when battery is exist and not charger mode. */
-	if ((get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY) &&
-		(!get_androidboot_mode_charger()))
+	/* Use PMU reset only when battery is exist. */
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
 		pm_power_off = palmas_reset;
 
 	return 0;
