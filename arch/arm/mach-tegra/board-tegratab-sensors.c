@@ -749,14 +749,14 @@ static int gadc_thermal_thermistor_adc_to_temp(
 			break;
 
 	if (i == 0) {
-		temp = thermistor_table[0].temp * 1000;
-	} else if (i >= table_size - 1) {
+		temp = thermistor_table[i].temp * 1000;
+	} else if (i >= (table_size - 1)) {
 		temp = thermistor_table[table_size - 1].temp * 1000;
 	} else {
 		adc_hi = thermistor_table[i - 1].adc;
 		adc_lo = thermistor_table[i].adc;
-		temp = thermistor_table[i - 1].temp * 1000;
-		temp += ((*val - adc_lo) * 1000 / (adc_hi - adc_lo));
+		temp = thermistor_table[i].temp * 1000;
+		temp -= ((*val - adc_lo) * 1000 / (adc_hi - adc_lo));
 	}
 
 	return temp;
