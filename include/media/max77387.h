@@ -118,6 +118,7 @@ struct max77387_platform_data {
 
 	int (*poweron_callback)(struct max77387_power_rail *pw);
 	int (*poweroff_callback)(struct max77387_power_rail *pw);
+	int (*detect)(void *buf, size_t size);
 };
 
 #endif

@@ -1770,10 +1770,14 @@ static int max77387_probe(
 	mutex_init(&info->mutex);
 
 	max77387_dev_id(info);
-	if ((info->pdata->cfg & NVC_CFG_NODEV) &&
-		((info->chip_id & 0xff00) == 0x9100)) {
-		max77387_del(info);
-		return -ENODEV;
+	if (info->pdata->cfg & NVC_CFG_NODEV) {
+		if (info->pdata->detect)
+			info->pdata->detect(&info->chip_id,
+					sizeof(info->chip_id));
+		if ((info->chip_id & 0xff) != 0x91) {
+			max77387_del(info);
+			return -ENODEV;
+		}
 	}
 
 	if (info->pdata->dev_name != NULL)
