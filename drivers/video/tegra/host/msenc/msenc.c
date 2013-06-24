@@ -137,6 +137,10 @@ int msenc_boot(struct platform_device *dev)
 	int err = 0;
 	struct msenc *m = get_msenc(dev);
 
+	/* check if firmware is loaded or not */
+	if (!m || !m->valid)
+		return -ENOMEDIUM;
+
 	nvhost_device_writel(dev, msenc_dmactl_r(), 0);
 	nvhost_device_writel(dev, msenc_dmatrfbase_r(),
 		(sg_dma_address(m->pa->sgl) + m->os.bin_data_offset) >> 8);
@@ -317,7 +321,6 @@ clean_up:
 
 void nvhost_msenc_init(struct platform_device *dev)
 {
-	struct nvhost_device_data *pdata = platform_get_drvdata(dev);
 	int err = 0;
 	struct msenc *m;
 	char *fw_name;
@@ -345,11 +348,9 @@ void nvhost_msenc_init(struct platform_device *dev)
 		goto clean_up;
 	}
 
-	if (!pdata->can_powergate) {
-		nvhost_module_busy(dev);
-		msenc_boot(dev);
-		nvhost_module_idle(dev);
-	}
+	nvhost_module_busy(dev);
+	msenc_boot(dev);
+	nvhost_module_idle(dev);
 
 	return;
 
@@ -360,6 +361,9 @@ clean_up:
 void nvhost_msenc_deinit(struct platform_device *dev)
 {
 	struct msenc *m = get_msenc(dev);
+
+	if (!m)
+		return;
 
 	/* unpin, free ucode memory */
 	if (m->mapped) {
@@ -375,6 +379,7 @@ void nvhost_msenc_deinit(struct platform_device *dev)
 		mem_op().put(nvhost_get_host(dev)->memmgr, m->mem_r);
 		m->mem_r = NULL;
 	}
+	m->valid = false;
 }
 
 void nvhost_msenc_finalize_poweron(struct platform_device *dev)
