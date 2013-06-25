@@ -556,9 +556,9 @@ static const int tsensor2therm_map[] = {
 
 static const enum soctherm_throttle_dev_id therm2dev[] = {
 	[THERM_CPU] = THROTTLE_DEV_CPU,
-	[THERM_MEM] = -1,
+	[THERM_MEM] = THROTTLE_DEV_NONE,
 	[THERM_GPU] = THROTTLE_DEV_GPU,
-	[THERM_PLL] = -1,
+	[THERM_PLL] = THROTTLE_DEV_NONE,
 };
 
 static const struct soctherm_sensor sensor_defaults = {
@@ -1213,9 +1213,12 @@ static int __init soctherm_thermal_sys_init(void)
 					therm->passive_delay,
 					0);
 
-		for (k = THROTTLE_OC1; !oc_en && k < THROTTLE_SIZE; k++)
+		for (k = THROTTLE_OC1; !oc_en && k < THROTTLE_SIZE; k++) {
+			if (therm2dev[i] == THROTTLE_DEV_NONE)
+				continue;
 			if (plat_data.throttle[k].devs[therm2dev[i]].enable)
 				oc_en = true;
+		}
 	}
 
 	/* do not enable suspend feature if any OC alarms are enabled */
