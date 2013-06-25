@@ -225,6 +225,7 @@ static int dalmore_focuser_power_off(struct ad5816_power_rail *pw)
 }
 
 static u16 ad5816_devid;
+static u16 max77387_devid;
 static struct ad5816_platform_data dalmore_imx091_ad5816_pdata;
 static struct ad5816_platform_data dalmore_imx135_ad5816_pdata;
 
@@ -244,6 +245,19 @@ static int dalmore_focuser_detect(void *buf, size_t size)
 
 	return 0;
 }
+
+static int dalmore_flash_detect(void *buf, size_t size)
+{
+	if (!buf)
+		return -EFAULT;
+	if (size > sizeof(max77387_devid))
+		return -EINVAL;
+
+	max77387_devid = *(u16 *)buf;
+
+	return 0;
+}
+
 
 static struct tegra_pingroup_config mclk_disable =
 	VI_PINMUX(CAM_MCLK, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
@@ -688,6 +702,7 @@ static struct max77387_platform_data dalmore_max77387_pdata = {
 		.e0_index	= 3,
 		.priority	= EDP_MAX_PRIO + 2,
 		},
+	.detect = dalmore_flash_detect,
 };
 
 static struct nvc_focus_cap dalmore_imx091_ad5816_cap = {
@@ -982,6 +997,10 @@ static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
 		I2C_BOARD_INFO("dw9718", 0x0c),
 		.platform_data = &dalmore_dw9718_pdata,
 	},
+	{
+		I2C_BOARD_INFO("max77387", 0x4A),
+		.platform_data = &dalmore_max77387_pdata,
+	},
 };
 
 static struct i2c_board_info dalmore_i2c_board_info_imx091 = {
@@ -1007,11 +1026,6 @@ static struct i2c_board_info dalmore_i2c_board_info_ov9772 = {
 static struct i2c_board_info dalmore_i2c_board_info_imx132 = {
 	I2C_BOARD_INFO("imx132", 0x36),
 	.platform_data = &dalmore_imx132_data,
-};
-
-static struct i2c_board_info dalmore_i2c_board_info_max77387 = {
-	I2C_BOARD_INFO("max77387", 0x4A),
-	.platform_data = &dalmore_max77387_pdata,
 };
 
 static struct i2c_board_info dalmore_i2c_board_info_as3648 = {
@@ -1333,15 +1347,19 @@ int camera_auto_detect(void)
 {
 	struct i2c_adapter *adap = i2c_get_adapter(2);
 
-	pr_info("%s ++ %04x - %04x\n", __func__, ad5816_devid, dw9718_devid);
+	pr_info("%s ++ %04x - %04x - %04x\n", __func__,
+		ad5816_devid, dw9718_devid, max77387_devid);
 
 	if ((ad5816_devid & 0xff00) == 0x2400) {
-		if ((ad5816_devid & 0xff) >= 0x6) {
+		if ((max77387_devid & 0xff) == 0x91) {
 			/* IMX135 found */
 			i2c_new_device(adap, &dalmore_i2c_board_info_imx135);
 			i2c_new_device(adap, &dalmore_i2c_board_info_imx132);
-			i2c_new_device(adap, &dalmore_i2c_board_info_max77387);
 		} else {
+			/* remove max77387 from system */
+			device_for_each_child(&adap->dev,
+				&dalmore_i2c_board_info_e1625[2].addr,
+				dalmore_chk_conflict);
 			/* IMX091 found*/
 			i2c_new_device(adap, &dalmore_i2c_board_info_imx091);
 			i2c_new_device(adap, &dalmore_i2c_board_info_ov9772);
@@ -1351,6 +1369,10 @@ int camera_auto_detect(void)
 		/* remove ad5816 from system */
 		device_for_each_child(&adap->dev,
 			&dalmore_i2c_board_info_e1625[0].addr,
+			dalmore_chk_conflict);
+		/* remove max77387 from system */
+		device_for_each_child(&adap->dev,
+			&dalmore_i2c_board_info_e1625[2].addr,
 			dalmore_chk_conflict);
 		if (dw9718_devid) {
 			/* AR0833 found */
