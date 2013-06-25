@@ -33,6 +33,10 @@ struct of_tegra_lcd_devdata tegratab_lgd_lcd;
 static bool lgd_lcd_reg_requested;
 static struct regulator *lgd_lcd_regs[LGD_LCD_REGULATORS_COUNT];
 
+static struct regulator *avdd_lcd_3v3;
+static struct regulator *vdd_lcd_bl_en;
+static struct regulator *dvdd_lcd_1v8;
+
 static struct tegra_dsi_cmd lgd_wxga_7_0_init_cmd[] = {
 	DSI_CMD_SHORT(0x15, 0x01, 0x0),
 	DSI_DLY_MS(20),
@@ -76,8 +80,15 @@ static int lgd_lcd_regulators_get(struct device *dev)
 			err = PTR_ERR(lgd_lcd_regs[reg_i]);
 			lgd_lcd_regs[reg_i] = NULL;
 			return err;
-		} else
+		} else {
+			if (reg_i == 0)
+				avdd_lcd_3v3 = lgd_lcd_regs[reg_i];
+			else if (reg_i == 1)
+				vdd_lcd_bl_en = lgd_lcd_regs[reg_i];
+			else if (reg_i == 2)
+				dvdd_lcd_1v8 = lgd_lcd_regs[reg_i];
 			reg_i++;
+		}
 	}
 	lgd_lcd_reg_requested = true;
 	return 0;
@@ -86,7 +97,6 @@ static int lgd_lcd_regulators_get(struct device *dev)
 static int lgd_wxga_7_0_enable(struct device *dev)
 {
 	int err = 0;
-	int reg_i;
 
 	err = lgd_lcd_regulators_get(dev);
 	if (err < 0) {
@@ -94,19 +104,46 @@ static int lgd_wxga_7_0_enable(struct device *dev)
 		goto fail;
 	}
 
-	msleep(20);
-	for (reg_i = 0; reg_i < LGD_LCD_REGULATORS_COUNT; reg_i++) {
-		if (lgd_lcd_regs[reg_i]) {
-			err = regulator_enable(lgd_lcd_regs[reg_i]);
-			if (err < 0) {
-				pr_err("%s: reg en failed\n", __func__);
-				goto fail;
-			}
+	if (dvdd_lcd_1v8) {
+		err = regulator_enable(dvdd_lcd_1v8);
+		if (err < 0) {
+			pr_err("%s: dvdd_lcd_1v8 en failed\n", __func__);
+			goto fail;
 		}
-		if (reg_i == 0)
-			msleep(150);
-		else
-			msleep(100);
+	}
+
+	msleep(20); /*Turn on 1.8V, then, AVDD after 20ms */
+
+	if (avdd_lcd_3v3) {
+		err = regulator_enable(avdd_lcd_3v3);
+		if (err < 0) {
+			pr_err("%s: avdd_lcd_3v3 en failed\n", __func__);
+			goto fail;
+		}
+	}
+
+	/* VDD to MIPI > 100ms based on the spec.
+	 * Driver already take 50ms, so having 50ms delay here.
+	 */
+	msleep(50);
+
+	return 0;
+fail:
+	return err;
+}
+
+static int lgd_wxga_7_0_postpoweron(struct device *dev)
+{
+	int err = 0;
+
+	msleep(200); /*MIPI to VLED > 200ms, based on the spec*/
+
+	if (vdd_lcd_bl_en) {
+		err = regulator_enable(vdd_lcd_bl_en);
+		if (err < 0) {
+			pr_err("%s: vdd_lcd_bl_en en failed\n", __func__);
+			goto fail;
+		}
 	}
 	return 0;
 fail:
@@ -115,12 +152,21 @@ fail:
 
 static int lgd_wxga_7_0_disable(void)
 {
-	int reg_i;
+	msleep(100); /*MIPI off to VDD off needs to be 50~150ms per spec*/
 
-	for (reg_i = 0; reg_i < LGD_LCD_REGULATORS_COUNT; reg_i++)
-		regulator_disable(
-			lgd_lcd_regs[LGD_LCD_REGULATORS_COUNT-reg_i-1]);
+	if (dvdd_lcd_1v8)
+		regulator_disable(dvdd_lcd_1v8);
+	if (avdd_lcd_3v3)
+		regulator_disable(avdd_lcd_3v3);
+	return 0;
+}
 
+static int lgd_wxga_7_0_prepoweroff(void)
+{
+	if (vdd_lcd_bl_en)
+		regulator_disable(vdd_lcd_bl_en);
+
+	msleep(200); /*VLED off to MIPI off > 200ms per spec*/
 	return 0;
 }
 
@@ -133,7 +179,9 @@ static void tegratab_lgd_lcd_devdata(struct of_tegra_lcd_devdata *lcd_dev_data)
 {
 	lcd_dev_data->enable = lgd_wxga_7_0_enable;
 	lcd_dev_data->disable = lgd_wxga_7_0_disable;
+	lcd_dev_data->postpoweron = lgd_wxga_7_0_postpoweron;
 	lcd_dev_data->postsuspend = lgd_wxga_7_0_postsuspend;
+	lcd_dev_data->prepoweroff = lgd_wxga_7_0_prepoweroff;
 	lcd_dev_data->dsi_init_cmd =
 		lgd_wxga_7_0_init_cmd;
 	lcd_dev_data->n_init_cmd =
