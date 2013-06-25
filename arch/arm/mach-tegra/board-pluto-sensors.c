@@ -42,6 +42,7 @@
 #include <media/imx135.h>
 #include <media/ar0833.h>
 #include <media/dw9718.h>
+#include <media/max77387.h>
 #include <asm/mach-types.h>
 
 #include "gpio-names.h"
@@ -487,6 +488,7 @@ static int pluto_focuser_power_off(struct ad5816_power_rail *pw)
 }
 
 static u16 ad5816_devid;
+static u16 max77387_devid;
 static int pluto_focuser_detect(void *buf, size_t size)
 {
 	if (!buf)
@@ -498,6 +500,56 @@ static int pluto_focuser_detect(void *buf, size_t size)
 
 	return 0;
 }
+static int pluto_flash_detect(void *buf, size_t size)
+{
+       if (!buf)
+               return -EFAULT;
+       if (size > sizeof(max77387_devid))
+               return -EINVAL;
+
+       max77387_devid = *(u16 *)buf;
+
+       return 0;
+}
+
+static unsigned max77387_estates[] = {1000, 800, 600, 400, 200, 100, 0};
+
+static struct max77387_platform_data pluto_max77387_pdata = {
+	.config		= {
+		.led_mask		= 3,
+		.flash_trigger_mode	= 1,
+		/* use ONE-SHOOT flash mode - flash triggered at the
+		 * raising edge of strobe or strobe signal.
+		*/
+		.flash_mode		= 1,
+		.def_ftimer		= 0x24,
+		.max_total_current_mA	= 1000,
+		.max_peak_current_mA	= 600,
+		.led_config[0]	= {
+			.flash_torch_ratio	= 18100,
+			.granularity		= 1000,
+			.flash_levels		= 0,
+			.lumi_levels	= NULL,
+			},
+		.led_config[1]	= {
+			.flash_torch_ratio	= 18100,
+			.granularity		= 1000,
+			.flash_levels		= 0,
+			.lumi_levels		= NULL,
+			},
+		},
+	.cfg		= NVC_CFG_NODEV,
+	.dev_name	= "torch",
+	.num		= 1,
+	.gpio_strobe	= CAM_FLASH_STROBE,
+	.edpc_config	= {
+		.states		= max77387_estates,
+		.num_states	= ARRAY_SIZE(max77387_estates),
+		.e0_index	= 3,
+		.priority	= EDP_MAX_PRIO + 2,
+		},
+	.detect = pluto_flash_detect,
+};
 
 static struct tegra_pingroup_config mclk_disable =
 	VI_PINMUX(CAM_MCLK, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
@@ -1201,6 +1253,10 @@ static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 		I2C_BOARD_INFO("dw9718", 0x0c),
 		.platform_data = &pluto_dw9718_pdata,
 	},
+	{
+		I2C_BOARD_INFO("max77387", 0x4A),
+		.platform_data = &pluto_max77387_pdata,
+	},
 };
 
 /* Detect ov5640 adapter by toggling the CAM_GPIO1 and read it back
@@ -1556,8 +1612,6 @@ int __init pluto_sensors_init(void)
 	if (err)
 		pr_err("%s: max17042 device register failed.\n", __func__);
 
-
-
 	return 0;
 }
 
@@ -1582,7 +1636,7 @@ static int camera_auto_detect(void)
 	pr_info("%s ++ %04x - %04x\n", __func__, ad5816_devid, dw9718_devid);
 
 	if ((ad5816_devid & 0xff00) == 0x2400) {
-		if ((ad5816_devid & 0xff) >= 0x6) {
+		if ((max77387_devid & 0xff) == 0x91) {
 			/* IMX135 found */
 			i2c_new_device(adap, &pluto_i2c_board_info_imx135);
 		} else {
