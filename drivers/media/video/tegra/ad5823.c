@@ -29,8 +29,8 @@
 #include <linux/of_gpio.h>
 #include <media/ad5823.h>
 
-#define POS_LOW		(150)
-#define POS_HIGH	(800)
+#define POS_LOW		(146)
+#define POS_HIGH	(568)
 #define SETTLETIME_MS	(15)
 #define FOCAL_LENGTH	(4.507f)
 #define FNUMBER		(2.8f)
