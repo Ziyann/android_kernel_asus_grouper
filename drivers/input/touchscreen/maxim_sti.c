@@ -891,6 +891,11 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 					     MAX_INPUT_EVENTS, 0, 0);
 			input_set_abs_params(dd->input_dev, ABS_MT_TOOL_TYPE,
 					     0, MT_TOOL_MAX, 0, 0);
+
+#ifdef NV_ENABLE_CPU_BOOST
+			input_set_capability(dd->input_dev, EV_MSC, MSC_ACTIVITY);
+#endif
+
 			ret = input_register_device(dd->input_dev);
 			if (ret < 0) {
 				input_free_device(dd->input_dev);
