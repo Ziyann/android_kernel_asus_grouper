@@ -1,7 +1,7 @@
 /*
  * drivers/input/input-cfboost.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -191,6 +191,14 @@ static const struct input_device_id cfb_ids[] = {
 		.evbit = { BIT_MASK(EV_KEY) },
 		.keybit = { [BIT_WORD(BTN_TRIGGER_HAPPY)] =
 			BIT_MASK(BTN_TRIGGER_HAPPY) },
+	},
+	/* stylus */
+	{
+		.flags = INPUT_DEVICE_ID_MATCH_EVBIT |
+			INPUT_DEVICE_ID_MATCH_KEYBIT,
+		.evbit = { BIT_MASK(EV_ABS) },
+		.keybit = {[BIT_WORD(BTN_TOOL_RUBBER)] =
+			BIT_MASK(BTN_TOOL_RUBBER) },
 	},
 	/* terminating entry */
 	{ },
