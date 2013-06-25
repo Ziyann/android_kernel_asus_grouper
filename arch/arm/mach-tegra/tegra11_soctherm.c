@@ -585,6 +585,24 @@ static const unsigned long default_tsensor_clk_rate = 500000;
 static int sensor2therm_a[TSENSE_SIZE];
 static int sensor2therm_b[TSENSE_SIZE];
 
+static inline bool is_thermal_dev_throttle_enabled(
+		const struct soctherm_platform_data *pdata,
+		size_t throttle_id,
+		enum soctherm_therm_id therm_id)
+{
+	size_t idx;
+
+	if ((throttle_id >= ARRAY_SIZE(pdata->throttle)) ||
+	    (therm_id >= ARRAY_SIZE(therm2dev)))
+		return false;
+
+	idx = therm2dev[therm_id];
+	if (idx == THROTTLE_DEV_NONE)
+		return false;
+
+	return pdata->throttle[throttle_id].devs[idx].enable;
+}
+
 static inline s64 div64_s64_precise(s64 a, s32 b)
 {
 	s64 r, al;
@@ -1154,8 +1172,8 @@ static int __init soctherm_thermal_sys_init(void)
 
 			case THERMAL_TRIP_HOT:
 				for (k = 0; k < THROTTLE_SIZE; k++) {
-					if (!plat_data.throttle[k].
-					    devs[therm2dev[i]].enable)
+					if (!is_thermal_dev_throttle_enabled(
+							&plat_data, k, i))
 						continue;
 
 					if ((strnstr(therm->trips[j].cdev_type,
@@ -1213,12 +1231,9 @@ static int __init soctherm_thermal_sys_init(void)
 					therm->passive_delay,
 					0);
 
-		for (k = THROTTLE_OC1; !oc_en && k < THROTTLE_SIZE; k++) {
-			if (therm2dev[i] == THROTTLE_DEV_NONE)
-				continue;
-			if (plat_data.throttle[k].devs[therm2dev[i]].enable)
+		for (k = THROTTLE_OC1; !oc_en && k < THROTTLE_SIZE; k++)
+			if (is_thermal_dev_throttle_enabled(&plat_data, k, i))
 				oc_en = true;
-		}
 	}
 
 	/* do not enable suspend feature if any OC alarms are enabled */
@@ -1820,8 +1835,7 @@ static int soctherm_init_platform_data(void)
 		/* Setup throttle thresholds per THERM */
 		for (j = 0; j < THERM_SIZE; j++) {
 			/* Check if PSKIP params are enabled */
-			if ((therm2dev[j] == -1) ||
-			    (!plat_data.throttle[i].devs[therm2dev[j]].enable))
+			if (!is_thermal_dev_throttle_enabled(&plat_data, i, j))
 				continue;
 
 			therm = &plat_data.therm[j];
