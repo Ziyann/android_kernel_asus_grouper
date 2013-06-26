@@ -28,6 +28,9 @@
 #include <linux/maxim_sti.h>
 #include <asm/byteorder.h>  /* MUST include this header to get byte order */
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/touchscreen_maxim.h>
+
 /****************************************************************************\
 * Custom features                                                            *
 \****************************************************************************/
@@ -1089,6 +1092,8 @@ nl_callback_fusion(struct sk_buff *skb, struct genl_info *info)
 static irqreturn_t irq_handler(int irq, void *context)
 {
 	struct dev_data  *dd = context;
+
+	trace_touchscreen_maxim_irq("irq_handler");
 
 #ifdef NV_ENABLE_CPU_BOOST
 	if (time_after(jiffies, dd->last_irq_jiffies + INPUT_IDLE_PERIOD))
