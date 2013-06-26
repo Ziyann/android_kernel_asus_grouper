@@ -35,6 +35,10 @@
 #define INPUT_ENABLE_DISABLE  1
 #define NV_ENABLE_CPU_BOOST   1
 
+#ifdef NV_ENABLE_CPU_BOOST
+#define INPUT_IDLE_PERIOD     (msecs_to_jiffies(50))
+#endif
+
 /****************************************************************************\
 * Device context structure, globals, and macros                              *
 \****************************************************************************/
@@ -73,6 +77,9 @@ struct dev_data {
 	struct list_head             dev_list;
 	struct regulator             *reg_avdd;
 	struct regulator             *reg_dvdd;
+#ifdef NV_ENABLE_CPU_BOOST
+	unsigned long                last_irq_jiffies;
+#endif
 };
 
 static struct list_head  dev_list;
@@ -1083,6 +1090,12 @@ static irqreturn_t irq_handler(int irq, void *context)
 {
 	struct dev_data  *dd = context;
 
+#ifdef NV_ENABLE_CPU_BOOST
+	if (time_after(jiffies, dd->last_irq_jiffies + INPUT_IDLE_PERIOD))
+		input_event(dd->input_dev, EV_MSC, MSC_ACTIVITY, 1);
+	dd->last_irq_jiffies = jiffies;
+#endif
+
 	wake_up_process(dd->thread);
 	return IRQ_HANDLED;
 }
@@ -1093,10 +1106,6 @@ static void service_irq(struct dev_data *dd)
 	u16                   status, test, address, xbuf;
 	int                   ret, ret2;
 
-#ifdef NV_ENABLE_CPU_BOOST
-	input_event(dd->input_dev, EV_MSC, MSC_ACTIVITY, 1);
-#endif
-
 	ret = dd->chip.read(dd, dd->irq_param[0], (u8 *)&status,
 			    sizeof(status));
 	if (ret < 0) {
@@ -1105,6 +1114,7 @@ static void service_irq(struct dev_data *dd)
 	}
 
 	test = status & (dd->irq_param[5] | dd->irq_param[6]);
+
 	if (test == 0)
 		return;
 	else if (test == (dd->irq_param[5] | dd->irq_param[6]))
@@ -1369,6 +1379,10 @@ static int probe(struct spi_device *spi)
 	spin_lock_irqsave(&dev_lock, flags);
 	list_add_tail(&dd->dev_list, &dev_list);
 	spin_unlock_irqrestore(&dev_lock, flags);
+
+#ifdef NV_ENABLE_CPU_BOOST
+	dd->last_irq_jiffies = jiffies;
+#endif
 
 	/* start up Touch Fusion */
 	dd->start_fusion = true;
