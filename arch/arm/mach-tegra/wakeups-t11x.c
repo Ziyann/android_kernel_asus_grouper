@@ -163,6 +163,7 @@ static int tegra_wake_event_irq[] = {
 
 static int last_gpio = -1;
 
+#ifdef CONFIG_TEGRA_INTERNAL_USB_CABLE_WAKE_SUPPORT
 /* USB1 VBUS and ID wake sources are handled as special case
  * Note: SD card detect is an ANY wake source but is
  * mostly a GPIO which can handle any edge wakeup.
@@ -205,6 +206,7 @@ int get_vbus_id_cable_connect_state(bool *is_vbus_connected,
 			true : false;
 	return 0;
 }
+#endif
 
 int tegra_gpio_to_wake(int gpio)
 {

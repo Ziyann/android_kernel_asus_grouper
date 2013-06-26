@@ -315,6 +315,20 @@ static void print_val64(char *name, u64 val)
 }
 #endif
 
+#ifndef CONFIG_TEGRA_INTERNAL_USB_CABLE_WAKE_SUPPORT
+inline void tegra_get_internal_any_wake_list(u8 *wake_count,
+	u8 **any_wake, u8 *remote_usb_index)
+{
+	*wake_count = 0;
+}
+
+inline int get_vbus_id_cable_connect_state(bool *is_vbus_connected,
+	bool *is_id_connected)
+{
+	return -EIO;
+}
+#endif
+
 /*
  * static variables - tegra_usb_vbus_internal_wake and
  * tegra_usb_id_internal_wake are false without need to initialize
