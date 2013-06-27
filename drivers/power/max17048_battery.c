@@ -75,10 +75,10 @@ struct max17048_chip {
 	/* battery capacity */
 	int capacity_level;
 
+	int internal_soc;
 	int lasttime_soc;
 	int lasttime_status;
 	int shutdown_complete;
-	int charge_complete;
 	struct mutex mutex;
 };
 struct max17048_chip *max17048_data;
@@ -222,6 +222,8 @@ static void max17048_get_vcell(struct i2c_client *client)
 		dev_err(&client->dev, "%s: err %d\n", __func__, vcell);
 	else
 		chip->vcell = (uint16_t)(((vcell >> 4) * 125) / 100);
+
+	dev_info(&client->dev, "%s(): vcell %d %%\n", __func__, chip->vcell);
 }
 
 static void max17048_get_soc(struct i2c_client *client)
@@ -235,15 +237,17 @@ static void max17048_get_soc(struct i2c_client *client)
 		dev_err(&client->dev, "%s: err %d\n", __func__, soc);
 	else {
 		if (mdata->bits == 18)
-			chip->soc = (uint16_t)soc >> 8;
+			chip->internal_soc = (uint16_t)soc >> 8;
 		else
-			chip->soc = (uint16_t)soc >> 9;
+			chip->internal_soc = (uint16_t)soc >> 9;
 	}
 
-	if (chip->soc >= MAX17048_BATTERY_FULL && chip->charge_complete != 1)
-		chip->soc = MAX17048_BATTERY_FULL-1;
+	dev_info(&client->dev, "%s(): SOC %d %%\n",
+			__func__, chip->internal_soc);
 
-	if (chip->soc >= MAX17048_BATTERY_FULL && chip->charge_complete) {
+	chip->soc = chip->internal_soc;
+
+	if (chip->internal_soc >= MAX17048_BATTERY_FULL) {
 		chip->status = POWER_SUPPLY_STATUS_FULL;
 		chip->soc = MAX17048_BATTERY_FULL;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
@@ -290,21 +294,23 @@ void max17048_battery_status(int status,
 
 	if (status == progress) {
 		max17048_data->status = POWER_SUPPLY_STATUS_CHARGING;
-	} else if (status == 4) {
-		max17048_data->charge_complete = 1;
-		max17048_data->soc = MAX17048_BATTERY_FULL;
-		max17048_data->status = POWER_SUPPLY_STATUS_FULL;
-		power_supply_changed(&max17048_data->battery);
-		return;
 	} else {
 		max17048_data->status = POWER_SUPPLY_STATUS_DISCHARGING;
-		max17048_data->charge_complete = 0;
 	}
 	power_supply_changed(&max17048_data->battery);
 
 	max17048_data->lasttime_status = max17048_data->status;
 }
 EXPORT_SYMBOL_GPL(max17048_battery_status);
+
+int max17048_check_soc(void)
+{
+	if (!max17048_data)
+		return -1;
+
+	return max17048_data->internal_soc;
+}
+EXPORT_SYMBOL_GPL(max17048_check_soc);
 
 static enum power_supply_property max17048_battery_props[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
@@ -560,11 +566,11 @@ static irqreturn_t max17048_irq(int id, void *dev)
 		chip->lasttime_soc = chip->soc;
 		dev_info(&client->dev,
 				"%s(): STATUS_SC, SOC: %d\n",
-				__func__, chip->soc);
+				__func__, chip->internal_soc);
 		power_supply_changed(&chip->battery);
 
 		/* Set VL again when soc is above 1% */
-		if (chip->soc >= 1) {
+		if (chip->internal_soc >= 1) {
 			ret = max17048_write_word(client, MAX17048_VALRT,
 					mdata->valert);
 			if (ret < 0)
@@ -752,7 +758,6 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	chip->battery.num_properties	= ARRAY_SIZE(max17048_battery_props);
 	chip->status			= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->lasttime_status   = POWER_SUPPLY_STATUS_DISCHARGING;
-	chip->charge_complete   = 0;
 
 	ret = power_supply_register(&client->dev, &chip->battery);
 	if (ret) {
