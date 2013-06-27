@@ -332,8 +332,13 @@ static struct ina230_platform_data power_mon_ina230_info[] = {
 		.power_lsb = 3.051757813 * PRECISION_MULTIPLIER_TEGRATAB,
 		.rail_name = "VDD_CELL",
 		.resistor = 5,
+		.min_cores_online = 2,
 		.divisor = 25,
 		.precision_multiplier = PRECISION_MULTIPLIER_TEGRATAB,
+		/* Current threshold for detect system overcurrent.
+		   Yoku(4100mA/3.7V) suggest 4.5A for max continuous
+		   discharge current. It is 6.5A in datasheet. */
+		.current_threshold = 4500,
 		.shunt_polarity_inverted = 1,
 	}
 };

@@ -823,6 +823,8 @@ static struct tegra_tsensor_pmu_data tpdata_palmas = {
 };
 
 static struct soctherm_platform_data tegratab_soctherm_data = {
+	.oc_irq_base = TEGRA_SOC_OC_IRQ_BASE,
+	.num_oc_irqs = TEGRA_SOC_OC_NUM_IRQ,
 	.therm = {
 		[THERM_CPU] = {
 			.zone_enable = true,
@@ -870,12 +872,54 @@ static struct soctherm_platform_data tegratab_soctherm_data = {
 				},
 			},
 		},
+		[THROTTLE_OC2] = {
+			.throt_mode = BRIEF,
+			.polarity = 1,
+			.intr = true,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = true,
+					.depth = 50,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = false,
+					.depth = 50,
+				},
+			},
+		},
+		[THROTTLE_OC4] = {
+			.throt_mode = BRIEF,
+			.polarity = 1,
+			.intr = true,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = true,
+					.depth = 50,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = true,
+					.depth = 50,
+				},
+			},
+		},
 	},
 	.tshut_pmu_trip_data = &tpdata_palmas,
 };
 
 int __init tegratab_soctherm_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
+	/* E1569 has only oc4 input for pmu powergood */
+	if (board_info.board_id == BOARD_E1569) {
+		tegratab_soctherm_data.throttle[THROTTLE_OC2]
+			.devs[THROTTLE_DEV_CPU].enable = false;
+		tegratab_soctherm_data.throttle[THROTTLE_OC2]
+			.devs[THROTTLE_DEV_GPU].enable = false;
+	}
+
 	tegra_platform_edp_init(tegratab_soctherm_data.therm[THERM_CPU].trips,
 			&tegratab_soctherm_data.therm[THERM_CPU].num_trips,
 			6000); /* edp temperature margin */
