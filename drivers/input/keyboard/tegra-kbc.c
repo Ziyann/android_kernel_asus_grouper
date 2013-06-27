@@ -366,7 +366,6 @@ static void tegra_kbc_set_fifo_interrupt(struct tegra_kbc *kbc, bool enable)
 	writel(val, kbc->mmio + KBC_CONTROL_0);
 }
 
-#ifdef CONFIG_PM_SLEEP
 static void tegra_kbc_set_keypress_interrupt(struct tegra_kbc *kbc, bool enable)
 {
 	u32 val;
@@ -378,7 +377,6 @@ static void tegra_kbc_set_keypress_interrupt(struct tegra_kbc *kbc, bool enable)
 		val &= ~KBC_CONTROL_KEYPRESS_INT_EN;
 	writel(val, kbc->mmio + KBC_CONTROL_0);
 }
-#endif
 
 static void tegra_kbc_keypress_timer(unsigned long data)
 {
@@ -449,6 +447,7 @@ static irqreturn_t tegra_kbc_isr(int irq, void *args)
 	} else if (val & KBC_INT_KEYPRESS_INT_STATUS) {
 		/* We can be here only through system resume path */
 		kbc->keypress_caused_wake = true;
+		tegra_kbc_set_keypress_interrupt(kbc, false);
 	}
 	readl(kbc->mmio + KBC_CONTROL_0); //unblock posted write
 	spin_unlock_irqrestore(&kbc->lock, flags);
@@ -941,6 +940,7 @@ static int tegra_kbc_suspend(struct device *dev)
 		kbc->keypress_caused_wake = false;
 		/* Enable keypress interrupt before going into suspend. */
 		tegra_kbc_set_keypress_interrupt(kbc, true);
+		enable_irq(kbc->irq);
 		enable_irq_wake(kbc->irq);
 	} else {
 		if (kbc->idev->users)
@@ -950,20 +950,15 @@ static int tegra_kbc_suspend(struct device *dev)
 
 	return 0;
 }
-extern int tegra_pm_irq_get_wakeup_irq(void);
 static int tegra_kbc_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_kbc *kbc = platform_get_drvdata(pdev);
 	int err = 0;
-	int irq;
 
 	if (!kbc->is_open)
 		return tegra_kbc_start(kbc);
 
-	irq = tegra_pm_irq_get_wakeup_irq();
-	if (irq == kbc->irq)
-		kbc->keypress_caused_wake = true;
 	mutex_lock(&kbc->idev->mutex);
 	if (device_may_wakeup(&pdev->dev)) {
 		disable_irq_wake(kbc->irq);
@@ -988,7 +983,6 @@ static int tegra_kbc_resume(struct device *dev)
 			input_report_key(kbc->idev, kbc->wakeup_key, 0);
 			input_sync(kbc->idev);
 		}
-		enable_irq(kbc->irq);
 	} else {
 		if (kbc->idev->users)
 			err = tegra_kbc_start(kbc);
@@ -1001,7 +995,7 @@ static int tegra_kbc_resume(struct device *dev)
 static const struct dev_pm_ops tegra_kbc_pm_ops = {
 #ifdef CONFIG_PM_SLEEP
 	.suspend = tegra_kbc_suspend,
-	.resume_noirq = tegra_kbc_resume,
+	.resume = tegra_kbc_resume,
 #endif
 };
 
