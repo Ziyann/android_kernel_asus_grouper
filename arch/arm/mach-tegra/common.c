@@ -629,8 +629,7 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val = gizmo_readl(AHB_GIZMO_AHB_MEM);
 	val |= ENB_FAST_REARBITRATE | IMMEDIATE | DONT_SPLIT_AHB_WR;
 
-	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11 &&
-		tegra_revision == TEGRA_REVISION_A02)
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11)
 		val |= WR_WAIT_COMMIT_ON_1K;
 	gizmo_writel(val, AHB_GIZMO_AHB_MEM);
 
