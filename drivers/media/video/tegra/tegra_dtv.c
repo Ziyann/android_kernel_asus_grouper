@@ -978,7 +978,7 @@ static int setup_stream(struct dtv_stream *stream)
 		DTV_MAX_NUM_BUFS : bufnum;
 
 	/* init refs to buffers */
-	stream->bufs = kmalloc(stream->num_bufs * sizeof(struct dtv_buffer *),
+	stream->bufs = kmalloc(stream->num_bufs * sizeof(struct dtv_buffer),
 			       GFP_KERNEL);
 	if (!stream->bufs)
 		return -ENOMEM;
