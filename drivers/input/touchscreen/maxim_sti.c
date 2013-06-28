@@ -1179,6 +1179,15 @@ static int processing_thread(void *arg)
 				if (ret != 0)
 					msleep(100);
 			} while (ret != 0 && !kthread_should_stop());
+
+			/* power-up and reset-high */
+			ret = regulator_control(dd, true);
+			if (ret < 0)
+				ERROR("failed to enable regulators");
+
+			usleep_range(300, 400);
+			pdata->reset(pdata, 1);
+
 			dd->start_fusion = false;
 		}
 		if (kthread_should_stop())
@@ -1296,11 +1305,6 @@ static int probe(struct spi_device *spi)
 	/* initialize regulators */
 	regulator_init(dd);
 
-	/* power up */
-	ret = regulator_control(dd, true);
-	if (ret < 0)
-		goto platform_failure;
-
 	/* initialize platform */
 	ret = pdata->init(pdata, true);
 	if (ret < 0)
@@ -1375,9 +1379,6 @@ nl_failure:
 nl_family_failure:
 	(void)kthread_stop(dd->thread);
 platform_failure:
-	pdata->reset(pdata, 0);
-	usleep_range(100, 120);
-	regulator_control(dd, false);
 	pdata->init(pdata, false);
 	kfree(dd);
 	return ret;
