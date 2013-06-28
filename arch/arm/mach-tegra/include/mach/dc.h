@@ -30,7 +30,7 @@
 #define TEGRA_MAX_DC		2
 #define DC_N_WINDOWS		3
 #define DEFAULT_FPGA_FREQ_KHZ	160000
-
+#define NUM_AGG_PRI_LVLS	4
 
 /* DSI pixel data format */
 enum {
@@ -389,7 +389,8 @@ struct tegra_dc_sd_rgb {
 
 struct tegra_dc_sd_agg_priorities {
 	u8 pri_lvl;
-	u8 agg[4];
+	u8 agg[NUM_AGG_PRI_LVLS];
+	bool dirty[NUM_AGG_PRI_LVLS];
 };
 
 struct tegra_dc_sd_window {

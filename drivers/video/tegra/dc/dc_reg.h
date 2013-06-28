@@ -675,7 +675,6 @@
 #define DC_DISP_SD_SMOOTH_K			0x4e3
 #define  SD_SMOOTH_K_INCR(x)		(((x) & 0x3fff) << 0)
 
-#define  NUM_AGG_PRI_LVLS		4
 #define  SD_AGG_PRI_LVL(x)		((x) >> 3)
 #define  SD_GET_AGG(x)			((x) & 0x7)
 
