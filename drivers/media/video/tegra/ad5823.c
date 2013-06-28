@@ -128,7 +128,6 @@ static int ad5823_open(struct inode *inode, struct file *file)
 		err = info->pdata->power_on(info->pdata);
 
 	file->private_data = info;
-	msleep(100);
 	return err;
 }
 
