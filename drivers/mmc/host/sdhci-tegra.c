@@ -1891,7 +1891,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	for (dfs_freq = 0; dfs_freq < TUNING_FREQ_COUNT; dfs_freq++) {
 		if (sdhci->mmc->caps2 & MMC_CAP2_FREQ_SCALING) {
 			spin_unlock(&sdhci->lock);
-			tegra_sdhci_set_clk_rate(sdhci,
+			tegra_sdhci_set_clock(sdhci,
 				tuning_params[dfs_freq].freq_hz);
 			spin_lock(&sdhci->lock);
 		} else {
