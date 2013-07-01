@@ -3620,16 +3620,12 @@ static void tegra_xhci_shutdown(struct platform_device *pdev)
 		return;
 
 	if (tegra->hc_in_elpg) {
-		mutex_lock(&tegra->sync_lock);
-		tegra_xhci_host_partition_elpg_exit(tegra);
-		mutex_unlock(&tegra->sync_lock);
+		pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data);
+	} else {
+		xhci = tegra->xhci;
+		hcd = xhci_to_hcd(xhci);
+		xhci_shutdown(hcd);
 	}
-
-	fw_log_deinit(tegra);
-
-	xhci = tegra->xhci;
-	hcd = xhci_to_hcd(xhci);
-	xhci_shutdown(hcd);
 }
 
 static struct platform_driver tegra_xhci_driver = {
