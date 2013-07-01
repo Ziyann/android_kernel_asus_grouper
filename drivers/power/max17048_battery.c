@@ -303,6 +303,15 @@ void max17048_battery_status(int status,
 }
 EXPORT_SYMBOL_GPL(max17048_battery_status);
 
+int max17048_check_vcell(void)
+{
+	if (!max17048_data)
+		return -1;
+
+	return max17048_data->vcell;
+}
+EXPORT_SYMBOL_GPL(max17048_check_vcell);
+
 int max17048_check_soc(void)
 {
 	if (!max17048_data)
