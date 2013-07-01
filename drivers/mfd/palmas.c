@@ -36,7 +36,19 @@ static const struct resource gpadc_resource[] = {
 		.start = PALMAS_GPADC_EOC_SW_IRQ,
 		.end = PALMAS_GPADC_EOC_SW_IRQ,
 		.flags = IORESOURCE_IRQ,
-	}
+	},
+	{
+		.name = "GPADC-AUTO-0",
+		.start = PALMAS_GPADC_AUTO_0_IRQ,
+		.end = PALMAS_GPADC_AUTO_0_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+	{
+		.name = "GPADC-AUTO-1",
+		.start = PALMAS_GPADC_AUTO_1_IRQ,
+		.end = PALMAS_GPADC_AUTO_1_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
 };
 
 static const struct resource usb_resource[] = {
