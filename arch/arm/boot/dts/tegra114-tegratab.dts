@@ -229,7 +229,6 @@
 				nvidia,out-max-pixclk = <148500>;
 				nvidia,out-align = "msb";
 				nvidia,out-order = "rtob"; /*red to blue*/
-				nvidia,out-hotplug-gpio = <&gpio 111 1>;
 				nvidia,out-tmds-cfg {
 					tmds-cfg@0 {
 						pclk = <74250000>;

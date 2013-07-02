@@ -229,7 +229,6 @@
 				nvidia,out-max-pixclk = <148500>;
 				nvidia,out-align = "msb";
 				nvidia,out-order = "rtob"; /*red to blue*/
-				nvidia,out-hotplug-gpio = <&gpio 111 1>;
 			};
 			framebuffer-data {
 				nvidia,fb-bpp = <32>; /* bits per pixel */
