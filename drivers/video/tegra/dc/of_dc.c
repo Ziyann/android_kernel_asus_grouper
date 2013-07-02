@@ -189,8 +189,57 @@ static int parse_dc_out_type(struct device_node *np,
 	return 0;
 }
 
-static int parse_dc_default_out(struct device_node *np,
-		struct tegra_dc_out *default_out)
+static int parse_tmds(struct device_node *np,
+	u8 *addr)
+{
+	u32 temp;
+	struct tmds_config *tmds_cfg_addr;
+	tmds_cfg_addr = (struct tmds_config *)addr;
+
+	if (!of_property_read_u32(np, "pclk", &temp)) {
+		tmds_cfg_addr->pclk = (int)temp;
+		OF_DC_LOG("tmds pclk %d\n", temp);
+	} else {
+		goto parse_tmds_fail;
+	}
+	if (!of_property_read_u32(np, "pll0", &temp)) {
+		tmds_cfg_addr->pll0 = (u32)temp;
+		OF_DC_LOG("tmds pll0 %d\n", temp);
+	} else {
+		goto parse_tmds_fail;
+	}
+	if (!of_property_read_u32(np, "pll1", &temp)) {
+		tmds_cfg_addr->pll1 = (u32)temp;
+		OF_DC_LOG("tmds pll1 %d\n", temp);
+	} else {
+		goto parse_tmds_fail;
+	}
+	if (!of_property_read_u32(np, "pe-current", &temp)) {
+		tmds_cfg_addr->pe_current = (u32)temp;
+		OF_DC_LOG("tmds pe-current %d\n", temp);
+	} else {
+		goto parse_tmds_fail;
+	}
+	if (!of_property_read_u32(np, "drive-current", &temp)) {
+		tmds_cfg_addr->drive_current = (u32)temp;
+		OF_DC_LOG("tmds drive-current %d\n", temp);
+	} else {
+		goto parse_tmds_fail;
+	}
+	if (!of_property_read_u32(np, "peak-current", &temp)) {
+		tmds_cfg_addr->peak_current = (u32)temp;
+		OF_DC_LOG("tmds peak-current %d\n", temp);
+	} else {
+		goto parse_tmds_fail;
+	}
+	return 0;
+parse_tmds_fail:
+	pr_err("parse tmds fail!\n");
+	return -EINVAL;
+}
+
+static int parse_dc_default_out(struct platform_device *ndev,
+		struct device_node *np, struct tegra_dc_out *default_out)
 {
 	int err;
 	u32 temp;
@@ -202,6 +251,9 @@ static int parse_dc_default_out(struct device_node *np,
 	struct device_node *np_hdmi =
 		of_find_compatible_node(NULL, NULL, "nvidia,tegra114-hdmi");
 	struct i2c_adapter *adapter;
+	struct device_node *tmds_np = NULL;
+	struct device_node *entry = NULL;
+	u8 *addr;
 
 	err = parse_dc_out_type(np, default_out);
 	if (err) {
@@ -285,6 +337,44 @@ static int parse_dc_default_out(struct device_node *np,
 	} else {
 		goto fail_dc_default_out;
 	}
+
+	tmds_np = of_find_node_by_name(np, "nvidia,out-tmds-cfg");
+	if (!tmds_np) {
+		pr_info("%s: No nvidia,out-tmds-cfg\n",
+			__func__);
+	} else {
+		int tmds_set_count =
+			of_get_child_count(tmds_np);
+		if (!tmds_set_count) {
+			pr_warn("warn: tmds node exists but no cfg!\n");
+			goto success_dc_default_out;
+		}
+
+		default_out->hdmi_out = devm_kzalloc(&ndev->dev,
+			sizeof(struct tegra_hdmi_out), GFP_KERNEL);
+		if (!default_out->hdmi_out) {
+			dev_err(&ndev->dev, "not enough memory\n");
+			return -ENOMEM;
+		}
+		default_out->hdmi_out->n_tmds_config =
+			tmds_set_count;
+
+		default_out->hdmi_out->tmds_config = devm_kzalloc(&ndev->dev,
+			tmds_set_count * sizeof(struct tmds_config),
+			GFP_KERNEL);
+		if (!default_out->hdmi_out->tmds_config) {
+			dev_err(&ndev->dev, "not enough memory\n");
+			return -ENOMEM;
+		}
+		addr = (u8 *)default_out->hdmi_out->tmds_config;
+		for_each_child_of_node(tmds_np, entry) {
+			err = parse_tmds(entry, addr);
+			if (err)
+				goto fail_dc_default_out;
+			addr += sizeof(struct tmds_config);
+		}
+	}
+success_dc_default_out:
 	return 0;
 
 fail_dc_default_out:
@@ -1139,7 +1229,8 @@ struct tegra_dc_platform_data
 		pr_warn("%s: could not find dc-default-out node\n",
 			__func__);
 	} else {
-		err = parse_dc_default_out(default_out_np, pdata->default_out);
+		err = parse_dc_default_out(ndev, default_out_np,
+			pdata->default_out);
 		if (err)
 			goto fail_parse;
 	}
