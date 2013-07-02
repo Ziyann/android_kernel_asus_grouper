@@ -35,7 +35,7 @@
 			};
 			display-timings {
 				800x1200-32 {
-					clock-frequency = <71000000>;
+					clock-frequency = <70666000>;
 					hactive = <800>;
 					vactive = <1280>;
 					hfront-porch = <32>;
