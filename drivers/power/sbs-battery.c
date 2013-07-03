@@ -942,8 +942,7 @@ static int sbs_suspend(struct device *dev)
 	struct sbs_info *chip = i2c_get_clientdata(i2c);
 	s32 ret;
 
-	if (chip->poll_time > 0)
-		cancel_delayed_work_sync(&chip->work);
+	cancel_delayed_work_sync(&chip->work);
 
 	/* write to manufacturer access with sleep command */
 	ret = sbs_write_word_data(chip->client,
