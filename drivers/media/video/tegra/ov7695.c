@@ -167,7 +167,13 @@ static struct ov7695_reg mode_640x480_30fps[] = {
 	{0x5800, 0x02},
 	{0x5803, 0x40},
 	{0x5804, 0x34},
+	{0x5201, 0xD0},		/* AWB speed */
+	{0x5200, 0x20},		/* Manual White Balance */
+	{0x5204, 0x05},		/* R-gain */
+	{0x5208, 0x07},		/* B-gain */
 	{0x0100, 0x01},
+	{OV7695_WAIT_MS, 0x64},	/* delay 3 frame (100msec) */
+	{0x5200, 0x00},		/* Auto White Balance */
 	{OV7695_TABLE_END, 0x01},
 };
 
