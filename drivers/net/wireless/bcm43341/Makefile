@@ -23,6 +23,8 @@ endif
 # for supporting different type of bcm943341_wbfgn_x board.
 DHDCFLAGS += -DNV_BCM943341_WBFGN_MULTI_MODULE_SUPPORT
 DHDCFLAGS += -DQUEUE_BW
+## Set dhd_dpd_thread priority to MAX to avoid starvation
+DHDCFLAGS += -DCUSTOM_DPC_PRIO_SETTING=99
 
 ifeq ($(CONFIG_BCMDHD_HW_OOB),y)
 DHDCFLAGS += -DHW_OOB -DOOB_INTR_ONLY
