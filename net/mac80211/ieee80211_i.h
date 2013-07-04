@@ -819,8 +819,10 @@ enum mac80211_scan_state {
 	SCAN_SEND_PROBE,
 	SCAN_SUSPEND,
 	SCAN_RESUME,
+#ifdef CONFIG_MAC80211_SCAN_ABORT
 	SCAN_ABORT,
 	SCAN_SUSPEND_ABORT,
+#endif
 };
 
 struct ieee80211_local {
