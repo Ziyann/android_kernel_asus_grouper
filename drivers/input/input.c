@@ -2,6 +2,7 @@
  * The input core
  *
  * Copyright (c) 1999-2002 Vojtech Pavlik
+ * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
  */
 
 /*
@@ -1294,7 +1295,7 @@ static DEVICE_ATTR(properties, S_IRUGO, input_dev_show_properties, NULL);
 
 static ssize_t input_dev_set_enabled(struct device *dev,
 					 struct device_attribute *attr,
-					 char *buf, size_t count)
+					 const char *buf, size_t count)
 {
 	struct input_dev *input_dev = to_input_dev(dev);
 	long en;
