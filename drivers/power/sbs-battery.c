@@ -73,9 +73,6 @@ enum sbs_battery_mode {
 	.min_value = _min_value, \
 	.max_value = _max_value, \
 }
-
-#define SMBUS_DATA_BLOCK_MAX_SIZE	32
-
 struct i2c_client *tclient = NULL;
 int battery_detect = 1;
 
@@ -223,50 +220,6 @@ static int sbs_write_word_data(struct i2c_client *client, u8 address,
 		return ret;
 	}
 	mutex_unlock(&chip->mutex);
-
-	return 0;
-}
-
-/*
- * Clearing the RSOCL bit ensures that relative state of charge is not held
- * at 99% when until primary charge termination occurs and fractions of charge
- * above 99% are rounded off to 100%
- */
-
-static int sbs_clear_rsocl(struct i2c_client *client)
-{
-	u8 data_buffer[SMBUS_DATA_BLOCK_MAX_SIZE];
-	int ret;
-	int val, i;
-
-	ret = sbs_write_word_data(client, SBS_REG_DATA_FLASH_SUBCLASS_ID,
-					SBS_CONFIGURATION_SUBCLASS_ID);
-	if (ret < 0) {
-		dev_err(&client->dev,
-			"Unable to write configuration subclass id\n");
-		return ret;
-	}
-
-	val = i2c_smbus_read_block_data(client,
-			SBS_REG_DATA_FLASH_SUBCLASS_PAGE1, data_buffer);
-	if (val < 0) {
-		dev_err(&client->dev,
-			"Unable to read configuration subclass data\n");
-		return val;
-	}
-
-	data_buffer[SBS_CONFIGURATION_CFG_C_OFFSET] &=
-					~SBS_CONFIGURATION_RSOCL_MASK;
-
-	val = i2c_smbus_write_block_data(client,
-				SBS_REG_DATA_FLASH_SUBCLASS_PAGE1,
-				SBS_CONFIGURATION_SUBCLASS_SIZE_BYTES,
-				data_buffer);
-	if (val < 0) {
-		dev_err(&client->dev,
-			"Unable to write configuration subclass data\n");
-		return val;
-	}
 
 	return 0;
 }
@@ -816,11 +769,6 @@ static int __devinit sbs_probe(struct i2c_client *client,
 		battery_detect = 0;
 		goto exit_mem_free;
 	}
-
-	rc = sbs_clear_rsocl(client);
-	if (rc < 0)
-		dev_warn(&client->dev,
-			"Failed to clear RSOCL bit in data flash\n");
 
 	if (!chip->gpio_detect)
 		goto skip_gpio;
