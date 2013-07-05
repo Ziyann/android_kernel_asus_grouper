@@ -1001,6 +1001,11 @@ static void tegra_sdhci_clock_set_parent(struct sdhci_host *host,
 	pll_c_freq = get_nearest_clock_freq(pll_c_rate, desired_rate);
 	pll_p_freq = get_nearest_clock_freq(pll_p_rate, desired_rate);
 
+/* pll_c is not available for sdhci in T30 */
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	parent_clk = pll_p;
+	tegra_host->is_parent_pllc = false;
+#else
 	if (pll_c_freq > pll_p_freq) {
 		if (!tegra_host->is_parent_pllc) {
 			parent_clk = pll_c;
@@ -1013,7 +1018,7 @@ static void tegra_sdhci_clock_set_parent(struct sdhci_host *host,
 		tegra_host->is_parent_pllc = false;
 	} else
 		return;
-
+#endif
 	rc = clk_set_parent(pltfm_host->clk, parent_clk);
 	if (rc)
 		pr_err("%s: failed to set pll parent clock %d\n",
