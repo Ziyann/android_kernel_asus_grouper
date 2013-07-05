@@ -8,7 +8,7 @@
  * Author:      Steve Chen,  <schen@mvista.com>
  * Copyright:   (C) 2009 MontaVista Software, Inc., <source@mvista.com>
  * Copyright:   (C) 2009  Texas Instruments, India
- * Copyright:   (C) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -38,12 +38,13 @@ static const struct snd_soc_dapm_widget spdif_dapm_widgets[] = {
 	SND_SOC_DAPM_VMID("spdif dummy Vmid"),
 };
 
-static int spdif_write(struct snd_soc_codec * codec, unsigned int reg,
+static int spdif_write(struct snd_soc_codec *codec, unsigned int reg,
 							unsigned int val){
 	return 0;
 }
 
-static int spdif_read(struct snd_soc_codec * codec, unsigned int reg){
+static unsigned int spdif_read(struct snd_soc_codec *codec, unsigned int reg)
+{
 	return 0;
 }
 
