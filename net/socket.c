@@ -868,6 +868,7 @@ static ssize_t do_sock_read(struct msghdr *msg, struct kiocb *iocb,
 	msg->msg_iov = (struct iovec *)iov;
 	msg->msg_iovlen = nr_segs;
 	msg->msg_flags = (file->f_flags & O_NONBLOCK) ? MSG_DONTWAIT : 0;
+	SOCK_INODE(sock)->i_private = get_thread_process(current);
 
 	return __sock_recvmsg(iocb, sock, msg, size, msg->msg_flags);
 }
@@ -1103,6 +1104,7 @@ static unsigned int sock_poll(struct file *file, poll_table *wait)
 	 *      We can't return errors to poll, so it's either yes or no.
 	 */
 	sock = file->private_data;
+	SOCK_INODE(sock)->i_private = get_thread_process(current);
 	return sock->ops->poll(file, sock, wait);
 }
 
@@ -1349,6 +1351,7 @@ SYSCALL_DEFINE3(socket, int, family, int, type, int, protocol)
 	retval = sock_map_fd(sock, flags & (O_CLOEXEC | O_NONBLOCK));
 	if (retval < 0)
 		goto out_release;
+	SOCK_INODE(sock)->i_private = get_thread_process(current);
 
 out:
 	/* It may be already another descriptor 8) Not kernel problem. */

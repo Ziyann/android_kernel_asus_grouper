@@ -1,3 +1,7 @@
+/*
+ *  Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ */
+
 #ifndef _LINUX_SCHED_H
 #define _LINUX_SCHED_H
 
@@ -1680,6 +1684,15 @@ static inline struct pid *task_pgrp(struct task_struct *task)
 static inline struct pid *task_session(struct task_struct *task)
 {
 	return task->group_leader->pids[PIDTYPE_SID].pid;
+}
+
+static inline struct task_struct *get_thread_process(struct task_struct *thread)
+{
+	struct task_struct *task = thread;
+	while (task->pid != task->tgid) {
+		task = task->group_leader;
+	}
+	return task;
 }
 
 struct pid_namespace;
