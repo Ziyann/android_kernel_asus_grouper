@@ -248,7 +248,8 @@ static void max17048_get_soc(struct i2c_client *client)
 	chip->soc = chip->internal_soc;
 
 	if (chip->internal_soc >= MAX17048_BATTERY_FULL) {
-		chip->status = POWER_SUPPLY_STATUS_FULL;
+		if (chip->status == POWER_SUPPLY_STATUS_CHARGING)
+			chip->status = POWER_SUPPLY_STATUS_FULL;
 		chip->soc = MAX17048_BATTERY_FULL;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
 		chip->health = POWER_SUPPLY_HEALTH_GOOD;
