@@ -1,7 +1,7 @@
 /*
  * Core driver access RC5T583 power management chip.
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  * Author: Laxman dewangan <ldewangan@nvidia.com>
  *
  * Based on code
@@ -85,7 +85,7 @@ static int __rc5t583_set_ext_pwrreq1_control(struct device *dev,
 	int id, int ext_pwr, int slots)
 {
 	int ret;
-	uint8_t sleepseq_val;
+	uint8_t sleepseq_val = 0;
 	unsigned int en_bit;
 	unsigned int slot_bit;
 

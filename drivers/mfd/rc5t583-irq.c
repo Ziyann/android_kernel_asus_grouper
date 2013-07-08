@@ -1,7 +1,7 @@
 /*
  * Interrupt driver for RICOH583 power management chip.
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  * Author: Laxman dewangan <ldewangan@nvidia.com>
  *
  * based on code
@@ -255,7 +255,7 @@ static irqreturn_t rc5t583_irq(int irq, void *data)
 {
 	struct rc5t583 *rc5t583 = data;
 	uint8_t int_sts[RC5T583_MAX_INTERRUPT_MASK_REGS];
-	uint8_t master_int;
+	uint8_t master_int = 0;
 	int i;
 	int ret;
 	unsigned int rtc_int_sts = 0;
