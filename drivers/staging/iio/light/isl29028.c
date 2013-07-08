@@ -905,7 +905,7 @@ static ssize_t show_proxim_data(struct device *dev,
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct isl29028_chip *chip = iio_priv(indio_dev);
-	int prox_data;
+	int prox_data = 0;
 	bool st;
 	ssize_t buf_count = 0;
 
