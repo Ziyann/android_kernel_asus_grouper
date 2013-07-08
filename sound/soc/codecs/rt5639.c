@@ -565,72 +565,6 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 }
 EXPORT_SYMBOL(rt5639_headset_detect);
 
-/**
- * rt5639_conn_mux_path - connect MUX widget path.
- * @codec: SoC audio codec device.
- * @widget_name: widget name.
- * @path_name: path name.
- *
- * Make MUX path connected and update register.
- *
- * Returns 0 for success or negative error code.
- */
-int rt5639_conn_mux_path(struct snd_soc_codec *codec,
-		char *widget_name, char *path_name)
-{
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	struct snd_soc_dapm_widget *w;
-	struct snd_soc_dapm_path *path;
-	struct snd_kcontrol_new *kcontrol;
-	struct soc_enum *em;
-	unsigned int val, mask, bitmask;
-	int i, update = 0;
-
-	if (codec == NULL || widget_name == NULL || path_name == NULL)
-		return -EINVAL;
-
-	list_for_each_entry(w, &dapm->card->widgets, list)
-	{
-		if (!w->name || w->dapm != dapm)
-			continue;
-		if (!(strcmp(w->name, widget_name))) {
-			if (w->id != snd_soc_dapm_mux)
-				return -EINVAL;
-			dev_info(codec->dev, "w->name=%s\n", w->name);
-			list_for_each_entry(path, &w->sources, list_sink)
-			{
-				if (!(strcmp(path->name, path_name)))
-					path->connect = 1;
-				else
-					path->connect = 0;
-				dev_info(codec->dev,
-					"path->name=%s path->connect=%d\n",
-					path->name, path->connect);
-			}
-			update = 1;
-			break;
-		}
-	}
-
-	if (update) {
-		snd_soc_dapm_sync(dapm);
-
-		kcontrol = &w->kcontrols[0];
-		em = (struct soc_enum *)kcontrol->private_value;
-		for (i = 0; i < em->max; i++)
-			if (!(strcmp(path_name, em->texts[i])))
-				break;
-		for (bitmask = 1; bitmask < em->max; bitmask <<= 1)
-			;
-		val = i << em->shift_l;
-		mask = (bitmask - 1) << em->shift_l;
-		snd_soc_update_bits(codec, em->reg, mask, val);
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL(rt5639_conn_mux_path);
-
 static const char * const rt5639_dacr2_src[] = { "TxDC_R", "TxDP_R" };
 
 static const SOC_ENUM_SINGLE_DECL(rt5639_dacr2_enum, RT5639_DUMMY_PR3F,
@@ -1719,28 +1653,6 @@ static int rt5639_hp_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static int rt5639_mono_event(struct snd_soc_dapm_widget *w,
-	struct snd_kcontrol *kcontrol, int event)
-{
-	struct snd_soc_codec *codec = w->codec;
-
-	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
-		snd_soc_update_bits(codec, RT5639_MONO_OUT,
-				RT5639_L_MUTE, 0);
-		break;
-
-	case SND_SOC_DAPM_PRE_PMD:
-		snd_soc_update_bits(codec, RT5639_MONO_OUT,
-			RT5639_L_MUTE, RT5639_L_MUTE);
-		break;
-
-	default:
-		return 0;
-	}
-
-	return 0;
-}
 
 static int rt5639_lout_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
@@ -3018,12 +2930,14 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 
 #ifdef RTK_IOCTL
 #if defined(CONFIG_SND_HWDEP) || defined(CONFIG_SND_HWDEP_MODULE)
-	struct rt56xx_ops *ioctl_ops = rt56xx_get_ioctl_ops();
-	ioctl_ops->index_write = rt5639_index_write;
-	ioctl_ops->index_read = rt5639_index_read;
-	ioctl_ops->index_update_bits = rt5639_index_update_bits;
-	ioctl_ops->ioctl_common = rt5639_ioctl_common;
-	realtek_ce_init_hwdep(codec);
+	{
+		struct rt56xx_ops *ioctl_ops = rt56xx_get_ioctl_ops();
+		ioctl_ops->index_write = rt5639_index_write;
+		ioctl_ops->index_read = rt5639_index_read;
+		ioctl_ops->index_update_bits = rt5639_index_update_bits;
+		ioctl_ops->ioctl_common = rt5639_ioctl_common;
+		realtek_ce_init_hwdep(codec);
+	}
 #endif
 #endif
 
@@ -3051,7 +2965,7 @@ static int rt5639_remove(struct snd_soc_codec *codec)
 }
 
 #ifdef CONFIG_PM
-static int rt5639_suspend(struct snd_soc_codec *codec, pm_message_t state)
+static int rt5639_suspend(struct snd_soc_codec *codec)
 {
 	rt5639_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
@@ -3167,7 +3081,7 @@ static int __devexit rt5639_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
-static int rt5639_i2c_shutdown(struct i2c_client *client)
+static void rt5639_i2c_shutdown(struct i2c_client *client)
 {
 	struct rt5639_priv *rt5639 = i2c_get_clientdata(client);
 	struct snd_soc_codec *codec = rt5639->codec;
@@ -3175,7 +3089,6 @@ static int rt5639_i2c_shutdown(struct i2c_client *client)
 	if (codec != NULL)
 		rt5639_set_bias_level(codec, SND_SOC_BIAS_OFF);
 
-	return 0;
 }
 
 struct i2c_driver rt5639_i2c_driver = {
