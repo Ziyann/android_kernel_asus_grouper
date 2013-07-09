@@ -926,21 +926,6 @@ static struct soctherm_platform_data tegratab_soctherm_data = {
 				},
 			},
 		},
-		[THROTTLE_OC2] = {
-			.throt_mode = BRIEF,
-			.polarity = 1,
-			.intr = true,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = true,
-					.depth = 50,
-				},
-				[THROTTLE_DEV_GPU] = {
-					.enable = false,
-					.depth = 50,
-				},
-			},
-		},
 		[THROTTLE_OC4] = {
 			.throt_mode = BRIEF,
 			.polarity = 1,
@@ -966,11 +951,14 @@ int __init tegratab_soctherm_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	/* E1569 has only oc4 input for pmu powergood */
+	/*
+	 * P1640 has oc4 from ina230. E1569 has oc4 from pmic powergood
+	 * Disable oc4 throttle for E1569
+	 */
 	if (board_info.board_id == BOARD_E1569) {
-		tegratab_soctherm_data.throttle[THROTTLE_OC2]
+		tegratab_soctherm_data.throttle[THROTTLE_OC4]
 			.devs[THROTTLE_DEV_CPU].enable = false;
-		tegratab_soctherm_data.throttle[THROTTLE_OC2]
+		tegratab_soctherm_data.throttle[THROTTLE_OC4]
 			.devs[THROTTLE_DEV_GPU].enable = false;
 	}
 
