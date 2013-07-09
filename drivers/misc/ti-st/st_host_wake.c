@@ -230,7 +230,7 @@ static int st_host_wake_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static int st_host_wake_suspend(void)
+static int st_host_wake_suspend(struct platform_device *p, pm_message_t s)
 {
 	int retval = 0;
 
