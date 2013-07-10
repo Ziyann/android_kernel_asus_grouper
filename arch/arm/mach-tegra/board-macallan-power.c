@@ -693,6 +693,8 @@ int __init macallan_regulator_init(void)
 		}
 		else {
 			/* Only register fuel gauge when using battery. */
+			macallan_max17048_boardinfo[0].irq =
+						gpio_to_irq(TEGRA_GPIO_PQ5);
 			i2c_register_board_info(0, macallan_max17048_boardinfo,
 						1);
 		}
