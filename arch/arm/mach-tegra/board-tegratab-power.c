@@ -616,7 +616,7 @@ int __init tegratab_palmas_regulator_init(void)
 
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_P1640 &&
-				board_info.fab == BOARD_FAB_A01) {
+				board_info.fab >= BOARD_FAB_A01) {
 		palmas_pdata.clk32k_init_data = tegratab_palmas_clk32k_idata;
 		palmas_pdata.clk32k_init_data_size =
 				ARRAY_SIZE(tegratab_palmas_clk32k_idata);
