@@ -231,6 +231,14 @@
 				nvidia,out-order = "rtob"; /*red to blue*/
 				nvidia,out-tmds-cfg {
 					tmds-cfg@0 {
+						pclk = <27000000>;
+						pll0 = <0x01003010>;
+						pll1 = <0x00301b00>;
+						pe-current = <0x00000000>;
+						drive-current = <0x23232323>;
+						peak-current = <0x00000000>;
+					};
+					tmds-cfg@1 {
 						pclk = <74250000>;
 						pll0 = <0x01003f10>;
 						pll1 = <0x10300b00>;
@@ -238,7 +246,7 @@
 						drive-current = <0x20202020>;
 						peak-current = <0x05050505>;
 					};
-					tmds-cfg@1 {
+					tmds-cfg@2 {
 						pclk = <148500000>;
 						pll0 = <0x01003f10>;
 						pll1 = <0x10300b00>;
@@ -246,7 +254,7 @@
 						drive-current = <0x22222222>;
 						peak-current = <0x05050505>;
 					};
-					tmds-cfg@2 {
+					tmds-cfg@3 {
 						pclk = <0x7fffffff>;
 						pll0 = <0x01003f10>;
 						pll1 = <0x13300b00>;
