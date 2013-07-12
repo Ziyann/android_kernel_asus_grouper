@@ -36,6 +36,7 @@
 #include <linux/jiffies.h>
 #include <asm/mach-types.h>
 #include <asm/setup.h>
+#include <linux/regulator/consumer.h>
 
 #define D(x...)			pr_debug(x)
 
@@ -74,6 +75,8 @@ struct cm3217_info {
 	struct mutex enable_lock;
 	struct mutex disable_lock;
 	struct mutex get_adc_lock;
+
+	struct regulator *vdd;
 };
 
 static struct cm3217_platform_data cm3217_dflt_pdata = {
@@ -88,6 +91,7 @@ int fLevel = -1;
 
 static int lightsensor_enable(struct cm3217_info *lpi);
 static int lightsensor_disable(struct cm3217_info *lpi);
+static int cm3217_setup(struct cm3217_info *lpi);
 
 int32_t als_kadc;
 
@@ -284,8 +288,17 @@ static int als_power(int enable)
 {
 	struct cm3217_info *lpi = lp_info;
 
-	if (lpi->power)
+	if (lpi->power) {
 		lpi->power(LS_PWR_ON, 1);
+	} else if (lpi->vdd) {
+		if (enable) {
+			regulator_enable(lpi->vdd);
+			/* assume reg_enable takes care off power on delay */
+			cm3217_setup(lpi);
+		} else {
+			regulator_disable(lpi->vdd);
+		}
+	}
 
 	return 0;
 }
@@ -344,6 +357,8 @@ static int lightsensor_enable(struct cm3217_info *lpi)
 	int ret = 0;
 	uint8_t cmd = 0;
 
+	als_power(1);
+
 	mutex_lock(&lpi->enable_lock);
 
 	D("[LS][CM3217] %s\n", __func__);
@@ -386,6 +401,8 @@ static int lightsensor_disable(struct cm3217_info *lpi)
 	lpi->als_enable = 0;
 
 	mutex_unlock(&lpi->disable_lock);
+
+	als_power(0);
 
 	return ret;
 }
@@ -851,9 +868,6 @@ static int cm3217_setup(struct cm3217_info *lpi)
 {
 	int ret = 0;
 
-	als_power(1);
-	msleep(5);
-
 	ret = _cm3217_I2C_Write_Byte(ALS_W_CMD2_addr,
 				     CM3217_ALS_WDM_DEFAULT_1
 				     | CM3217_ALS_IT_2_T
@@ -990,11 +1004,20 @@ static int cm3217_probe(struct i2c_client *client,
 		goto err_create_singlethread_workqueue;
 	}
 
-	ret = cm3217_setup(lpi);
-	if (ret < 0) {
-		pr_err("[ERR][CM3217 error]%s: cm3217_setup error!\n",
-		       __func__);
-		goto err_cm3217_setup;
+	lpi->vdd = devm_regulator_get(&client->dev, "vdd");
+	if (IS_ERR(lpi->vdd)) {
+		pr_warn("[CM3217]%s: supply not found. Assume always on!\n",
+			__func__);
+		lpi->vdd = NULL;
+	}
+
+	if (lpi->vdd && regulator_is_enabled(lpi->vdd)) {
+		ret = cm3217_setup(lpi);
+		if (ret < 0) {
+			pr_err("[ERR][CM3217 error]%s: cm3217_setup error!\n",
+			       __func__);
+			goto err_cm3217_setup;
+		}
 	}
 
 	lpi->cm3217_class = class_create(THIS_MODULE, "optical_sensors");
