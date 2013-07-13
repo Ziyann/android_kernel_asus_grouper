@@ -837,14 +837,16 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 				cld->out_map[j++] = m;
 		}
 
-		v = millivolts[i];
+		v = (j == MAX_CL_DVFS_VOLTAGES - 1) ? v_max : millivolts[i];
 		m = find_vdd_map_entry(cld, v, true);
 		BUG_ON(!m);
 		if (m != cld->out_map[j - 1])
 			cld->out_map[j++] = m;
 		cld->clk_dvfs_map[i] = j - 1;
+
+		if (v >= v_max)
+			break;
 	}
-	BUG_ON(j > MAX_CL_DVFS_VOLTAGES);
 	cld->num_voltages = j;
 }
 
