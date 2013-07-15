@@ -37,6 +37,9 @@ struct ina230_platform_data {
 	u32 precision_multiplier;
 	int shunt_polarity_inverted; /* 0: not invert, 1: inverted */
 };
+
 #define INA230_ERROR	0xFFFF
 s32 ina230_get_current(void);
+s32 ina230_set_current_threshold(s32 current_threshold, int min_cpu);
+
 #endif /* _INA230_H */

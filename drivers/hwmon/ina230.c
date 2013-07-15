@@ -518,6 +518,41 @@ static s32 show_power(struct device *dev,
 	return sprintf(buf, "%d mW\n", power_mW);
 }
 
+s32 ina230_set_current_threshold(s32 current_threshold, int min_cpu)
+{
+	struct i2c_client *client;
+	struct ina230_data *data;
+	int retval;
+
+	if (!p_ina230_data)
+		return -1;
+
+	client = p_ina230_data->client;
+	data = p_ina230_data;
+
+	mutex_lock(&data->mutex);
+
+	data->pdata->current_threshold = current_threshold;
+	data->pdata->min_cores_online = min_cpu;
+
+	if (data->pdata->current_threshold) {
+		if (data->running) {
+			/* force restart */
+			retval = __locked_start_current_mon(client);
+		} else {
+			__locked_evaluate_state(client);
+			retval = 0;
+		}
+	} else {
+		retval = __locked_power_down_ina230(client);
+	}
+
+out:
+	mutex_unlock(&data->mutex);
+	return retval;
+}
+EXPORT_SYMBOL_GPL(ina230_set_current_threshold);
+
 static int ina230_hotplug_notify(struct notifier_block *nb, unsigned long event,
 				void *hcpu)
 {
