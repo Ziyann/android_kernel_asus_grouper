@@ -13,6 +13,7 @@
 #include <linux/smb349-charger.h>
 
 #define MAX17048_DATA_SIZE 64
+#define MAX17048_MAX_SOC_STEP 10
 
 struct max17048_battery_model {
 	uint8_t rcomp;
@@ -34,6 +35,12 @@ struct max17048_battery_model {
 
 struct max17048_platform_data {
 	struct max17048_battery_model *model_data;
+
+	s32 (*set_current_threshold)(s32 current_threshold, int min_cpu);
+	int current_normal;
+	int current_threshold_num;
+	int current_threshold_soc[MAX17048_MAX_SOC_STEP];
+	int current_threshold[MAX17048_MAX_SOC_STEP];
 };
 
 void max17048_battery_status(int status, int chrg_type);

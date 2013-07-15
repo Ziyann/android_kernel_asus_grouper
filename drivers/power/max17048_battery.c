@@ -25,6 +25,7 @@
 #include <linux/max17048_battery.h>
 #include <linux/jiffies.h>
 #include <linux/thermal.h>
+#include <linux/platform_data/ina230.h>
 #include <generated/mach-types.h>
 
 #define MAX17048_VCELL		0x02
@@ -80,12 +81,14 @@ struct max17048_chip {
 	int capacity_level;
 	/* battery temperature */
 	long temperature;
+	/* current threshold */
+	int current_threshold;
 
 	int internal_soc;
 	int lasttime_soc;
 	int lasttime_status;
 	long lasttime_temperature;
-
+	int lasttime_current_threshold;
 	int shutdown_complete;
 	struct mutex mutex;
 };
@@ -276,6 +279,54 @@ static void max17048_get_soc(struct i2c_client *client)
 	}
 }
 
+static void max17048_set_current_threshold(struct i2c_client *client)
+{
+	struct max17048_chip *chip = i2c_get_clientdata(client);
+	s32 ret;
+	int min_cpu;
+	int i;
+
+	/* current threshold by SOC */
+	/* current_threshold arrays should be sorted in ascending order */
+	if (chip->pdata->set_current_threshold &&
+		chip->pdata->current_threshold_num &&
+		chip->pdata->current_normal) {
+
+		min_cpu = 2;
+		chip->current_threshold = chip->pdata->current_normal;
+
+		for (i = 0; i < chip->pdata->current_threshold_num; i++) {
+			if ((chip->internal_soc <=
+				chip->pdata->current_threshold_soc[i]) &&
+				chip->pdata->current_threshold[i]) {
+				chip->current_threshold =
+					chip->pdata->current_threshold[i];
+				/* prevent current monitor power down */
+				min_cpu = 1;
+				break;
+			}
+		}
+
+		if (chip->current_threshold !=
+			chip->lasttime_current_threshold) {
+			ret = chip->pdata->
+				set_current_threshold(
+					chip->current_threshold, min_cpu);
+			if (ret < 0)
+				dev_err(&client->dev,
+					"%s: set current threshold err\n",
+					__func__);
+			else {
+				dev_info(&client->dev,
+					"%s(): set current threshold %d mA\n",
+					__func__, chip->current_threshold);
+				chip->lasttime_current_threshold =
+						chip->current_threshold;
+			}
+		}
+	}
+}
+
 static uint16_t max17048_get_version(struct i2c_client *client)
 {
 	return max17048_read_word(client, MAX17048_VER);
@@ -376,6 +427,7 @@ static void max17048_work(struct work_struct *work)
 
 	max17048_get_vcell(chip->client);
 	max17048_get_soc(chip->client);
+	max17048_set_current_threshold(chip->client);
 
 	if (chip->soc != chip->lasttime_soc ||
 		chip->status != chip->lasttime_status) {
@@ -672,6 +724,8 @@ static irqreturn_t max17048_irq(int id, void *dev)
 	if (val & MAX17048_STATUS_SC) {
 		max17048_get_vcell(client);
 		max17048_get_soc(client);
+		max17048_set_current_threshold(client);
+
 		chip->lasttime_soc = chip->soc;
 		dev_info(&client->dev,
 				"%s(): STATUS_SC, VCELL %dmV, SOC %d%%\n",
@@ -718,6 +772,8 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 	struct max17048_battery_model *model_data;
 	struct device_node *np = dev->of_node;
 	u32 val, val_array[MAX17048_DATA_SIZE];
+	u32 soc_array[MAX17048_MAX_SOC_STEP];
+	const char *str;
 	int i, ret;
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
@@ -823,6 +879,47 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 	for (i = 0; i < MAX17048_DATA_SIZE; i++)
 		model_data->data_tbl[i] = val_array[i];
 
+	if ((!of_property_read_string(np, "set_current_threshold", &str)) &&
+		(!strncmp(str, "ina230", strlen(str)))) {
+		pdata->set_current_threshold = ina230_set_current_threshold;
+	} else {
+		pdata->set_current_threshold = NULL;
+	}
+
+	ret = of_property_read_u32(np, "current_normal", &val);
+	if (ret < 0)
+		pdata->current_normal = 0;
+	else
+		pdata->current_normal = val;
+
+	ret = of_property_read_u32(np, "current_threshold_num", &val);
+	if (ret < 0)
+		pdata->current_threshold_num = 0;
+	else
+		pdata->current_threshold_num = val;
+
+	if (pdata->current_threshold_num > MAX17048_MAX_SOC_STEP)
+		pdata->current_threshold_num = MAX17048_MAX_SOC_STEP;
+
+	if (pdata->set_current_threshold != NULL &&
+		pdata->current_normal &&
+		pdata->current_threshold_num) {
+		ret = of_property_read_u32_array(np, "current_threshold_soc",
+				soc_array, pdata->current_threshold_num);
+		if (ret < 0)
+			return ERR_PTR(ret);
+
+		for (i = 0; i < pdata->current_threshold_num; i++)
+			pdata->current_threshold_soc[i] = soc_array[i];
+
+		ret = of_property_read_u32_array(np, "current_threshold",
+				soc_array, pdata->current_threshold_num);
+		if (ret < 0)
+			return ERR_PTR(ret);
+
+		for (i = 0; i < pdata->current_threshold_num; i++)
+			pdata->current_threshold[i] = soc_array[i];
+	}
 	return pdata;
 }
 #else
@@ -877,6 +974,11 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	chip->battery.num_properties	= ARRAY_SIZE(max17048_battery_props);
 	chip->status			= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->lasttime_status   = POWER_SUPPLY_STATUS_DISCHARGING;
+
+	if (chip->pdata->current_normal) {
+		chip->current_threshold = chip->pdata->current_normal;
+		chip->lasttime_current_threshold = chip->pdata->current_normal;
+	}
 
 	ret = power_supply_register(&client->dev, &chip->battery);
 	if (ret) {
