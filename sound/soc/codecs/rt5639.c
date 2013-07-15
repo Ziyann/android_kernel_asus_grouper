@@ -67,8 +67,8 @@ static struct rt5639_init_reg init_list[] = {
 	{RT5639_PRIV_DATA	, 0x6115},
 	{RT5639_PRIV_INDEX	, 0x0023},/* PR23 = 0804'h */
 	{RT5639_PRIV_DATA	, 0x0804},
-	{RT5639_PRIV_INDEX	, 0x0015},/* PR15 = ab00'h */
-	{RT5639_PRIV_DATA	, 0xab00},
+	/*{RT5639_PRIV_INDEX	, 0x0015},*//* PR15 = ab00'h */
+	/*{RT5639_PRIV_DATA	, 0xab00},*/
 	/*playback*/
 	{RT5639_STO_DAC_MIXER	, 0x1414},/* Dig inf 1 -> Sto
 					     DAC mixer -> DACL */
@@ -515,7 +515,7 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		reg64 = snd_soc_read(codec, RT5639_PWR_ANLG2);
 		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
 			snd_soc_write(codec, RT5639_PWR_ANLG1, 0xa814);
-			snd_soc_write(codec, RT5639_MICBIAS, 0x3a30);
+			snd_soc_write(codec, RT5639_MICBIAS, 0x3830);
 			snd_soc_write(codec, RT5639_GEN_CTRL1 , 0x3701);
 		}
 		sclk_src = snd_soc_read(codec, RT5639_GLB_CLK) &
@@ -529,11 +529,11 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		snd_soc_update_bits(codec, RT5639_MICBIAS,
 			RT5639_MIC1_OVCD_MASK | RT5639_MIC1_OVTH_MASK |
 			RT5639_PWR_CLK25M_MASK | RT5639_PWR_MB_MASK,
-			RT5639_MIC1_OVCD_EN | RT5639_MIC1_OVTH_1500UA |
+			RT5639_MIC1_OVCD_EN | RT5639_MIC1_OVTH_600UA |
 			RT5639_PWR_MB_PU | RT5639_PWR_CLK25M_PU);
 		snd_soc_update_bits(codec, RT5639_GEN_CTRL1,
 			0x1, 0x1);
-		msleep(100);
+		msleep(500);
 
 		dev_info(codec->dev, "%s RT5639_PWR_ANLG1(0x%x) = 0x%x\n",
 			__func__, RT5639_PWR_ANLG1,
