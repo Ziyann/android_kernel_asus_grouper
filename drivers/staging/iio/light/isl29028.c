@@ -145,7 +145,7 @@ static bool isl29028_write_data(struct i2c_client *client, u8 reg,
 	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	if (chip && chip->shutdown_complete)
-		return -ENODEV;
+		return false;
 
 	regval = chip->reg_cache[reg];
 	regval &= ~mask;
@@ -371,7 +371,7 @@ static bool isl29028_read_als_ir(struct i2c_client *client, int *als_ir)
 	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	if (chip && chip->shutdown_complete)
-		return -ENODEV;
+		return false;
 
 	lsb = i2c_smbus_read_byte_data(client, ISL29028_REG_ADD_ALSIR_L);
 	if (lsb < 0) {
@@ -397,7 +397,7 @@ static bool isl29028_read_proxim(struct i2c_client *client, int *prox)
 	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	if (chip && chip->shutdown_complete)
-		return -ENODEV;
+		return false;
 
 	data = i2c_smbus_read_byte_data(client, ISL29028_REG_ADD_PROX_DATA);
 	if (data < 0) {
