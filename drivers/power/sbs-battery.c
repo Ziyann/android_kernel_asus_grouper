@@ -144,13 +144,30 @@ struct sbs_info {
 	struct i2c_client		*client;
 	struct power_supply		power_supply;
 	struct sbs_platform_data	plat_data;
-	bool				is_present;
 	bool				gpio_detect;
 	bool				enable_detection;
 	int				irq;
 	int				last_state;
 	int				poll_time;
 	struct delayed_work		work;
+	int				battery_status;
+	int				battery_health;
+	int				battery_present;
+	int				battery_cycle_count;
+	int				battery_voltage_now;
+	int				battery_current_now;
+	int				battery_capacity;
+	int				battery_temp;
+	int				battery_time_to_empty;
+	int				battery_time_to_full;
+	char				battery_serial_num[5];
+	int				battery_voltage_max;
+	int				battery_energy_now;
+	int				battery_energy_full;
+	int				battery_energy_design;
+	int				battery_charge_now;
+	int				battery_charge_full;
+	int				battery_charge_design;
 	int				ignore_changes;
 	int				shutdown_complete;
 	struct mutex			mutex;
@@ -226,7 +243,7 @@ static int sbs_write_word_data(struct i2c_client *client, u8 address,
 
 static int sbs_get_battery_presence_and_health(
 	struct i2c_client *client, enum power_supply_property psp,
-	union power_supply_propval *val)
+	int *val)
 {
 	s32 ret;
 	struct sbs_info *chip = i2c_get_clientdata(client);
@@ -235,10 +252,9 @@ static int sbs_get_battery_presence_and_health(
 		chip->gpio_detect) {
 		ret = gpio_get_value(chip->plat_data.battery_detect);
 		if (ret == chip->plat_data.battery_detect_present)
-			val->intval = 1;
+			*val = 1;
 		else
-			val->intval = 0;
-		chip->is_present = val->intval;
+			*val = 0;
 		return ret;
 	}
 
@@ -249,7 +265,7 @@ static int sbs_get_battery_presence_and_health(
 					MANUFACTURER_ACCESS_STATUS);
 	if (ret < 0) {
 		if (psp == POWER_SUPPLY_PROP_PRESENT)
-			val->intval = 0; /* battery removed */
+			*val = 0; /* battery removed */
 		return ret;
 	}
 
@@ -259,7 +275,7 @@ static int sbs_get_battery_presence_and_health(
 
 	if (ret < sbs_data[REG_MANUFACTURER_DATA].min_value ||
 	    ret > sbs_data[REG_MANUFACTURER_DATA].max_value) {
-		val->intval = 0;
+		*val = 0;
 		return 0;
 	}
 
@@ -271,29 +287,46 @@ static int sbs_get_battery_presence_and_health(
 	if (psp == POWER_SUPPLY_PROP_PRESENT) {
 		if (ret == 0x0F)
 			/* battery removed */
-			val->intval = 0;
+			*val = 0;
 		else
-			val->intval = 1;
+			*val = 1;
 	} else if (psp == POWER_SUPPLY_PROP_HEALTH) {
 		if (ret == 0x09)
-			val->intval = POWER_SUPPLY_HEALTH_UNSPEC_FAILURE;
+			*val = POWER_SUPPLY_HEALTH_UNSPEC_FAILURE;
 		else if (ret == 0x0B)
-			val->intval = POWER_SUPPLY_HEALTH_OVERHEAT;
+			*val = POWER_SUPPLY_HEALTH_OVERHEAT;
 		else if (ret == 0x0C)
-			val->intval = POWER_SUPPLY_HEALTH_DEAD;
+			*val = POWER_SUPPLY_HEALTH_DEAD;
 		else
-			val->intval = POWER_SUPPLY_HEALTH_GOOD;
+			*val = POWER_SUPPLY_HEALTH_GOOD;
 	}
 
 	return 0;
 }
 
-static int sbs_get_battery_property(struct i2c_client *client,
-	int reg_offset, enum power_supply_property psp,
-	union power_supply_propval *val)
+
+static int sbs_get_property_index(struct i2c_client *client,
+	enum power_supply_property psp)
 {
-	struct sbs_info *chip = i2c_get_clientdata(client);
+	int count;
+	for (count = 0; count < ARRAY_SIZE(sbs_data); count++)
+		if (psp == sbs_data[count].psp)
+			return count;
+
+	dev_warn(&client->dev,
+		"%s: Invalid Property - %d\n", __func__, psp);
+
+	return -EINVAL;
+}
+
+static int sbs_get_battery_property(struct i2c_client *client,
+	enum power_supply_property psp,
+	int *val)
+{
+	int reg_offset;
 	s32 ret;
+
+	reg_offset = sbs_get_property_index(client, psp);
 
 	ret = sbs_read_word_data(client, sbs_data[reg_offset].addr);
 	if (ret < 0)
@@ -305,31 +338,23 @@ static int sbs_get_battery_property(struct i2c_client *client,
 
 	if (ret >= sbs_data[reg_offset].min_value &&
 	    ret <= sbs_data[reg_offset].max_value) {
-		val->intval = ret;
+		*val = ret;
 		if (psp != POWER_SUPPLY_PROP_STATUS)
 			return 0;
 
 		if (ret & BATTERY_FULL_CHARGED)
-			val->intval = POWER_SUPPLY_STATUS_FULL;
+			*val = POWER_SUPPLY_STATUS_FULL;
 		else if (ret & BATTERY_FULL_DISCHARGED)
-			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
+			*val = POWER_SUPPLY_STATUS_NOT_CHARGING;
 		else if (ret & BATTERY_DISCHARGING)
-			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+			*val = POWER_SUPPLY_STATUS_DISCHARGING;
 		else
-			val->intval = POWER_SUPPLY_STATUS_CHARGING;
-
-		if (chip->poll_time == 0)
-			chip->last_state = val->intval;
-		else if (chip->last_state != val->intval) {
-			cancel_delayed_work_sync(&chip->work);
-			power_supply_changed(&chip->power_supply);
-			chip->poll_time = 0;
-		}
+			*val = POWER_SUPPLY_STATUS_CHARGING;
 	} else {
 		if (psp == POWER_SUPPLY_PROP_STATUS)
-			val->intval = POWER_SUPPLY_STATUS_UNKNOWN;
+			*val = POWER_SUPPLY_STATUS_UNKNOWN;
 		else
-			val->intval = 0;
+			*val = 0;
 	}
 
 	return 0;
@@ -406,12 +431,16 @@ static enum sbs_battery_mode sbs_set_battery_mode(struct i2c_client *client,
 	return original_val & BATTERY_MODE_MASK;
 }
 
+
+
 static int sbs_get_battery_capacity(struct i2c_client *client,
-	int reg_offset, enum power_supply_property psp,
-	union power_supply_propval *val)
+	 enum power_supply_property psp, int *val)
 {
 	s32 ret;
+	int reg_offset;
 	enum sbs_battery_mode mode = BATTERY_MODE_WATTS;
+
+	reg_offset = sbs_get_property_index(client, psp);
 
 	if (power_supply_is_amp_property(psp))
 		mode = BATTERY_MODE_AMPS;
@@ -427,9 +456,9 @@ static int sbs_get_battery_capacity(struct i2c_client *client,
 	if (psp == POWER_SUPPLY_PROP_CAPACITY) {
 		/* sbs spec says that this can be >100 %
 		* even if max value is 100 % */
-		val->intval = min(ret, 100);
+		*val = min(ret, 100);
 	} else
-		val->intval = ret;
+		*val = ret;
 
 	ret = sbs_set_battery_mode(client, mode);
 	if (ret < 0)
@@ -438,9 +467,8 @@ static int sbs_get_battery_capacity(struct i2c_client *client,
 	return 0;
 }
 
-static char sbs_serial[5];
 static int sbs_get_battery_serial_number(struct i2c_client *client,
-	union power_supply_propval *val)
+	const char *strval)
 {
 	int ret;
 
@@ -448,41 +476,26 @@ static int sbs_get_battery_serial_number(struct i2c_client *client,
 	if (ret < 0)
 		return ret;
 
-	ret = sprintf(sbs_serial, "%04x", ret);
-	val->strval = sbs_serial;
+	ret = sprintf(strval, "%04x", ret);
 
 	return 0;
 }
 
-static int sbs_get_property_index(struct i2c_client *client,
-	enum power_supply_property psp)
-{
-	int count;
-	for (count = 0; count < ARRAY_SIZE(sbs_data); count++)
-		if (psp == sbs_data[count].psp)
-			return count;
-
-	dev_warn(&client->dev,
-		"%s: Invalid Property - %d\n", __func__, psp);
-
-	return -EINVAL;
-}
 
 static int sbs_get_property(struct power_supply *psy,
 	enum power_supply_property psp,
 	union power_supply_propval *val)
 {
-	int ret = 0;
 	struct sbs_info *chip = container_of(psy,
 				struct sbs_info, power_supply);
 	struct i2c_client *client = chip->client;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_PRESENT:
+		val->intval = chip->battery_present;
+		break;
 	case POWER_SUPPLY_PROP_HEALTH:
-		ret = sbs_get_battery_presence_and_health(client, psp, val);
-		if (psp == POWER_SUPPLY_PROP_PRESENT)
-			return 0;
+		val->intval = chip->battery_health;
 		break;
 
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -490,36 +503,67 @@ static int sbs_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_ENERGY_NOW:
-	case POWER_SUPPLY_PROP_ENERGY_FULL:
-	case POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN:
-	case POWER_SUPPLY_PROP_CHARGE_NOW:
-	case POWER_SUPPLY_PROP_CHARGE_FULL:
-	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-	case POWER_SUPPLY_PROP_CAPACITY:
-		ret = sbs_get_property_index(client, psp);
-		if (ret < 0)
-			break;
+		val->intval = chip->battery_energy_now;
+		break;
 
-		ret = sbs_get_battery_capacity(client, ret, psp, val);
+	case POWER_SUPPLY_PROP_ENERGY_FULL:
+		val->intval = chip->battery_energy_full;
+		break;
+
+	case POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN:
+		val->intval = chip->battery_energy_design;
+		break;
+
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+		val->intval = chip->battery_charge_now;
+		break;
+
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+		val->intval = chip->battery_charge_full;
+		break;
+
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = chip->battery_charge_design;
+		break;
+
+	case POWER_SUPPLY_PROP_CAPACITY:
+		val->intval = chip->battery_capacity;
 		break;
 
 	case POWER_SUPPLY_PROP_SERIAL_NUMBER:
-		ret = sbs_get_battery_serial_number(client, val);
+		val->strval = chip->battery_serial_num;
 		break;
 
 	case POWER_SUPPLY_PROP_STATUS:
-	case POWER_SUPPLY_PROP_CYCLE_COUNT:
-	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-	case POWER_SUPPLY_PROP_CURRENT_NOW:
-	case POWER_SUPPLY_PROP_TEMP:
-	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG:
-	case POWER_SUPPLY_PROP_TIME_TO_FULL_AVG:
-	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
-		ret = sbs_get_property_index(client, psp);
-		if (ret < 0)
-			break;
+		val->intval = chip->battery_status;
+		break;
 
-		ret = sbs_get_battery_property(client, ret, psp, val);
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
+		val->intval = chip->battery_cycle_count;
+		break;
+
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		val->intval = chip->battery_voltage_now;
+		break;
+
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		val->intval = chip->battery_current_now;
+		break;
+
+	case POWER_SUPPLY_PROP_TEMP:
+		val->intval = chip->battery_temp;
+		break;
+
+	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG:
+		val->intval = chip->battery_time_to_empty;
+		break;
+
+	case POWER_SUPPLY_PROP_TIME_TO_FULL_AVG:
+		val->intval = chip->battery_time_to_full;
+		break;
+
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
+		val->intval = chip->battery_voltage_max;
 		break;
 
 	default:
@@ -528,30 +572,12 @@ static int sbs_get_property(struct power_supply *psy,
 		return -EINVAL;
 	}
 
-	if (!chip->enable_detection)
-		goto done;
-
-	if (!chip->gpio_detect &&
-		chip->is_present != (ret >= 0)) {
-		chip->is_present = (ret >= 0);
-		power_supply_changed(&chip->power_supply);
-	}
-
-done:
-	if (!ret) {
-		/* Convert units to match requirements for power supply class */
-		sbs_unit_adjustment(client, psp, val);
-	}
-
-	dev_dbg(&client->dev,
-		"%s: property = %d, value = %x\n", __func__, psp, val->intval);
-
-	if (ret && chip->is_present)
-		return ret;
+	sbs_unit_adjustment(client, psp, val);
 
 	/* battery not present, so return NODATA for properties */
-	if (ret)
+	if (!chip->battery_present)
 		return -ENODATA;
+
 
 	return 0;
 }
@@ -614,14 +640,239 @@ void sbs_update(void)
 }
 EXPORT_SYMBOL_GPL(sbs_update);
 
-static void sbs_delayed_work(struct work_struct *work)
+static int sbs_update_health_properties(struct sbs_info *chip)
+{
+	int ret;
+
+	ret = sbs_get_battery_presence_and_health(chip->client,
+				POWER_SUPPLY_PROP_PRESENT,
+				&chip->battery_present);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery presence info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_presence_and_health(chip->client,
+				POWER_SUPPLY_PROP_HEALTH,
+				&chip->battery_health);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery health info\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int sbs_update_capacity_properties(struct sbs_info *chip)
+{
+	int ret;
+
+	ret = sbs_get_battery_capacity(chip->client,
+				POWER_SUPPLY_PROP_ENERGY_NOW,
+				&chip->battery_energy_now);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery energy now info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_capacity(chip->client,
+				POWER_SUPPLY_PROP_ENERGY_FULL,
+				&chip->battery_energy_full);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery full energy info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_capacity(chip->client,
+				POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN,
+				&chip->battery_energy_design);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery design energy info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_capacity(chip->client,
+				POWER_SUPPLY_PROP_CHARGE_NOW,
+				&chip->battery_charge_now);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery charge info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_capacity(chip->client,
+				POWER_SUPPLY_PROP_CHARGE_FULL,
+				&chip->battery_charge_full);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery full charge info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_capacity(chip->client,
+				POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+				&chip->battery_charge_design);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery design charge info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_capacity(chip->client,
+				POWER_SUPPLY_PROP_CAPACITY,
+				&chip->battery_capacity);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery capacity info\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int sbs_update_serial_number_property(struct sbs_info *chip)
+{
+	int ret;
+	ret = sbs_get_battery_serial_number(chip->client,
+					chip->battery_serial_num);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery serial number info\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int sbs_update_battery_properties(struct sbs_info *chip)
+{
+	int ret;
+
+	ret = sbs_get_battery_property(chip->client,
+				POWER_SUPPLY_PROP_STATUS,
+				&chip->battery_status);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery status info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_property(chip->client,
+				POWER_SUPPLY_PROP_CYCLE_COUNT,
+				&chip->battery_cycle_count);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery cycle count info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_property(chip->client,
+				POWER_SUPPLY_PROP_VOLTAGE_NOW,
+				&chip->battery_voltage_now);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery voltage info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_property(chip->client,
+				POWER_SUPPLY_PROP_CURRENT_NOW,
+				&chip->battery_current_now);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery current now info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_property(chip->client,
+				POWER_SUPPLY_PROP_TEMP,
+				&chip->battery_temp);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery temperature info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_property(chip->client,
+				POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG,
+				&chip->battery_time_to_empty);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery time to empty info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_property(chip->client,
+				POWER_SUPPLY_PROP_TIME_TO_FULL_AVG,
+				&chip->battery_time_to_full);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery presence info\n");
+		return ret;
+	}
+
+	ret = sbs_get_battery_property(chip->client,
+				POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
+				&chip->battery_voltage_max);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to get battery presence info\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int sbs_delayed_work(struct work_struct *work)
 {
 	struct sbs_info *chip;
-
+	int ret;
 	chip = container_of(work, struct sbs_info, work.work);
 
-	power_supply_changed(&tchip->power_supply);
+	ret = sbs_update_health_properties(chip);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to update health properties\n");
+		goto battery_detect;
+	}
+
+	ret = sbs_update_capacity_properties(chip);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to update capacity properties\n");
+		goto battery_detect;
+	}
+
+	ret = sbs_update_serial_number_property(chip);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to update serial number property\n");
+		goto battery_detect;
+	}
+
+	ret = sbs_update_battery_properties(chip);
+	if (ret < 0) {
+		dev_err(&chip->client->dev,
+			"Failed to update battery properties\n");
+	}
+
+battery_detect:
+	if (chip->enable_detection) {
+		if (!chip->gpio_detect &&
+			chip->battery_present != (ret >= 0)) {
+			chip->battery_present = (ret >= 0);
+		}
+	}
+
+	power_supply_changed(&chip->power_supply);
 	schedule_delayed_work(&chip->work, HZ*2);
+
+	return ret;
 }
 
 #if defined(CONFIG_OF)
@@ -811,6 +1062,12 @@ static int __devinit sbs_probe(struct i2c_client *client,
 	chip->shutdown_complete = 0;
 
 skip_gpio:
+
+	sbs_update_health_properties(chip);
+	sbs_update_capacity_properties(chip);
+	sbs_update_serial_number_property(chip);
+	sbs_update_battery_properties(chip);
+
 	rc = power_supply_register(&client->dev, &chip->power_supply);
 	if (rc) {
 		dev_err(&client->dev,
@@ -896,7 +1153,7 @@ static int sbs_suspend(struct device *dev)
 	ret = sbs_write_word_data(chip->client,
 		sbs_data[REG_MANUFACTURER_DATA].addr,
 		MANUFACTURER_ACCESS_SLEEP);
-	if (chip->is_present && ret < 0)
+	if (chip->battery_present && ret < 0)
 		return ret;
 
 	return 0;
