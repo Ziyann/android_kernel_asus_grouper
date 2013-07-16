@@ -575,13 +575,13 @@ static void stop_scan_canned(struct dev_data *dd)
 {
 	u16  value;
 
-	value = dd->irq_param[9];
-	(void)dd->chip.write(dd, dd->irq_param[8], (u8 *)&value,
+	value = dd->irq_param[13];
+	(void)dd->chip.write(dd, dd->irq_param[12], (u8 *)&value,
 			     sizeof(value));
-	value = dd->irq_param[7];
+	value = dd->irq_param[11];
 	(void)dd->chip.write(dd, dd->irq_param[0], (u8 *)&value,
 			     sizeof(value));
-	usleep_range(dd->irq_param[11], dd->irq_param[11] + 1000);
+	usleep_range(dd->irq_param[15], dd->irq_param[15] + 1000);
 	(void)dd->chip.write(dd, dd->irq_param[0], (u8 *)&value,
 			     sizeof(value));
 }
@@ -590,8 +590,8 @@ static void start_scan_canned(struct dev_data *dd)
 {
 	u16  value;
 
-	value = dd->irq_param[10];
-	(void)dd->chip.write(dd, dd->irq_param[8], (u8 *)&value,
+	value = dd->irq_param[14];
+	(void)dd->chip.write(dd, dd->irq_param[12], (u8 *)&value,
 			     sizeof(value));
 }
 
@@ -1108,7 +1108,8 @@ static irqreturn_t irq_handler(int irq, void *context)
 static void service_irq(struct dev_data *dd)
 {
 	struct fu_async_data  *async_data;
-	u16                   status, test, address, xbuf;
+	u16                   status, clear, test, address[2], xbuf;
+	bool                  read_buf[2] = {true, false};
 	int                   ret, ret2;
 
 	ret = dd->chip.read(dd, dd->irq_param[0], (u8 *)&status,
@@ -1118,35 +1119,84 @@ static void service_irq(struct dev_data *dd)
 		return;
 	}
 
-	test = status & (dd->irq_param[5] | dd->irq_param[6]);
+	if (status & dd->irq_param[10]) {
+		read_buf[0] = false;
+		clear = 0xFFFF;
+	} else if (status & dd->irq_param[9]) {
+		test = status & (dd->irq_param[6] | dd->irq_param[7]);
 
-	if (test == 0)
-		return;
-	else if (test == (dd->irq_param[5] | dd->irq_param[6]))
-		xbuf = ((status & dd->irq_param[4]) == 0) ? 0 : 1;
-	else if (test == dd->irq_param[5])
-		xbuf = 0;
-	else if (test == dd->irq_param[6])
-		xbuf = 1;
-	else {
-		ERROR("unexpected IRQ handler case");
-		return;
+		if (test == (dd->irq_param[6] | dd->irq_param[7]))
+			xbuf = ((status & dd->irq_param[5]) != 0) ? 0 : 1;
+		else if (test == dd->irq_param[6])
+			xbuf = 0;
+		else if (test == dd->irq_param[7])
+			xbuf = 1;
+		else {
+			ERROR("unexpected IRQ handler case");
+			return;
+		}
+
+		address[0] = xbuf ? dd->irq_param[2] : dd->irq_param[1];
+
+		read_buf[1] = true;
+		address[1] = dd->irq_param[3];
+
+		clear = dd->irq_param[6] | dd->irq_param[7] |
+			dd->irq_param[8] | dd->irq_param[9];
+	} else {
+		test = status & (dd->irq_param[6] | dd->irq_param[7]);
+
+		if (test == 0)
+			return;
+		else if (test == (dd->irq_param[6] | dd->irq_param[7]))
+			xbuf = ((status & dd->irq_param[5]) == 0) ? 0 : 1;
+		else if (test == dd->irq_param[6])
+			xbuf = 0;
+		else if (test == dd->irq_param[7])
+			xbuf = 1;
+		else {
+			ERROR("unexpected IRQ handler case");
+			return;
+		}
+
+		address[0] = xbuf ? dd->irq_param[2] : dd->irq_param[1];
+		clear = xbuf ? dd->irq_param[7] : dd->irq_param[6];
+		clear |= dd->irq_param[8];
 	}
-	address = xbuf ? dd->irq_param[2] : dd->irq_param[1];
-	status = xbuf ? dd->irq_param[6] : dd->irq_param[5];
 
 	async_data = nl_alloc_attr(dd->outgoing_skb->data, FU_ASYNC_DATA,
-				   sizeof(*async_data) + dd->irq_param[3]);
+				   sizeof(*async_data) + dd->irq_param[4]);
 	if (async_data == NULL) {
-		ERROR("can't add data to async IRQ buffer");
+		ERROR("can't add data to async IRQ buffer 1");
 		return;
 	}
-	async_data->address = address;
-	async_data->length = dd->irq_param[3];
-	ret = dd->chip.read(dd, address, async_data->data, dd->irq_param[3]);
 
-	ret2 = dd->chip.write(dd, dd->irq_param[0], (u8 *)&status,
-			     sizeof(status));
+	if (read_buf[0]) {
+		async_data->address = address[0];
+		async_data->length = dd->irq_param[4];
+		async_data->status = status;
+		ret = dd->chip.read(dd, address[0], async_data->data,
+				    dd->irq_param[4]);
+	}
+
+	if (read_buf[1]) {
+		async_data = nl_alloc_attr(dd->outgoing_skb->data,
+					   FU_ASYNC_DATA,
+					   sizeof(*async_data) +
+						dd->irq_param[4]);
+		if (async_data == NULL) {
+			ERROR("can't add data to async IRQ buffer 2");
+			return;
+		}
+		async_data->address = address[1];
+		async_data->length = dd->irq_param[4];
+		async_data->status = status;
+		ret = dd->chip.read(dd, address[1], async_data->data,
+				    dd->irq_param[4]);
+	}
+
+	ret2 = dd->chip.write(dd, dd->irq_param[0], (u8 *)&clear,
+			     sizeof(clear));
 	if (ret2 < 0)
 		ERROR("can't clear IRQ status (%d)", ret2);
 

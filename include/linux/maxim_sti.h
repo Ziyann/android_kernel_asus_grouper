@@ -241,6 +241,7 @@ struct __attribute__ ((__packed__)) fu_irqline_status {
 struct __attribute__ ((__packed__)) fu_async_data {
 	__u16  address;
 	__u16  length;
+	__u16  status;
 	__u8   data[0];
 };
 
