@@ -102,7 +102,7 @@ struct ina230_data {
 	bool running;
 	struct notifier_block nb;
 };
-
+struct ina230_data *p_ina230_data;
 
 /* bus voltage resolution: 1.25mv */
 #define busv_register_to_mv(x) (((x) * 5) >> 2)
@@ -531,7 +531,65 @@ static int ina230_hotplug_notify(struct notifier_block *nb, unsigned long event,
 	return 0;
 }
 
+s32 ina230_get_current(void)
+{
+	struct i2c_client *client;
+	struct ina230_data *data;
+	s32 current_mA;
+	int retval;
 
+	if (!p_ina230_data)
+		return INA230_ERROR;
+
+	client = p_ina230_data->client;
+	data = p_ina230_data;
+
+	mutex_lock(&data->mutex);
+	/* fill calib data */
+	retval = i2c_smbus_write_word_data(client, INA230_CAL,
+		__constant_cpu_to_be16(data->pdata->calibration_data));
+	if (retval < 0) {
+		dev_err(&client->dev, "calibration data write failed sts: 0x%x\n",
+			retval);
+		mutex_unlock(&data->mutex);
+		return INA230_ERROR;
+	}
+
+	retval = ensure_enabled_start(client);
+	if (retval < 0) {
+		mutex_unlock(&data->mutex);
+		return INA230_ERROR;
+	}
+
+	retval = __locked_wait_for_conversion(&client->dev);
+	if (retval) {
+		mutex_unlock(&data->mutex);
+		return INA230_ERROR;
+	}
+
+	/* getting current readings in milli amps*/
+	retval = i2c_smbus_read_word_data(client, INA230_CURRENT);
+	if (retval < 0) {
+		mutex_unlock(&data->mutex);
+		return INA230_ERROR;
+	}
+	current_mA = (s16) be16_to_cpu(retval);
+
+	ensure_enabled_end(client);
+	mutex_unlock(&data->mutex);
+
+	if (data->pdata->shunt_polarity_inverted)
+		current_mA *= -1;
+
+	current_mA *= (s16) data->pdata->power_lsb;
+	if (data->pdata->divisor)
+		current_mA /= (s16) data->pdata->divisor;
+	if (data->pdata->precision_multiplier)
+		current_mA /= (s16) data->pdata->precision_multiplier;
+
+	return current_mA;
+}
+EXPORT_SYMBOL_GPL(ina230_get_current);
 
 static struct sensor_device_attribute ina230[] = {
 	SENSOR_ATTR(rail_name, S_IRUGO, show_rail_name, NULL, 0),
@@ -565,6 +623,9 @@ static int __devinit ina230_probe(struct i2c_client *client,
 	data->running = false;
 	data->nb.notifier_call = ina230_hotplug_notify;
 	data->client = client;
+
+	p_ina230_data = data;
+
 	mutex_init(&data->mutex);
 
 	err = i2c_smbus_write_word_data(client, INA230_CONFIG,

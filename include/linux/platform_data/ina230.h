@@ -37,5 +37,6 @@ struct ina230_platform_data {
 	u32 precision_multiplier;
 	int shunt_polarity_inverted; /* 0: not invert, 1: inverted */
 };
-
+#define INA230_ERROR	0xFFFF
+s32 ina230_get_current(void);
 #endif /* _INA230_H */
