@@ -763,6 +763,8 @@ static int gadc_thermal_thermistor_adc_to_temp(
 };
 
 #define TDIODE_PRECISION_MULTIPLIER	1000000000LL
+#define TDIODE_MIN_TEMP			-25000LL
+#define TDIODE_MAX_TEMP			125000LL
 
 static int gadc_thermal_tdiode_adc_to_temp(
 		struct gadc_thermal_platform_data *pdata, int *val, int *val2)
@@ -785,6 +787,8 @@ static int gadc_thermal_tdiode_adc_to_temp(
 	temp *= (s64)((*val2) - 2 * (*val));
 	temp -= (b2 - 2 * b1);
 	temp = div64_s64(temp, (m2 - 2 * m1));
+	temp = min_t(s64, max_t(s64, temp, TDIODE_MIN_TEMP), TDIODE_MAX_TEMP);
+
 	return temp;
 };
 
