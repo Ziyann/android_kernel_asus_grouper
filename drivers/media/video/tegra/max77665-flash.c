@@ -506,14 +506,9 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 			info, MAX77665_F_RW_FLED_ENABLE, 0, true);
 		if (!err) {
 			info->regs.leds_en = 0;
-			max77665_f_edp_lowest(info);
 		}
 		goto set_leds_end;
 	}
-
-	err = max77665_f_edp_req(info, mask, &curr1, &curr2);
-	if (err)
-		goto set_leds_end;
 
 	if (mask & 1) {
 		if (info->op_mode == MAXFLASH_MODE_FLASH) {
@@ -587,6 +582,26 @@ set_leds_end:
 			"%s led %x f: %02x %02x %02x, t: %02x %02x, en = %x\n",
 			__func__, mask, curr1, curr2, info->regs.f_timer,
 			info->regs.led_tcurr, info->regs.t_timer, fled_en);
+	return err;
+}
+
+static int max77665_f_edp_set_leds(struct max77665_f_info *info,
+		u8 mask, u8 curr1, u8 curr2)
+{
+	int err;
+
+	err = max77665_f_edp_req(info, mask, &curr1, &curr2);
+	if (err)
+		goto edp_set_leds_end;
+
+	err = max77665_f_set_leds(info, mask, curr1, curr2);
+	if (!err && info->op_mode == MAXFLASH_MODE_NONE)
+		max77665_f_edp_lowest(info);
+
+
+edp_set_leds_end:
+	if (err)
+		dev_err(info->dev, "%s ERROR: %d\n", __func__, err);
 	return err;
 }
 
@@ -795,7 +810,7 @@ static int max77665_f_update_settings(struct max77665_f_info *info)
 	err |= max77665_f_reg_wr(info, MAX77665_F_RW_MAXFLASH_TIMER,
 				info->regs.m_timing, false);
 
-	err |= max77665_f_set_leds(info, info->config.led_mask,
+	err |= max77665_f_edp_set_leds(info, info->config.led_mask,
 				info->regs.led1_curr, info->regs.led2_curr);
 
 	info->regs.regs_stale = false;
@@ -988,6 +1003,7 @@ static void max77665_f_shutdown(struct platform_device *pdev)
 	dev_info(&pdev->dev, "Shutting down\n");
 
 	max77665_f_enter_offmode(info, true);
+	max77665_f_edp_lowest(info);
 	info->regs.regs_stale = true;
 }
 #endif
@@ -1105,6 +1121,7 @@ static int max77665_f_power_set(struct max77665_f_info *info, int pwr)
 	switch (pwr) {
 	case NVC_PWR_OFF:
 		max77665_f_enter_offmode(info, true);
+		max77665_f_edp_lowest(info);
 		if ((info->pdata->cfg & NVC_CFG_OFF2STDBY) ||
 			(info->pdata->cfg & NVC_CFG_BOOT_INIT))
 			pwr = NVC_PWR_STDBY;
@@ -1347,7 +1364,7 @@ static int max77665_f_set_param(struct max77665_f_info *info, long arg)
 		info->new_ftimer = led_levels.timeout & 0X0F;
 		curr1 = led_levels.levels[0];
 		curr2 = led_levels.levels[1];
-		err = max77665_f_set_leds(info,
+		err = max77665_f_edp_set_leds(info,
 			led_levels.ledmask, curr1, curr2);
 		return err;
 	case NVC_PARAM_TORCH_LEVEL:
@@ -1355,7 +1372,7 @@ static int max77665_f_set_param(struct max77665_f_info *info, long arg)
 		info->new_ftimer = led_levels.timeout & 0X0F;
 		curr1 = led_levels.levels[0];
 		curr2 = led_levels.levels[1];
-		err = max77665_f_set_leds(info,
+		err = max77665_f_edp_set_leds(info,
 			led_levels.ledmask, curr1, curr2);
 		return err;
 	case NVC_PARAM_FLASH_PIN_STATE:
@@ -1683,7 +1700,7 @@ set_attr:
 	dev_info(info->dev, "new data = %x\n", val);
 	switch (buf[0]) {
 	case 'c': /* change led 1/2 current settings */
-		max77665_f_set_leds(info, info->config.led_mask,
+		max77665_f_edp_set_leds(info, info->config.led_mask,
 			val & 0xff, (val >> 8) & 0xff);
 		break;
 	case 'l': /* enable/disable led 1/2 */
@@ -1696,7 +1713,7 @@ set_attr:
 		break;
 	case 'f': /* modify flash timeout reg */
 		info->new_ftimer = val & 0X0F;
-		max77665_f_set_leds(info, info->config.led_mask,
+		max77665_f_edp_set_leds(info, info->config.led_mask,
 			info->regs.led1_curr, info->regs.led2_curr);
 		break;
 	case 'p':
