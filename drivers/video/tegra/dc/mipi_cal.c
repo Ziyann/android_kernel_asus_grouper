@@ -121,6 +121,7 @@ struct tegra_mipi_cal *tegra_mipi_cal_init_sw(struct tegra_dc *dc)
 	mipi_cal->dc = dc;
 	mipi_cal->res = res;
 	mipi_cal->base = base;
+	mipi_cal->base_res = base_res;
 	mipi_cal->clk = clk;
 	mipi_cal->fixed_clk = fixed_clk;
 
