@@ -1226,16 +1226,9 @@ static int tf_send_recv(struct tf_comm *comm,
 	bool wait_prepared = false;
 	enum TF_COMMAND_STATE command_status = TF_COMMAND_STATE_PENDING;
 	DEFINE_WAIT(wait);
-#ifdef CONFIG_FREEZER
-	unsigned long saved_flags;
-#endif
+
 	dprintk(KERN_INFO "[pid=%d] tf_send_recv(%p)\n",
 		 current->pid, command);
-
-#ifdef CONFIG_FREEZER
-	saved_flags = current->flags;
-	current->flags |= PF_KTHREAD;
-#endif
 
 	/*
 	 * Read all answers from the answer queue
@@ -1251,15 +1244,8 @@ copy_answers:
 	wake_up(&(comm->wait_queue));
 
 #ifdef CONFIG_FREEZER
-	if (unlikely(freezing(current))) {
-
-		dprintk(KERN_INFO
-			"Entering refrigerator.\n");
-		try_to_freeze();
-		dprintk(KERN_INFO
-			"Left refrigerator.\n");
+	if (try_to_freeze())
 		goto copy_answers;
-	}
 #endif
 
 #ifndef CONFIG_PREEMPT
@@ -1404,11 +1390,6 @@ exit:
 		finish_wait(&comm->wait_queue, &wait);
 		wait_prepared = false;
 	}
-
-#ifdef CONFIG_FREEZER
-	current->flags &= ~(PF_KTHREAD);
-	current->flags |= (saved_flags & PF_KTHREAD);
-#endif
 
 	return result;
 }
