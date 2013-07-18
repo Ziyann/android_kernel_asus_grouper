@@ -60,5 +60,6 @@ struct tegra_asoc_platform_data {
 	unsigned int debounce_time_hp;
 	bool edp_support;
 	unsigned int edp_states[TEGRA_SPK_EDP_NUM_STATES];
+	int edp_vol[TEGRA_SPK_EDP_NUM_STATES];
 	struct i2s_config i2s_param[NUM_I2S_DEVICES];
 };

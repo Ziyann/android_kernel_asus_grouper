@@ -466,26 +466,24 @@ static void tegra_speaker_throttle(unsigned int new_state,  void *priv_data)
 	struct tegra_rt5640 *machine = priv_data;
 	struct snd_soc_card *card;
 	struct snd_soc_codec *codec;
+	int *edp_vol;
 
 	if (!machine)
 		return;
 
 	card = machine->pcard;
 	codec = card->rtd[DAI_LINK_HIFI].codec;
+	edp_vol = machine->pdata->edp_vol;
 
 	/* set codec volume to reflect the new E-state */
 	switch (new_state) {
 	case TEGRA_SPK_EDP_NEG_1:
-		/* set codec voulme to 0dB (100%), E-1 state */
-		tegra_speaker_edp_set_volume(codec, 0x0, 0x0);
-		break;
 	case TEGRA_SPK_EDP_ZERO:
-		/* set codec volume to -16.5dB (78%), E0 state */
-		tegra_speaker_edp_set_volume(codec, 0x13, 0x13);
-		break;
 	case TEGRA_SPK_EDP_1:
-		/* turn off codec volume, -46.5 dB, E1 state */
-		tegra_speaker_edp_set_volume(codec, 0x27, 0x27);
+		tegra_speaker_edp_set_volume(codec, edp_vol[new_state],
+				edp_vol[new_state]);
+		dev_info(card->dev, "%s new_state=%d, edp_vol=0x%x\n",
+				__func__, new_state, edp_vol[new_state]);
 		break;
 	default:
 		pr_err("%s: New E-state %d don't support!\n",
@@ -504,6 +502,7 @@ static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	struct snd_soc_codec *codec = card->rtd[DAI_LINK_HIFI].codec;
 	unsigned int approved = TEGRA_SPK_EDP_NUM_STATES;
+	int *edp_vol = pdata->edp_vol;
 	int ret;
 
 	if (machine->spk_reg) {
@@ -536,17 +535,12 @@ static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 		ret = edp_update_client_request(machine->spk_edp_client,
 						TEGRA_SPK_EDP_NEG_1,
 						&approved);
-		if (ret || approved != TEGRA_SPK_EDP_NEG_1) {
-			if (approved == TEGRA_SPK_EDP_ZERO)
-				/* set codec volume to -16.5dB (78%),E0 state */
-				tegra_speaker_edp_set_volume(codec, 0x13, 0x13);
-			else if (approved == TEGRA_SPK_EDP_1)
-				/* turn off codec volume,-46.5 dB, E1 state */
-				tegra_speaker_edp_set_volume(codec, 0x27, 0x27);
-		} else {
-			/* set codec voulme to 0dB (100%), E-1 state */
-			tegra_speaker_edp_set_volume(codec, 0x0, 0x0);
-		}
+		approved = approved < TEGRA_SPK_EDP_NUM_STATES ?
+				approved : TEGRA_SPK_EDP_NEG_1;
+		tegra_speaker_edp_set_volume(codec,
+				edp_vol[approved], edp_vol[approved]);
+		dev_info(card->dev, "%s approved=%d, edp_vol=0x%x\n",
+				__func__, approved, edp_vol[approved]);
 	} else {
 		ret = edp_update_client_request(machine->spk_edp_client,
 						TEGRA_SPK_EDP_1,
