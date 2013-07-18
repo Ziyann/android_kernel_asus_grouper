@@ -154,6 +154,7 @@ enum {
 	DR_DECONFIG,
 	DR_INPUT,
 	DR_LEGACY_FWDL,
+	DR_LEGACY_ACCELERATION,
 };
 
 struct __attribute__ ((__packed__)) dr_add_mc_group {
@@ -213,6 +214,10 @@ struct __attribute__ ((__packed__)) dr_input_event {
 struct __attribute__ ((__packed__)) dr_input {
 	struct dr_input_event  event[MAX_INPUT_EVENTS];
 	__u8                   events;
+};
+
+struct __attribute__ ((__packed__)) dr_legacy_acceleration {
+	__u8  enable;
 };
 
 enum {

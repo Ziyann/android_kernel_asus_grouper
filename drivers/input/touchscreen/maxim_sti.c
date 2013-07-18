@@ -63,6 +63,7 @@ struct dev_data {
 	bool                         suspend_in_progress;
 	bool                         resume_in_progress;
 	bool                         eraser_active;
+	bool                         legacy_acceleration;
 	bool                         irq_registered;
 	u16                          irq_param[MAX_IRQ_PARAMS];
 	char                         input_phys[128];
@@ -83,12 +84,15 @@ struct dev_data {
 #ifdef NV_ENABLE_CPU_BOOST
 	unsigned long                last_irq_jiffies;
 #endif
+	void                         (*service_irq)(struct dev_data *dd);
 };
 
 static struct list_head  dev_list;
 static spinlock_t        dev_lock;
 
 static irqreturn_t irq_handler(int irq, void *context);
+static void service_irq(struct dev_data *dd);
+static void service_irq_legacy_acceleration(struct dev_data *dd);
 
 #define ERROR(a, b...) printk(KERN_ERR "%s driver(ERROR:%s:%d): " a "\n", \
 			      dd->nl_family.name, __func__, __LINE__, ##b)
@@ -202,6 +206,32 @@ spi_write_1(struct dev_data *dd, u16 address, u8 *buf, u16 len)
 /* ======================================================================== */
 
 static inline int
+stop_legacy_acceleration(struct dev_data *dd)
+{
+	u16 value = 0xDEAD;
+	int ret;
+
+	ret = spi_write_123(dd, 0x0003, (u8 *)&value,
+				sizeof(value), false);
+	usleep_range(100, 120);
+
+	return ret;
+}
+
+static inline int
+start_legacy_acceleration(struct dev_data *dd)
+{
+	u16 value = 0xBEEF;
+	int ret;
+
+	ret = spi_write_123(dd, 0x0003, (u8 *)&value,
+				sizeof(value), false);
+	usleep_range(100, 120);
+
+	return ret;
+}
+
+static inline int
 spi_rw_2_poll_status(struct dev_data *dd)
 {
 	u16  status, i;
@@ -237,23 +267,23 @@ spi_read_2_page(struct dev_data *dd, u16 address, u8 *buf, u16 len)
 		return ret;
 
 	/* read data */
-	ret = spi_read_123(dd, 0x0003, (u8 *)buf, len, false);
+	ret = spi_read_123(dd, 0x0004, (u8 *)buf, len, false);
 	return ret;
 }
 
 static inline int
 spi_write_2_page(struct dev_data *dd, u16 address, u8 *buf, u16 len)
 {
-	u16  page[253];
+	u16  page[254];
 	int  ret;
 
 	page[0] = 0xFEDC;
 	page[1] = address << 1;
 	page[2] = len / sizeof(u16);
-	memcpy(page + 3, buf, len);
+	memcpy(page + 4, buf, len);
 
 	/* write data with write request header */
-	ret = spi_write_123(dd, 0x0000, (u8 *)page, len + 3 * sizeof(u16),
+	ret = spi_write_123(dd, 0x0000, (u8 *)page, len + 4 * sizeof(u16),
 			    false);
 	if (ret < 0)
 		return -1;
@@ -271,8 +301,12 @@ spi_rw_2(struct dev_data *dd, u16 address, u8 *buf, u16 len,
 
 	while (len > 0) {
 		rx_len = (len > rx_limit) ? rx_limit : len;
+		if (dd->legacy_acceleration)
+			stop_legacy_acceleration(dd);
 		ret = func(dd, address + (offset / sizeof(u16)), buf + offset,
 			   rx_len);
+		if (dd->legacy_acceleration)
+			start_legacy_acceleration(dd);
 		if (ret < 0)
 			return ret;
 		offset += rx_len;
@@ -333,6 +367,34 @@ set_chip_access_method(struct dev_data *dd, u8 method)
 
 	memcpy(&dd->chip, &chip_access_methods[method - 1], sizeof(dd->chip));
 	return 0;
+}
+
+/* ======================================================================== */
+
+static inline int
+stop_legacy_acceleration_canned(struct dev_data *dd)
+{
+	u16 value = dd->irq_param[18];
+	int ret;
+
+	ret = stop_legacy_acceleration(dd);
+	ret |= dd->chip.write(dd, dd->irq_param[16], (u8 *)&value,
+			      sizeof(value));
+	return ret;
+}
+
+static inline int
+start_legacy_acceleration_canned(struct dev_data *dd)
+{
+	u16 value = dd->irq_param[17];
+	int ret;
+
+	ret = stop_legacy_acceleration(dd);
+	ret |= dd->chip.write(dd, dd->irq_param[16], (u8 *)&value,
+			      sizeof(value));
+	ret |= start_legacy_acceleration(dd);
+
+	return ret;
 }
 
 /* ======================================================================== */
@@ -575,6 +637,8 @@ static void stop_scan_canned(struct dev_data *dd)
 {
 	u16  value;
 
+	if (dd->legacy_acceleration)
+		(void)stop_legacy_acceleration_canned(dd);
 	value = dd->irq_param[13];
 	(void)dd->chip.write(dd, dd->irq_param[12], (u8 *)&value,
 			     sizeof(value));
@@ -590,9 +654,13 @@ static void start_scan_canned(struct dev_data *dd)
 {
 	u16  value;
 
-	value = dd->irq_param[14];
-	(void)dd->chip.write(dd, dd->irq_param[12], (u8 *)&value,
-			     sizeof(value));
+	if (dd->legacy_acceleration) {
+		(void)start_legacy_acceleration_canned(dd);
+	} else {
+		value = dd->irq_param[14];
+		(void)dd->chip.write(dd, dd->irq_param[12], (u8 *)&value,
+				     sizeof(value));
+}
 }
 
 static int regulator_control(struct dev_data *dd, bool on)
@@ -765,6 +833,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 	struct dr_config_irq          *config_irq_msg;
 	struct dr_config_input        *config_input_msg;
 	struct dr_input               *input_msg;
+	struct dr_legacy_acceleration *legacy_acceleration_msg;
 	u8                            i;
 	int                           ret;
 
@@ -856,6 +925,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		}
 		memcpy(dd->irq_param, config_irq_msg->irq_param,
 		       config_irq_msg->irq_params * sizeof(dd->irq_param[0]));
+		dd->service_irq = service_irq;
 		ret = request_irq(dd->spi->irq, irq_handler,
 			(config_irq_msg->irq_edge == DR_IRQ_RISING_EDGE) ?
 				IRQF_TRIGGER_RISING : IRQF_TRIGGER_FALLING,
@@ -924,6 +994,8 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			dd->irq_registered = false;
 		}
 		stop_scan_canned(dd);
+		dd->legacy_acceleration = false;
+		dd->service_irq = service_irq;
 		return false;
 	case DR_INPUT:
 		input_msg = msg;
@@ -982,6 +1054,18 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			ERROR("firmware download failed (%d)", ret);
 		else
 			INFO("firmware download OK");
+		return false;
+	case DR_LEGACY_ACCELERATION:
+		legacy_acceleration_msg = msg;
+		if (legacy_acceleration_msg->enable) {
+			dd->service_irq = service_irq_legacy_acceleration;
+			start_legacy_acceleration(dd);
+			dd->legacy_acceleration = true;
+		} else {
+			stop_legacy_acceleration(dd);
+			dd->legacy_acceleration = false;
+			dd->service_irq = service_irq;
+		}
 		return false;
 	default:
 		ERROR("unexpected message %d", msg_id);
@@ -1103,6 +1187,75 @@ static irqreturn_t irq_handler(int irq, void *context)
 
 	wake_up_process(dd->thread);
 	return IRQ_HANDLED;
+}
+
+static void service_irq_legacy_acceleration(struct dev_data *dd)
+{
+	struct fu_async_data  *async_data;
+	u16                   len, rx_len, offset = 0;
+	u16                   buf[255], rx_limit = 250 * sizeof(u16);
+	int                   ret = 0;
+	int counter = 0;
+
+	async_data = nl_alloc_attr(dd->outgoing_skb->data, FU_ASYNC_DATA,
+				   sizeof(*async_data) + dd->irq_param[4] +
+				   2 * sizeof(u16));
+	if (async_data == NULL) {
+		ERROR("can't add data to async IRQ buffer");
+		return;
+	}
+	async_data->length = dd->irq_param[4] + 2 * sizeof(u16);
+	len = async_data->length;
+	async_data->address = 0;
+
+	while (len > 0) {
+		rx_len = (len > rx_limit) ? rx_limit : len;
+		ret = spi_read_123(dd, 0x0000, (u8 *)&buf,
+					rx_len + 4 * sizeof(u16), false);
+		if (ret < 0)
+			return;
+
+		if (rx_limit == rx_len)
+			usleep_range(200, 300);
+
+		if (buf[0] == 0x6060) {
+			ERROR("data not ready");
+			start_legacy_acceleration_canned(dd);
+			ret = -EBUSY;
+			break;
+		} else if (buf[0] == 0x8070) {
+			if (buf[1] == dd->irq_param[1] ||
+					buf[1] == dd->irq_param[2])
+				async_data->address = buf[1];
+
+			if (async_data->address +
+					offset / sizeof(u16) != buf[1]) {
+				ERROR("sequence number incorrect");
+				start_legacy_acceleration_canned(dd);
+				ret = -EBUSY;
+				break;
+			}
+		}
+		counter++;
+		memcpy(async_data->data + offset, buf + 4, rx_len);
+		offset += rx_len;
+		len -= rx_len;
+	}
+
+	if (ret < 0) {
+		ERROR("can't read IRQ buffer (%d)", ret);
+	} else {
+		(void)skb_put(dd->outgoing_skb,
+			      NL_SIZE(dd->outgoing_skb->data));
+		ret = genlmsg_multicast(dd->outgoing_skb, 0,
+					dd->nl_mc_groups[MC_FUSION].id,
+					GFP_KERNEL);
+		if (ret < 0)
+			ERROR("can't send IRQ buffer %d", ret);
+		ret = nl_msg_new(dd, MC_FUSION);
+		if (ret < 0)
+			ERROR("could not allocate outgoing skb (%d)", ret);
+	}
 }
 
 static void service_irq(struct dev_data *dd)
@@ -1302,7 +1455,7 @@ static int processing_thread(void *arg)
 
 		/* priority 3: service interrupt */
 		if (dd->irq_registered && pdata->irq(pdata) == 0)
-			service_irq(dd);
+			dd->service_irq(dd);
 
 		/* nothing more to do; sleep */
 		schedule();
