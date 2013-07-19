@@ -29,6 +29,8 @@
 #include <linux/platform_device.h>
 #include <linux/pwm.h>
 #include <linux/slab.h>
+#include <linux/of_address.h>
+#include <mach/iomap.h>
 
 #define PWM_ENABLE	(1 << 31)
 #define PWM_DUTY_WIDTH	8
@@ -44,6 +46,7 @@ struct pwm_device {
 	struct clk		*clk;
 
 	int			clk_enb;
+	struct resource		*base_res;
 	void __iomem		*mmio_base;
 
 	unsigned int		in_use;
@@ -183,6 +186,9 @@ static int tegra_pwm_probe(struct platform_device *pdev)
 {
 	struct pwm_device *pwm;
 	struct resource *r;
+	struct resource dt_res;
+	struct device_node *np = pdev->dev.of_node;
+	int ret = 0;
 
 	pwm = devm_kzalloc(&pdev->dev, sizeof(*pwm), GFP_KERNEL);
 	if (!pwm) {
@@ -196,16 +202,43 @@ static int tegra_pwm_probe(struct platform_device *pdev)
 
 	pwm->clk_enb = 0;
 	pwm->in_use = 0;
-	pwm->id = pdev->id;
 	pwm->pdev = pdev;
 
-	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!r) {
-		dev_err(&pdev->dev, "no memory resources defined\n");
-		return -ENODEV;
+	if (np) {
+		ret = of_address_to_resource(np, 0, &dt_res);
+		if (ret) {
+			dev_err(&pdev->dev, "no memory resources defined\n");
+			return -ENODEV;
+		} else {
+			r = &dt_res;
+			if (!r) {
+				dev_err(&pdev->dev, "no mem res defined\n");
+				return -ENODEV;
+			}
+			if (dt_res.start == TEGRA_PWFM0_BASE)
+				pwm->id = 0;
+			else if (dt_res.start == TEGRA_PWFM1_BASE)
+				pwm->id = 1;
+			else if (dt_res.start == TEGRA_PWFM2_BASE)
+				pwm->id = 2;
+			else if (dt_res.start == TEGRA_PWFM3_BASE)
+				pwm->id = 3;
+			else
+				return -EINVAL;
+		}
+	} else {
+		pwm->id = pdev->id;
+		r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!r) {
+			dev_err(&pdev->dev, "no memory resources defined\n");
+			return -ENODEV;
+		}
 	}
 
-	pwm->mmio_base = devm_request_and_ioremap(&pdev->dev, r);
+	pwm->base_res = request_mem_region(r->start,
+		resource_size(r), pdev->name);
+	pwm->mmio_base = ioremap(r->start, resource_size(r));
+
 	if (!pwm->mmio_base) {
 		dev_err(&pdev->dev, "failed to request/ioremap memory\n");
 		return -EADDRNOTAVAIL;
@@ -225,13 +258,10 @@ static int tegra_pwm_probe(struct platform_device *pdev)
 static int __devexit tegra_pwm_remove(struct platform_device *pdev)
 {
 	struct pwm_device *pwm = platform_get_drvdata(pdev);
-	struct resource *r;
 	int rc;
 
 	if (WARN_ON(!pwm))
 		return -ENODEV;
-
-	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
 	mutex_lock(&pwm_lock);
 	if (pwm->in_use) {
@@ -248,9 +278,19 @@ static int __devexit tegra_pwm_remove(struct platform_device *pdev)
 	return rc;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id tegra_pwfm_of_match[] __devinitdata = {
+	{.compatible = "nvidia,tegra114-pwfm", },
+	{ },
+};
+#endif
+
 static struct platform_driver tegra_pwm_driver = {
 	.driver		= {
 		.name	= "tegra_pwm",
+#ifdef CONFIG_OF
+		.of_match_table = tegra_pwfm_of_match,
+#endif
 	},
 	.probe		= tegra_pwm_probe,
 	.remove		= __devexit_p(tegra_pwm_remove),
