@@ -148,4 +148,35 @@
 		reg = <0x0 0x0>;
 		status = "disabled";
 	};
+
+	pwfm@0x7000a000 {
+		compatible = "nvidia,tegra114-pwfm";
+		reg = <0x7000a000 0x4>;
+		status = "disabled";
+	};
+
+	pwfm@0x7000a010 {
+		compatible = "nvidia,tegra114-pwfm";
+		reg = <0x7000a010 0x4>;
+		status = "disabled";
+	};
+
+	pwfm@0x7000a020 {
+		compatible = "nvidia,tegra114-pwfm";
+		reg = <0x7000a020 0x4>;
+		status = "disabled";
+	};
+
+	pwfm@0x7000a030 {
+		compatible = "nvidia,tegra114-pwfm";
+		reg = <0x7000a030 0x4>;
+		status = "disabled";
+	};
+
+	pwm-bl {
+		compatible = "nvidia,tegra114-pwm-bl";
+		reg = <0x0 0x0>;
+		status = "disabled";
+	};
+
 };
