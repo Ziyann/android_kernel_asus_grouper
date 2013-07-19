@@ -1189,21 +1189,17 @@ static struct ov5693_platform_data pluto_ov5693_pdata = {
 
 static int pluto_ad5823_power_on(struct ad5823_platform_data *pdata)
 {
-	int err = 0;
-
 	pr_info("%s\n", __func__);
-	err = gpio_request_one(pdata->gpio, GPIOF_OUT_INIT_LOW, "af_pwdn");
-
 	gpio_set_value_cansleep(pdata->gpio, 1);
 
-	return err;
+	return 0;
 }
 
 static int pluto_ad5823_power_off(struct ad5823_platform_data *pdata)
 {
 	pr_info("%s\n", __func__);
 	gpio_set_value_cansleep(pdata->gpio, 0);
-	gpio_free(pdata->gpio);
+
 	return 0;
 }
 
