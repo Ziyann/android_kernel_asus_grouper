@@ -506,6 +506,7 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 
 	mutex_lock(&fb_info->info->lock);
 	fb_destroy_modedb(fb_info->info->monspecs.modedb);
+	fb_info->info->monspecs.modedb = NULL; /* avoid double free */
 
 	fb_destroy_modelist(&fb_info->info->modelist);
 
