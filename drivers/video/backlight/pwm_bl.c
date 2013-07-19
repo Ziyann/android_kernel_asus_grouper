@@ -137,18 +137,68 @@ static const struct backlight_ops pwm_backlight_ops = {
 	.check_fb	= pwm_backlight_check_fb,
 };
 
+typedef struct device *(*tegra_pwm_bl_devdata_to_dc_CB)(struct device_node *);
+tegra_pwm_bl_devdata_to_dc_CB tegra_pwm_bl_devdata_to_pwm_bl;
+
+void pwm_bl_devdata_set_callback(struct device*(*func)
+	(struct device_node *))
+{
+	if (func != NULL)
+		tegra_pwm_bl_devdata_to_pwm_bl = func;
+}
+EXPORT_SYMBOL(pwm_bl_devdata_set_callback);
+
+struct device *pwm_bl_devdata_set_callback_run(struct device_node *dn)
+{
+	struct device *rdev = NULL;
+
+	if (tegra_pwm_bl_devdata_to_pwm_bl)
+		rdev = tegra_pwm_bl_devdata_to_pwm_bl(dn);
+
+	return rdev;
+}
+EXPORT_SYMBOL(pwm_bl_devdata_set_callback_run);
+
 static int pwm_backlight_probe(struct platform_device *pdev)
 {
 	struct backlight_properties props;
-	struct platform_pwm_backlight_data *data = pdev->dev.platform_data;
+	struct platform_pwm_backlight_data *data;
+	struct device_node *np = pdev->dev.of_node;
+	struct of_tegra_pwm_bl_devdata *pwm_bl_dev_data = NULL;
+	struct device_node *pnode = NULL;
+	struct device *pwm_bl_dev = NULL;
 	struct backlight_device *bl;
 	struct pwm_bl_data *pb;
 	struct edp_manager *battery_manager = NULL;
 	int ret;
 
-	if (!data) {
-		dev_err(&pdev->dev, "failed to find platform data\n");
-		return -EINVAL;
+	if (np) {
+		data = of_pwm_bl_parse_platform_data(pdev);
+		if (!data) {
+			dev_err(&pdev->dev, "failed to find platform data\n");
+			return -EINVAL;
+		}
+		pnode = of_parse_phandle(np, "nvidia,panel-pwm-bl", 0);
+		if (pnode)
+			pwm_bl_dev = pwm_bl_devdata_set_callback_run(pnode);
+		if (pwm_bl_dev) {
+			pwm_bl_dev_data = (struct of_tegra_pwm_bl_devdata *)
+				dev_get_drvdata(pwm_bl_dev);
+			if (pwm_bl_dev_data) {
+				data->init = pwm_bl_dev_data->init;
+				data->notify = pwm_bl_dev_data->notify;
+				data->notify_after =
+					pwm_bl_dev_data->notify_after;
+				data->exit = pwm_bl_dev_data->exit;
+				data->check_fb = pwm_bl_dev_data->check_fb;
+			}
+		}
+	} else {
+		data = pdev->dev.platform_data;
+		if (!data) {
+			dev_err(&pdev->dev, "failed to find platform data\n");
+			return -EINVAL;
+		}
 	}
 
 	if (data->init) {
@@ -306,12 +356,22 @@ static SIMPLE_DEV_PM_OPS(pwm_backlight_pm_ops, pwm_backlight_suspend,
 
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id tegra_pwm_bl_of_match[] __devinitdata = {
+	{.compatible = "nvidia,tegra114-pwm-bl", },
+	{ },
+};
+#endif
+
 static struct platform_driver pwm_backlight_driver = {
 	.driver		= {
 		.name	= "pwm-backlight",
 		.owner	= THIS_MODULE,
 #ifdef CONFIG_PM
 		.pm	= &pwm_backlight_pm_ops,
+#endif
+#ifdef CONFIG_OF
+		.of_match_table = tegra_pwm_bl_of_match,
 #endif
 	},
 	.probe		= pwm_backlight_probe,

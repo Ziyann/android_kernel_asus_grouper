@@ -20,6 +20,7 @@
 #define __LINUX_PWM_BACKLIGHT_H
 
 #include <linux/backlight.h>
+#include <linux/platform_device.h>
 
 enum tegra_pwm_bl_edp_states {
 	TEGRA_PWM_BL_EDP_NEG_3,
@@ -33,6 +34,11 @@ enum tegra_pwm_bl_edp_states {
 
 struct platform_pwm_backlight_data {
 	int pwm_id;
+	/*
+	 * different brightness can be set
+	 * between charging mode and normal mode
+	 */
+	bool is_charged;
 	unsigned int max_brightness;
 	unsigned int dft_brightness;
 	unsigned int lth_brightness;
@@ -47,4 +53,17 @@ struct platform_pwm_backlight_data {
 	int (*check_fb)(struct device *dev, struct fb_info *info);
 };
 
+struct of_tegra_pwm_bl_devdata {
+	int (*init)(struct device *dev);
+	int (*notify)(struct device *dev, int brightness);
+	void (*notify_after)(struct device *dev, int brightness);
+	void (*exit)(struct device *dev);
+	int (*check_fb)(struct device *dev, struct fb_info *info);
+};
+
+struct platform_pwm_backlight_data
+	*of_pwm_bl_parse_platform_data(struct platform_device *ndev);
+
+void pwm_bl_devdata_set_callback(struct device*(*func)
+	(struct device_node *));
 #endif
