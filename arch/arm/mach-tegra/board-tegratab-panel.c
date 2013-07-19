@@ -398,9 +398,11 @@ static void tegratab_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
 
+	bool is_dt = of_have_populated_dt();
+
 	panel = &dsi_lgd_wxga_7_0;
 
-	if (panel) {
+	if (panel && !is_dt) {
 		if (panel->init_sd_settings)
 			panel->init_sd_settings(&sd_settings);
 
