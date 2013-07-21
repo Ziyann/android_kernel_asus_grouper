@@ -1033,8 +1033,8 @@ static struct core_dvfs_cap_table tegra3_core_cap_table[] = {
 	{ .cap_name = "cap.emc" },
 };
 
-static struct core_bus_cap_table tegra3_bus_cap_table[] = {
-	{ .cap_name = "cap.profile.cbus",
+static struct core_bus_limit_table tegra3_bus_cap_table[] = {
+	{ .limit_clk_name = "cap.profile.cbus",
 	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
 	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
 	},
