@@ -487,6 +487,7 @@ static int macallan_as3648_power_off(struct as364x_power_rail *pw)
 static unsigned as364x_estates[] = {3500, 2375, 560, 456, 0};
 static struct as364x_platform_data macallan_as3648_pdata = {
 	.config		= {
+		.led_mask = 3,
 		.max_total_current_mA = 1000,
 		.max_peak_current_mA = 600,
 		.max_torch_current_mA = 150,
@@ -500,7 +501,6 @@ static struct as364x_platform_data macallan_as3648_pdata = {
 	.dev_name	= "torch",
 	.type		= AS3648,
 	.gpio_strobe	= CAM_FLASH_STROBE,
-	.led_mask	= 3,
 	.edpc_config	= {
 		.states		= as364x_estates,
 		.num_states	= ARRAY_SIZE(as364x_estates),
