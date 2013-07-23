@@ -998,6 +998,20 @@ static struct psy_depletion_rbat_lut pluto_rbat_lut[] = {
 	{   0, 150000 }
 };
 
+static struct psy_depletion_ocv_lut pluto_ocv_lut[] = {
+	{ 100, 4200000 },
+	{  90, 4151388 },
+	{  80, 4064953 },
+	{  70, 3990914 },
+	{  60, 3916230 },
+	{  50, 3863778 },
+	{  40, 3807535 },
+	{  30, 3781554 },
+	{  20, 3761117 },
+	{  10, 3663381 },
+	{   0, 3514236 }
+};
+
 static struct psy_depletion_platform_data pluto_psydepl_pdata = {
 	.power_supply = "max170xx_battery",
 	.states = pluto_psydepl_states,
@@ -1008,6 +1022,7 @@ static struct psy_depletion_platform_data pluto_psydepl_pdata = {
 	.vcharge = 4200000,
 	.ibat_nom = 3000,
 	.ibat_lut = pluto_ibat_lut,
+	.ocv_lut = pluto_ocv_lut,
 	.rbat_lut = pluto_rbat_lut
 };
 
