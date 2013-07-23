@@ -86,7 +86,8 @@
 #define MPU_GYRO_ADDR                 0x69
 #define MPU_GYRO_BUS_NUM              0
 #define MPU_GYRO_ORIENTATION_E1569    MTMAT_TOP_CCW_180
-#define MPU_GYRO_ORIENTATION          MTMAT_TOP_CCW_0
+#define MPU_GYRO_ORIENTATION_P1640_A01 MTMAT_TOP_CCW_0
+#define MPU_GYRO_ORIENTATION          MTMAT_TOP_CCW_90
 #define MPU_COMPASS_NAME              "ak8975"
 #define MPU_COMPASS_IRQ_GPIO          0
 #define MPU_COMPASS_ADDR              0x0D

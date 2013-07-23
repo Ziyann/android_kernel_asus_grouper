@@ -435,6 +435,15 @@ static struct mpu_platform_data mpu6050_gyro_data_e1569 = {
 			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
 
+static struct mpu_platform_data mpu6050_gyro_data_p1640_a01 = {
+	.int_config	= 0x10,
+	.level_shifter	= 0,
+	/* Located in board_[platformname].h */
+	.orientation	= MPU_GYRO_ORIENTATION_P1640_A01,
+	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
+			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
+};
+
 static struct mpu_platform_data mpu6050_gyro_data = {
 	.int_config	= 0x10,
 	.level_shifter	= 0,
@@ -489,6 +498,11 @@ static void mpuirq_init(void)
 	if (board_info.board_id == BOARD_E1569)
 		inv_mpu6050_i2c2_board_info[0].platform_data =
 			&mpu6050_gyro_data_e1569;
+	else if ((board_info.board_id == BOARD_P1640) &&
+			(board_info.fab <= BOARD_FAB_A01))
+		inv_mpu6050_i2c2_board_info[0].platform_data =
+			&mpu6050_gyro_data_p1640_a01;
+
 	i2c_register_board_info(gyro_bus_num, inv_mpu6050_i2c2_board_info,
 		ARRAY_SIZE(inv_mpu6050_i2c2_board_info));
 }
