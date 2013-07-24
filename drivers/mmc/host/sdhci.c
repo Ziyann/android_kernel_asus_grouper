@@ -1255,6 +1255,10 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	sdhci_runtime_pm_get(host);
 
+	/* if setting the tap then wait before starting i/o */
+	if (host->ops->retune_mutex_lock)
+		host->ops->retune_mutex_lock(host);
+
 	spin_lock_irqsave(&host->lock, flags);
 
 	WARN_ON(host->mrq != NULL);
@@ -2185,6 +2189,9 @@ static void sdhci_tasklet_finish(unsigned long param)
 
 	mmiowb();
 	spin_unlock_irqrestore(&host->lock, flags);
+
+	if (host->ops->retune_mutex_unlock)
+		host->ops->retune_mutex_unlock(host);
 
 	mmc_request_done(host->mmc, mrq);
 	sdhci_runtime_pm_put(host);
