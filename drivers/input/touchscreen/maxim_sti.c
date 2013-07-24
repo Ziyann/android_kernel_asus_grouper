@@ -35,7 +35,9 @@
 * Custom features                                                            *
 \****************************************************************************/
 
+#define INPUT_DEVICES         1
 #define INPUT_ENABLE_DISABLE  1
+#define SUSPEND_POWER_OFF     1
 #define NV_ENABLE_CPU_BOOST   1
 
 #ifdef NV_ENABLE_CPU_BOOST
@@ -67,7 +69,7 @@ struct dev_data {
 	bool                         irq_registered;
 	u16                          irq_param[MAX_IRQ_PARAMS];
 	char                         input_phys[128];
-	struct input_dev             *input_dev;
+	struct input_dev             *input_dev[INPUT_DEVICES];
 	struct completion            suspend_resume;
 	struct chip_access_method    chip;
 	struct spi_device            *spi;
@@ -81,10 +83,10 @@ struct dev_data {
 	struct list_head             dev_list;
 	struct regulator             *reg_avdd;
 	struct regulator             *reg_dvdd;
+	void                         (*service_irq)(struct dev_data *dd);
 #ifdef NV_ENABLE_CPU_BOOST
 	unsigned long                last_irq_jiffies;
 #endif
-	void                         (*service_irq)(struct dev_data *dd);
 };
 
 static struct list_head  dev_list;
@@ -208,24 +210,34 @@ spi_write_1(struct dev_data *dd, u16 address, u8 *buf, u16 len)
 static inline int
 stop_legacy_acceleration(struct dev_data *dd)
 {
-	u16 value = 0xDEAD;
-	int ret;
+	u16  value = 0xDEAD, status, i;
+	int  ret;
 
 	ret = spi_write_123(dd, 0x0003, (u8 *)&value,
 				sizeof(value), false);
+	if (ret < 0)
+		return -1;
 	usleep_range(100, 120);
 
-	return ret;
+	for (i = 0; i < 200; i++) {
+		ret = spi_read_123(dd, 0x0003, (u8 *)&status, sizeof(status),
+				   false);
+		if (ret < 0)
+			return -1;
+		if (status == 0xABCD)
+			return 0;
+	}
+
+	return -2;
 }
 
 static inline int
 start_legacy_acceleration(struct dev_data *dd)
 {
-	u16 value = 0xBEEF;
-	int ret;
+	u16  value = 0xBEEF;
+	int  ret;
 
-	ret = spi_write_123(dd, 0x0003, (u8 *)&value,
-				sizeof(value), false);
+	ret = spi_write_123(dd, 0x0003, (u8 *)&value, sizeof(value), false);
 	usleep_range(100, 120);
 
 	return ret;
@@ -374,27 +386,19 @@ set_chip_access_method(struct dev_data *dd, u8 method)
 static inline int
 stop_legacy_acceleration_canned(struct dev_data *dd)
 {
-	u16 value = dd->irq_param[18];
-	int ret;
+	u16  value = dd->irq_param[18];
 
-	ret = stop_legacy_acceleration(dd);
-	ret |= dd->chip.write(dd, dd->irq_param[16], (u8 *)&value,
+	return dd->chip.write(dd, dd->irq_param[16], (u8 *)&value,
 			      sizeof(value));
-	return ret;
 }
 
 static inline int
 start_legacy_acceleration_canned(struct dev_data *dd)
 {
-	u16 value = dd->irq_param[17];
-	int ret;
+	u16  value = dd->irq_param[17];
 
-	ret = stop_legacy_acceleration(dd);
-	ret |= dd->chip.write(dd, dd->irq_param[16], (u8 *)&value,
+	return dd->chip.write(dd, dd->irq_param[16], (u8 *)&value,
 			      sizeof(value));
-	ret |= start_legacy_acceleration(dd);
-
-	return ret;
 }
 
 /* ======================================================================== */
@@ -738,12 +742,14 @@ static int suspend(struct device *dev)
 	wake_up_process(dd->thread);
 	wait_for_completion(&dd->suspend_resume);
 
+#if SUSPEND_POWER_OFF
 	/* reset-low and power-down */
 	pdata->reset(pdata, 0);
 	usleep_range(100, 120);
 	ret = regulator_control(dd, false);
 	if (ret < 0)
 		return ret;
+#endif
 
 	return 0;
 }
@@ -757,6 +763,7 @@ static int resume(struct device *dev)
 	if (!dd->suspend_in_progress)
 		return 0;
 
+#if SUSPEND_POWER_OFF
 	/* power-up and reset-high */
 	pdata->reset(pdata, 0);
 	ret = regulator_control(dd, true);
@@ -765,6 +772,7 @@ static int resume(struct device *dev)
 
 	usleep_range(300, 400);
 	pdata->reset(pdata, 1);
+#endif
 
 	dd->resume_in_progress = true;
 	wake_up_process(dd->thread);
@@ -834,7 +842,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 	struct dr_config_input        *config_input_msg;
 	struct dr_input               *input_msg;
 	struct dr_legacy_acceleration *legacy_acceleration_msg;
-	u8                            i;
+	u8                            i, inp;
 	int                           ret;
 
 	switch (msg_id) {
@@ -939,56 +947,68 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		return false;
 	case DR_CONFIG_INPUT:
 		config_input_msg = msg;
-		dd->input_dev = input_allocate_device();
-		if (dd->input_dev == NULL) {
-			ERROR("failed to allocate input device");
-		} else {
+		for (i = 0; i < INPUT_DEVICES; i++) {
+			dd->input_dev[i] = input_allocate_device();
+			if (dd->input_dev[i] == NULL) {
+				ERROR("failed to allocate input device");
+				continue;
+			}
 			snprintf(dd->input_phys, sizeof(dd->input_phys),
-				 "%s/input0", dev_name(&dd->spi->dev));
-			dd->input_dev->name = pdata->nl_family;
-			dd->input_dev->phys = dd->input_phys;
-			dd->input_dev->id.bustype = BUS_SPI;
+				 "%s/input%d", dev_name(&dd->spi->dev), i);
+			dd->input_dev[i]->name = pdata->nl_family;
+			dd->input_dev[i]->phys = dd->input_phys;
+			dd->input_dev[i]->id.bustype = BUS_SPI;
 #if defined(CONFIG_PM_SLEEP) && INPUT_ENABLE_DISABLE
-			dd->input_dev->enable = input_enable;
-			dd->input_dev->disable = input_disable;
-			dd->input_dev->enabled = true;
-			input_set_drvdata(dd->input_dev, dd);
+			if (i == 0) {
+				dd->input_dev[i]->enable = input_enable;
+				dd->input_dev[i]->disable = input_disable;
+				dd->input_dev[i]->enabled = true;
+				input_set_drvdata(dd->input_dev[i], dd);
+			}
 #endif
-			__set_bit(EV_SYN, dd->input_dev->evbit);
-			__set_bit(EV_ABS, dd->input_dev->evbit);
-			__set_bit(EV_KEY, dd->input_dev->evbit);
-			__set_bit(BTN_TOOL_RUBBER, dd->input_dev->keybit);
-			input_set_abs_params(dd->input_dev, ABS_MT_POSITION_X,
-					     0, config_input_msg->x_range, 0,
-					     0);
-			input_set_abs_params(dd->input_dev, ABS_MT_POSITION_Y,
-					     0, config_input_msg->y_range, 0,
-					     0);
-			input_set_abs_params(dd->input_dev, ABS_MT_PRESSURE,
-					     0, 0xFF, 0, 0);
-			input_set_abs_params(dd->input_dev,
+#ifdef NV_ENABLE_CPU_BOOST
+			if (i == 0)
+				input_set_capability(dd->input_dev[i], EV_MSC,
+						     MSC_ACTIVITY);
+#endif
+			__set_bit(EV_SYN, dd->input_dev[i]->evbit);
+			__set_bit(EV_ABS, dd->input_dev[i]->evbit);
+			if (i == (INPUT_DEVICES - 1)) {
+				__set_bit(EV_KEY, dd->input_dev[i]->evbit);
+				__set_bit(BTN_TOOL_RUBBER,
+					  dd->input_dev[i]->keybit);
+			}
+			input_set_abs_params(dd->input_dev[i],
+					     ABS_MT_POSITION_X, 0,
+					     config_input_msg->x_range, 0, 0);
+			input_set_abs_params(dd->input_dev[i],
+					     ABS_MT_POSITION_Y, 0,
+					     config_input_msg->y_range, 0, 0);
+			input_set_abs_params(dd->input_dev[i],
+					     ABS_MT_PRESSURE, 0, 0xFF, 0, 0);
+			input_set_abs_params(dd->input_dev[i],
 					     ABS_MT_TRACKING_ID, 0,
 					     MAX_INPUT_EVENTS, 0, 0);
-			input_set_abs_params(dd->input_dev, ABS_MT_TOOL_TYPE,
-					     0, MT_TOOL_MAX, 0, 0);
+			input_set_abs_params(dd->input_dev[i],
+					     ABS_MT_TOOL_TYPE, 0, MT_TOOL_MAX,
+					     0, 0);
 
-#ifdef NV_ENABLE_CPU_BOOST
-			input_set_capability(dd->input_dev, EV_MSC, MSC_ACTIVITY);
-#endif
-
-			ret = input_register_device(dd->input_dev);
+			ret = input_register_device(dd->input_dev[i]);
 			if (ret < 0) {
-				input_free_device(dd->input_dev);
-				dd->input_dev = NULL;
+				input_free_device(dd->input_dev[i]);
+				dd->input_dev[i] = NULL;
 				ERROR("failed to register input device");
 			}
 		}
 		return false;
 	case DR_DECONFIG:
-		if (dd->input_dev != NULL) {
-			input_unregister_device(dd->input_dev);
-			dd->input_dev = NULL;
+		for (i = 0; i < INPUT_DEVICES; i++) {
+			if (dd->input_dev[i] == NULL)
+				continue;
+			input_unregister_device(dd->input_dev[i]);
+			dd->input_dev[i] = NULL;
 		}
+		dd->eraser_active = false;
 		if (dd->irq_registered) {
 			free_irq(dd->spi->irq, dd);
 			dd->irq_registered = false;
@@ -1001,28 +1021,33 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		input_msg = msg;
 		if (input_msg->events == 0) {
 			if (dd->eraser_active) {
-				input_report_key(dd->input_dev,
+				input_report_key(
+					dd->input_dev[INPUT_DEVICES - 1],
 					BTN_TOOL_RUBBER, 0);
 				dd->eraser_active = false;
 			}
-
-			input_mt_sync(dd->input_dev);
-			input_sync(dd->input_dev);
+			for (i = 0; i < INPUT_DEVICES; i++) {
+				input_mt_sync(dd->input_dev[i]);
+				input_sync(dd->input_dev[i]);
+			}
 		} else {
 			for (i = 0; i < input_msg->events; i++) {
 				switch (input_msg->event[i].tool_type) {
 				case DR_INPUT_FINGER:
-					input_report_abs(dd->input_dev,
+					inp = 0;
+					input_report_abs(dd->input_dev[inp],
 							 ABS_MT_TOOL_TYPE,
 							 MT_TOOL_FINGER);
 					break;
 				case DR_INPUT_STYLUS:
-					input_report_abs(dd->input_dev,
+					inp = INPUT_DEVICES - 1;
+					input_report_abs(dd->input_dev[inp],
 							 ABS_MT_TOOL_TYPE,
 							 MT_TOOL_PEN);
 					break;
 				case DR_INPUT_ERASER:
-					input_report_key(dd->input_dev,
+					inp = INPUT_DEVICES - 1;
+					input_report_key(dd->input_dev[inp],
 						BTN_TOOL_RUBBER, 1);
 					dd->eraser_active = true;
 					break;
@@ -1031,21 +1056,22 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 					      input_msg->event[i].tool_type);
 					break;
 				}
-				input_report_abs(dd->input_dev,
+				input_report_abs(dd->input_dev[inp],
 						 ABS_MT_TRACKING_ID,
 						 input_msg->event[i].id);
-				input_report_abs(dd->input_dev,
+				input_report_abs(dd->input_dev[inp],
 						 ABS_MT_POSITION_X,
 						 input_msg->event[i].x);
-				input_report_abs(dd->input_dev,
+				input_report_abs(dd->input_dev[inp],
 						 ABS_MT_POSITION_Y,
 						 input_msg->event[i].y);
-				input_report_abs(dd->input_dev,
+				input_report_abs(dd->input_dev[inp],
 						 ABS_MT_PRESSURE,
 						 input_msg->event[i].z);
-				input_mt_sync(dd->input_dev);
+				input_mt_sync(dd->input_dev[inp]);
 			}
-			input_sync(dd->input_dev);
+			for (i = 0; i < INPUT_DEVICES; i++)
+				input_sync(dd->input_dev[i]);
 		}
 		return false;
 	case DR_LEGACY_FWDL:
@@ -1181,7 +1207,7 @@ static irqreturn_t irq_handler(int irq, void *context)
 
 #ifdef NV_ENABLE_CPU_BOOST
 	if (time_after(jiffies, dd->last_irq_jiffies + INPUT_IDLE_PERIOD))
-		input_event(dd->input_dev, EV_MSC, MSC_ACTIVITY, 1);
+		input_event(dd->input_dev[0], EV_MSC, MSC_ACTIVITY, 1);
 	dd->last_irq_jiffies = jiffies;
 #endif
 
@@ -1194,8 +1220,7 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 	struct fu_async_data  *async_data;
 	u16                   len, rx_len, offset = 0;
 	u16                   buf[255], rx_limit = 250 * sizeof(u16);
-	int                   ret = 0;
-	int counter = 0;
+	int                   ret = 0, counter = 0;
 
 	async_data = nl_alloc_attr(dd->outgoing_skb->data, FU_ASYNC_DATA,
 				   sizeof(*async_data) + dd->irq_param[4] +
@@ -1213,7 +1238,15 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 		ret = spi_read_123(dd, 0x0000, (u8 *)&buf,
 					rx_len + 4 * sizeof(u16), false);
 		if (ret < 0)
+			break;
+
+		if (buf[3] == 0xBABE) {
+			dd->legacy_acceleration = false;
+			dd->service_irq = service_irq;
+			nl_msg_init(dd->outgoing_skb->data, dd->nl_family.id,
+				    dd->nl_seq - 1, MC_FUSION);
 			return;
+		}
 
 		if (rx_limit == rx_len)
 			usleep_range(200, 300);
@@ -1241,17 +1274,22 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 		offset += rx_len;
 		len -= rx_len;
 	}
+	async_data->status = *(buf + rx_len / sizeof(u16) + 2);
 
 	if (ret < 0) {
 		ERROR("can't read IRQ buffer (%d)", ret);
+		nl_msg_init(dd->outgoing_skb->data, dd->nl_family.id,
+			    dd->nl_seq - 1, MC_FUSION);
 	} else {
 		(void)skb_put(dd->outgoing_skb,
 			      NL_SIZE(dd->outgoing_skb->data));
 		ret = genlmsg_multicast(dd->outgoing_skb, 0,
 					dd->nl_mc_groups[MC_FUSION].id,
 					GFP_KERNEL);
-		if (ret < 0)
+		if (ret < 0) {
 			ERROR("can't send IRQ buffer %d", ret);
+			msleep(300);
+		}
 		ret = nl_msg_new(dd, MC_FUSION);
 		if (ret < 0)
 			ERROR("could not allocate outgoing skb (%d)", ret);
@@ -1324,21 +1362,23 @@ static void service_irq(struct dev_data *dd)
 		return;
 	}
 
+	async_data->status = status;
 	if (read_buf[0]) {
 		async_data->address = address[0];
 		async_data->length = dd->irq_param[4];
-		async_data->status = status;
 		ret = dd->chip.read(dd, address[0], async_data->data,
 				    dd->irq_param[4]);
 	}
 
-	if (read_buf[1]) {
+	if (read_buf[1] && ret == 0) {
 		async_data = nl_alloc_attr(dd->outgoing_skb->data,
 					   FU_ASYNC_DATA,
 					   sizeof(*async_data) +
 						dd->irq_param[4]);
 		if (async_data == NULL) {
 			ERROR("can't add data to async IRQ buffer 2");
+			nl_msg_init(dd->outgoing_skb->data, dd->nl_family.id,
+				    dd->nl_seq - 1, MC_FUSION);
 			return;
 		}
 		async_data->address = address[1];
@@ -1355,14 +1395,18 @@ static void service_irq(struct dev_data *dd)
 
 	if (ret < 0) {
 		ERROR("can't read IRQ buffer (%d)", ret);
+		nl_msg_init(dd->outgoing_skb->data, dd->nl_family.id,
+			    dd->nl_seq - 1, MC_FUSION);
 	} else {
 		(void)skb_put(dd->outgoing_skb,
 			      NL_SIZE(dd->outgoing_skb->data));
 		ret = genlmsg_multicast(dd->outgoing_skb, 0,
 					dd->nl_mc_groups[MC_FUSION].id,
 					GFP_KERNEL);
-		if (ret < 0)
+		if (ret < 0) {
 			ERROR("can't send IRQ buffer %d", ret);
+			msleep(300);
+		}
 		ret = nl_msg_new(dd, MC_FUSION);
 		if (ret < 0)
 			ERROR("could not allocate outgoing skb (%d)", ret);
@@ -1429,7 +1473,9 @@ static int processing_thread(void *arg)
 				set_current_state(TASK_INTERRUPTIBLE);
 				schedule();
 			}
+#if !SUSPEND_POWER_OFF
 			start_scan_canned(dd);
+#endif
 			if (dd->irq_registered)
 				enable_irq(dd->spi->irq);
 			dd->resume_in_progress = false;
@@ -1615,6 +1661,7 @@ static int remove(struct spi_device *spi)
 	struct maxim_sti_pdata  *pdata = spi->dev.platform_data;
 	struct dev_data         *dd = spi_get_drvdata(spi);
 	unsigned long           flags;
+	u8                      i;
 
 	/* BEWARE: tear-down sequence below is carefully staged:            */
 	/* 1) first the feeder of Netlink messages to the processing thread */
@@ -1631,8 +1678,9 @@ static int remove(struct spi_device *spi)
 	kfree_skb(dd->outgoing_skb);
 	skb_queue_purge(&dd->incoming_skb_queue);
 
-	if (dd->input_dev)
-		input_unregister_device(dd->input_dev);
+	for (i = 0; i < INPUT_DEVICES; i++)
+		if (dd->input_dev[i])
+			input_unregister_device(dd->input_dev[i]);
 
 	if (dd->irq_registered)
 		free_irq(dd->spi->irq, dd);
