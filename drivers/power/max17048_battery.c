@@ -44,7 +44,8 @@
 #define MAX17048_DELAY      (30*HZ)
 #define MAX17048_BATTERY_FULL	100
 #define MAX17048_BATTERY_LOW	15
-#define MAX17048_VERSION_NO	0x11
+#define MAX17048_VERSION_NO_11	0x11
+#define MAX17048_VERSION_NO_12	0x12
 
 /* MAX17048 ALERT interrupts */
 #define MAX17048_STATUS_RI		0x0100 /* reset */
@@ -258,7 +259,7 @@ static void max17048_get_soc(struct i2c_client *client)
 
 static uint16_t max17048_get_version(struct i2c_client *client)
 {
-	return swab16(max17048_read_word(client, MAX17048_VER));
+	return max17048_read_word(client, MAX17048_VER);
 }
 
 static void max17048_work(struct work_struct *work)
@@ -492,9 +493,11 @@ int max17048_check_battery()
 		return -ENODEV;
 
 	version = max17048_get_version(max17048_data->client);
-	if (version != MAX17048_VERSION_NO) {
+	if ((version != MAX17048_VERSION_NO_11) &&
+		(version != MAX17048_VERSION_NO_12)) {
 		return -ENODEV;
 	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(max17048_check_battery);
@@ -713,11 +716,7 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	chip->shutdown_complete = 0;
 	i2c_set_clientdata(client, chip);
 
-	version = max17048_check_battery();
-	if (version < 0) {
-		ret = -ENODEV;
-		goto error2;
-	}
+	version = max17048_get_version(client);
 	dev_info(&client->dev, "MAX17048 Fuel-Gauge Ver 0x%x\n", version);
 
 	ret = max17048_initialize(chip);
