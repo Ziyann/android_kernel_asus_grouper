@@ -636,6 +636,26 @@ static int ov7695_set_mode(struct ov7695_info *info,
 	return 0;
 }
 
+static unsigned int ov7695_get_exposure_time(struct ov7695_info *info)
+{
+	u8 temp1, temp2, temp3;
+	unsigned int expLine = 0;
+	unsigned int expTime = 0;
+	int vts = 536;
+	int fps = 30;
+
+	ov7695_read_reg(info->i2c_client, 0x3500, &temp1);
+	ov7695_read_reg(info->i2c_client, 0x3501, &temp2);
+	ov7695_read_reg(info->i2c_client, 0x3502, &temp3);
+
+	expLine = (temp1 * 65536 + temp2 * 256 + temp3) / 16;
+	expTime = (expLine*1000) / (fps * vts);
+
+	dev_dbg(&info->i2c_client->dev, "%s: expTime - %u\n",
+		__func__, expTime);
+	return expTime;
+}
+
 static long ov7695_ioctl(struct file *file,
 			 unsigned int cmd, unsigned long arg)
 {
@@ -655,6 +675,20 @@ static long ov7695_ioctl(struct file *file,
 		}
 		err = ov7695_set_mode(info, &mode);
 		break;
+	}
+
+	case OV7695_SENSOR_IOCTL_GET_EXPOSURE_TIME:
+	{
+		unsigned int expTime;
+		expTime = ov7695_get_exposure_time(info);
+		if (copy_to_user((void __user *)arg,
+			&expTime, sizeof(expTime))) {
+			dev_err(&info->i2c_client->dev,
+				"%s:Failed to copy exposure time to user.\n",
+			__func__);
+			return -EFAULT;
+		}
+		return 0;
 	}
 
 	default:
