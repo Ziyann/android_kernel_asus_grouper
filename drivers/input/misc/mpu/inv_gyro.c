@@ -4015,9 +4015,11 @@ static int inv_setup_input(struct inv_gyro_state_s *st,
 	idev->id.vendor     = ('I'<<8) | 'S';
 	idev->id.version    = 1;
 	idev->dev.parent = &client->dev;
+#if 0
 	/* Open and close method. */
 	if (strcmp(name, "INV_DMP"))
 		idev->close = inv_input_close;
+#endif
 	input_set_capability(idev, EV_REL, REL_X);
 	input_set_capability(idev, EV_REL, REL_Y);
 	input_set_capability(idev, EV_REL, REL_Z);
