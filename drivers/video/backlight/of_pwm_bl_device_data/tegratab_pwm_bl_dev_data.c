@@ -33,7 +33,7 @@
 #define OF_PANEL_PWMBL_LOG(fmt, args...)
 #endif
 
-static atomic_t sd_brightness = ATOMIC_INIT(255);
+extern atomic_t sd_brightness;
 
 static struct platform_driver tegratab_pwm_bl_devdata_gen_drv;
 static struct device_node *gp_node;

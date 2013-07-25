@@ -74,7 +74,7 @@ enum {
 	DC_CONTROLLER_1,
 };
 
-static atomic_t sd_brightness = ATOMIC_INIT(255);
+extern atomic_t sd_brightness;
 
 static struct regulator *of_regulators_dc1[HDMI_REGS_TOTAL];
 
