@@ -293,6 +293,24 @@ struct tegra_hdmi_out dalmore_hdmi_out = {
 	.n_tmds_config = ARRAY_SIZE(dalmore_tmds_config),
 };
 
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+static struct tegra_dc_mode hdmi_panel_modes[] = {
+	{
+		.pclk =			KHZ2PICOS(25200),
+		.h_ref_to_sync =	1,
+		.v_ref_to_sync = 	1,
+		.h_sync_width =		96,	/* hsync_len */
+		.v_sync_width =		2,	/* vsync_len */
+		.h_back_porch =		48,	/* left_margin */
+		.v_back_porch =		33,	/* upper_margin */
+		.h_active =		640,	/* xres */
+		.v_active =		480,	/* yres */
+		.h_front_porch =	16,	/* right_margin */
+		.v_front_porch =	10,	/* lower_margin */
+	},
+};
+#endif /* CONFIG_FRAMEBUFFER_CONSOLE */
+
 static struct tegra_dc_out dalmore_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
 	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
@@ -303,6 +321,11 @@ static struct tegra_dc_out dalmore_disp2_out = {
 	.hdmi_out	= &dalmore_hdmi_out,
 
 	.max_pixclock	= KHZ2PICOS(297000),
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+	.modes = hdmi_panel_modes,
+	.n_modes = ARRAY_SIZE(hdmi_panel_modes),
+	.depth = 24,
+#endif /* CONFIG_FRAMEBUFFER_CONSOLE */
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
