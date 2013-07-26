@@ -1082,6 +1082,25 @@ static int max17048_suspend(struct i2c_client *client,
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
 	int ret;
+	struct max17048_battery_model *mdata = chip->pdata->model_data;
+	u16 val;
+
+	/* clear CONFIG.ALSC */
+	if (mdata->one_percent_alerts) {
+		val = max17048_read_word(client, MAX17048_CONFIG);
+		if (val < 0) {
+			dev_err(&client->dev,
+					"%s(): Failed in reading register" \
+					"MAX17048_CONFIG err %d\n",
+						__func__, val);
+		} else {
+			val &= ~(mdata->one_percent_alerts);
+			ret = max17048_write_word(client, MAX17048_CONFIG, val);
+			if (ret < 0)
+				dev_err(&client->dev,
+					"failed clear CONFIG.ALSC\n");
+		}
+	}
 
 	if (device_may_wakeup(&client->dev)) {
 		enable_irq_wake(chip->client->irq);
@@ -1101,6 +1120,7 @@ static int max17048_resume(struct i2c_client *client)
 	struct max17048_chip *chip = i2c_get_clientdata(client);
 	int ret;
 	struct max17048_battery_model *mdata = chip->pdata->model_data;
+	u16 val;
 
 	ret = max17048_write_word(client, MAX17048_HIBRT, mdata->hibernate);
 	if (ret < 0) {
@@ -1111,6 +1131,23 @@ static int max17048_resume(struct i2c_client *client)
 	schedule_delayed_work(&chip->work, MAX17048_DELAY);
 	if (device_may_wakeup(&client->dev)) {
 		disable_irq_wake(client->irq);
+	}
+
+	/* set CONFIG.ALSC */
+	if (mdata->one_percent_alerts) {
+		val = max17048_read_word(client, MAX17048_CONFIG);
+		if (val < 0) {
+			dev_err(&client->dev,
+					"%s(): Failed in reading register" \
+					"MAX17048_CONFIG err %d\n",
+						__func__, val);
+		} else {
+			val |= mdata->one_percent_alerts;
+			ret = max17048_write_word(client, MAX17048_CONFIG, val);
+			if (ret < 0)
+				dev_err(&client->dev,
+					"failed set CONFIG.ALSC\n");
+		}
 	}
 
 	return 0;
