@@ -434,9 +434,9 @@ static int pluto_dw9718_detect(void *buf, size_t size)
 static struct nvc_focus_cap dw9718_cap = {
 	.settle_time = 30,
 	.slew_rate = 0x3A200C,
-	.focus_macro = 700,
-	.focus_infinity = 360,
-	.focus_hyper = 360,
+	.focus_macro = 450,
+	.focus_infinity = 200,
+	.focus_hyper = 200,
 };
 
 static struct dw9718_platform_data pluto_dw9718_pdata = {
