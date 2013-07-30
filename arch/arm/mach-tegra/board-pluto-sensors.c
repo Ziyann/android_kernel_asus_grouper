@@ -108,7 +108,7 @@ static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 		/* set to true only when using the torch strobe input
 		 * to trigger the flash.
 		 */
-		.flash_on_torch         = false,
+		.flash_on_torch         = true,
 		/* use ONE-SHOOT flash mode - flash triggered at the
 		 * raising edge of strobe or strobe signal.
 		 */
@@ -1220,6 +1220,11 @@ static struct i2c_board_info pluto_i2c_board_info_ad5823 = {
 		.platform_data = &pluto_ad5823_pdata,
 };
 
+static struct i2c_board_info pluto_i2c_board_info_dw9718 = {
+		I2C_BOARD_INFO("dw9718", 0x0c),
+		.platform_data = &pluto_dw9718_pdata,
+};
+
 static struct i2c_board_info pluto_i2c_board_info_imx091 = {
 	I2C_BOARD_INFO("imx091", 0x10),
 	.platform_data = &imx091_pdata,
@@ -1629,7 +1634,8 @@ static int camera_auto_detect(void)
 {
 	struct i2c_adapter *adap = i2c_get_adapter(2);
 
-	pr_info("%s ++ %04x - %04x\n", __func__, ad5816_devid, dw9718_devid);
+	pr_info("%s ++ %04x - %04x - %04x\n",
+		__func__, ad5816_devid, dw9718_devid, max77387_devid);
 
 	if ((ad5816_devid & 0xff00) == 0x2400) {
 		if ((max77387_devid & 0xff) == 0x91) {
@@ -1640,8 +1646,20 @@ static int camera_auto_detect(void)
 			i2c_new_device(adap, &pluto_i2c_board_info_imx091);
 		}
 	} else if (dw9718_devid) {
-		/* AR0833 found */
-		i2c_new_device(adap, &pluto_i2c_board_info_ar0833);
+		if (!max77387_devid) {
+			/* board e1823, IMX135 found */
+			i2c_new_device(adap, &pluto_i2c_board_info_imx135);
+			/* remove current dw9718 */
+			device_for_each_child(&adap->dev,
+				&pluto_i2c_board_info_dw9718.addr,
+				pluto_chk_conflict);
+			/* reinstall with new device node */
+			pluto_dw9718_pdata.num = 0;
+			i2c_new_device(adap, &pluto_i2c_board_info_dw9718);
+		} else {
+			/* AR0833 found */
+			i2c_new_device(adap, &pluto_i2c_board_info_ar0833);
+		}
 	} else { /* default using ov5693 + ad5823 */
 		device_for_each_child(&adap->dev,
 			&pluto_i2c_board_info_ad5823.addr,
