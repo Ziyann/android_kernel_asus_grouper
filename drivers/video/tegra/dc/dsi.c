@@ -2164,10 +2164,10 @@ static void tegra_dsi_pad_calibration(struct tegra_dc_dsi_data *dsi)
 
 		val = PAD_DRIV_DN_REF(0x5) | PAD_DRIV_UP_REF(0x7);
 		tegra_vi_csi_writel(val, CSI_MIPIBIAS_PAD_CONFIG);
-	}
 
-	val = PAD_CIL_PDVREG(0x0);
-	tegra_vi_csi_writel(val, CSI_CIL_PAD_CONFIG);
+		val = PAD_CIL_PDVREG(0x0);
+		tegra_vi_csi_writel(val, CSI_CIL_PAD_CONFIG);
+	}
 }
 
 static void tegra_dsi_panelB_enable(void)
