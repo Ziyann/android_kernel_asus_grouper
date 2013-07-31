@@ -2,7 +2,7 @@
  * tegra30_i2s.h - Definitions for Tegra 30 I2S driver
  *
  * Copyright (c) 2010-2013, NVIDIA Corporation.
- *
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -208,7 +208,15 @@
 #define TEGRA30_I2S_FILTER_QUAD				1
 
 #define TEGRA30_I2S_FLOWCTL_FILTER_SHIFT		31
-#define TEGRA30_I2S_FLOWCTL_FILTER_MASK			(1                         << TEGRA30_I2S_FLOWCTL_FILTER_SHIFT)
+#define TEGRA30_I2S_FLOWCTL_START_SHIFT		8
+#define TEGRA30_I2S_FLOWCTL_HIGH_SHIFT		4
+#define TEGRA30_I2S_FLOWCTL_LOW_SHIFT		0
+
+#define TEGRA30_I2S_FLOWCTL_FILTER_MASK	(1 << TEGRA30_I2S_FLOWCTL_FILTER_SHIFT)
+#define TEGRA30_I2S_FLOWCTL_START_MASK	(0xf << TEGRA30_I2S_FLOWCTL_START_SHIFT)
+#define TEGRA30_I2S_FLOWCTL_HIGH_MASK	(0xf << TEGRA30_I2S_FLOWCTL_HIGH_SHIFT)
+#define TEGRA30_I2S_FLOWCTL_LOW_MASK	(0xf << TEGRA30_I2S_FLOWCTL_LOW_SHIFT)
+
 #define TEGRA30_I2S_FLOWCTL_FILTER_LINEAR		(TEGRA30_I2S_FILTER_LINEAR << TEGRA30_I2S_FLOWCTL_FILTER_SHIFT)
 #define TEGRA30_I2S_FLOWCTL_FILTER_QUAD			(TEGRA30_I2S_FILTER_QUAD   << TEGRA30_I2S_FLOWCTL_FILTER_SHIFT)
 

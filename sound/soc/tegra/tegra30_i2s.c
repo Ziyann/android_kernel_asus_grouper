@@ -539,6 +539,27 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
 			i2sclock *= 4;
 
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+		/* If the I2S is used for voice also, it is not
+		*  necessary to set its clock if it had been set
+		*  like during voice call.*/
+		if (!(i2s->playback_ref_count - 1)) {
+			ret = clk_set_parent(i2s->clk_i2s,
+				i2s->clk_pll_a_out0);
+			if (ret) {
+				dev_err(dev,
+				"Can't set parent of I2S clock\n");
+				return ret;
+			}
+
+			ret = clk_set_rate(i2s->clk_i2s, i2sclock);
+			if (ret) {
+				dev_err(dev,
+				"Can't set I2S clock rate: %d\n", ret);
+				return ret;
+			}
+		}
+#else
 		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
 		if (ret) {
 			dev_err(dev, "Can't set parent of I2S clock\n");
@@ -550,6 +571,7 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 			dev_err(dev, "Can't set I2S clock rate: %d\n", ret);
 			return ret;
 		}
+#endif
 
 		tegra30_i2s_enable_clocks(i2s);
 
@@ -1034,58 +1056,257 @@ struct snd_soc_dai_driver tegra30_i2s_dai[] = {
 	TEGRA30_I2S_DAI(4),
 };
 
-static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
-		int i2s_mode, int channels, int rate, int bitsize, int bit_clk)
+static int configure_voice_call_clocks(struct codec_config *codec_info,
+	int codec_i2sclock, struct codec_config *bb_info, int bb_i2sclock)
 {
-	u32 val;
-	int i2sclock, bitcnt, ret, is_formatdsp;
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
-	u32  i;
-#endif
+	struct tegra30_i2s  *codec_i2s;
+	struct tegra30_i2s  *bb_i2s;
+	int ret;
 
-	is_formatdsp = (i2s_mode == TEGRA_DAIFMT_DSP_A) ||
-					(i2s_mode == TEGRA_DAIFMT_DSP_B);
+	codec_i2s = &i2scont[codec_info->i2s_id];
+	bb_i2s = &i2scont[bb_info->i2s_id];
 
-	if (bit_clk) {
-		i2sclock = bit_clk;
-	} else {
-	    i2sclock = rate * channels * bitsize * 2;
-	    /* additional 8 for baseband */
-		if (is_formatdsp)
-			i2sclock *= 8;
-	}
-
-	if (is_i2smaster) {
-		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
+	if (bb_info->is_i2smaster && codec_info->is_i2smaster) {
+		/* set modem clock */
+		ret = clk_set_parent(bb_i2s->clk_i2s, bb_i2s->clk_pll_a_out0);
 		if (ret) {
 			pr_err("Can't set parent of I2S clock\n");
 			return ret;
 		}
 
-		ret = clk_set_rate(i2s->clk_i2s, i2sclock);
+		ret = clk_set_rate(bb_i2s->clk_i2s, bb_i2sclock);
 		if (ret) {
 			pr_err("Can't set I2S clock rate: %d\n", ret);
 			return ret;
 		}
-	} else {
-		ret = clk_set_rate(i2s->clk_i2s_sync, i2sclock);
+		/* set codec clock */
+		ret = clk_set_parent(codec_i2s->clk_i2s,
+			codec_i2s->clk_pll_a_out0);
+		if (ret) {
+			pr_err("Can't set parent of I2S clock\n");
+			return ret;
+		}
+
+		ret = clk_set_rate(codec_i2s->clk_i2s, codec_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S clock rate: %d\n", ret);
+			return ret;
+		}
+
+	} else if (!bb_info->is_i2smaster && codec_info->is_i2smaster) {
+
+		/* set modem clock */
+		ret = clk_set_rate(bb_i2s->clk_i2s_sync, bb_i2sclock);
 		if (ret) {
 			pr_err("Can't set I2S sync clock rate\n");
 			return ret;
 		}
 
-		ret = clk_set_rate(i2s->clk_audio_2x, i2sclock);
+		ret = clk_set_parent(clk_get_parent(bb_i2s->clk_audio_2x),
+						bb_i2s->clk_i2s_sync);
+		if (ret) {
+			pr_err("Can't set parent of audiox clock\n");
+			return ret;
+		}
+
+		ret = clk_set_rate(bb_i2s->clk_audio_2x, bb_i2sclock);
+		if (ret) {
+			pr_err("Can't set audio2x clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_parent(bb_i2s->clk_i2s, bb_i2s->clk_audio_2x);
+		if (ret) {
+			pr_err("Can't set parent of clk_i2s clock\n");
+			return ret;
+		}
+
+		/* Modify or ensure the frequency division*/
+		ret = clk_set_rate(bb_i2s->clk_i2s, bb_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S clock rate: %d\n", ret);
+			return ret;
+		}
+
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+		/* set codec clock */
+		/* use modem clock to drive codec
+		* to avoid sound to being discontinuous */
+		ret = clk_set_parent(clk_get_parent(codec_i2s->clk_audio_2x),
+						bb_i2s->clk_i2s_sync);
+		if (ret) {
+			pr_err("Can't set parent of audiox clock\n");
+			return ret;
+		}
+
+		ret = clk_set_rate(codec_i2s->clk_audio_2x, bb_i2sclock);
+		if (ret) {
+			pr_err("Can't set audio2x clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_parent(codec_i2s->clk_i2s,
+			codec_i2s->clk_audio_2x);
+		if (ret) {
+			pr_err("Can't set parent of clk_i2s clock\n");
+			return ret;
+		}
+
+		/* Modify or ensure the frequency division*/
+		ret = clk_set_rate(codec_i2s->clk_i2s, codec_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S clock rate: %d\n", ret);
+			return ret;
+		}
+#else
+		/* set codec clock */
+		ret = clk_set_parent(codec_i2s->clk_i2s,
+			codec_i2s->clk_pll_a_out0);
+		if (ret) {
+			pr_err("Can't set parent of I2S clock\n");
+			return ret;
+		}
+
+		ret = clk_set_rate(codec_i2s->clk_i2s, codec_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S clock rate: %d\n", ret);
+			return ret;
+		}
+#endif
+
+	} else if (bb_info->is_i2smaster && !codec_info->is_i2smaster) {
+		/* Just because by now there is no use case about using Codec's
+		 * Clock for Modem when Code is Master and Modem is slave,
+		 * I do not add modification about it.
+		 * If necessarily, it can be added.*/
+		/* set modem clock */
+		ret = clk_set_parent(bb_i2s->clk_i2s, bb_i2s->clk_pll_a_out0);
+		if (ret) {
+			pr_err("Can't set parent of I2S clock\n");
+			return ret;
+		}
+
+		ret = clk_set_rate(bb_i2s->clk_i2s, bb_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S clock rate: %d\n", ret);
+			return ret;
+		}
+
+		/* set codec clock */
+		ret = clk_set_rate(codec_i2s->clk_i2s_sync, codec_i2sclock);
 		if (ret) {
 			pr_err("Can't set I2S sync clock rate\n");
 			return ret;
 		}
 
-		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_audio_2x);
+		ret = clk_set_parent(clk_get_parent(codec_i2s->clk_audio_2x),
+						codec_i2s->clk_i2s_sync);
 		if (ret) {
-			pr_err("Can't set parent of audio2x clock\n");
+			pr_err("Can't set parent of audiox clock\n");
 			return ret;
 		}
+
+		ret = clk_set_rate(codec_i2s->clk_audio_2x, codec_i2sclock);
+		if (ret) {
+			pr_err("Can't set audio2x clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_parent(codec_i2s->clk_i2s,
+			codec_i2s->clk_audio_2x);
+		if (ret) {
+			pr_err("Can't set parent of clk_i2s clock\n");
+			return ret;
+		}
+
+		/* Modify or ensure the frequency division*/
+		ret = clk_set_rate(codec_i2s->clk_i2s, codec_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S clock rate: %d\n", ret);
+			return ret;
+		}
+
+	} else if (!bb_info->is_i2smaster && !codec_info->is_i2smaster) {
+		/* set modem clock */
+		ret = clk_set_rate(bb_i2s->clk_i2s_sync, bb_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S sync clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_parent(clk_get_parent(bb_i2s->clk_audio_2x),
+						bb_i2s->clk_i2s_sync);
+		if (ret) {
+			pr_err("Can't set parent of audiox clock\n");
+			return ret;
+		}
+
+		ret = clk_set_rate(bb_i2s->clk_audio_2x, bb_i2sclock);
+		if (ret) {
+			pr_err("Can't set audio2x clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_parent(bb_i2s->clk_i2s, bb_i2s->clk_audio_2x);
+		if (ret) {
+			pr_err("Can't set parent of clk_i2s clock\n");
+			return ret;
+		}
+
+		/* Modify or ensure the frequency division*/
+		ret = clk_set_rate(codec_i2s->clk_i2s, codec_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S clock rate: %d\n", ret);
+			return ret;
+		}
+
+		/* set codec clock */
+		ret = clk_set_rate(codec_i2s->clk_i2s_sync, codec_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S sync clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_parent(clk_get_parent(codec_i2s->clk_audio_2x),
+						codec_i2s->clk_i2s_sync);
+		if (ret) {
+			pr_err("Can't set parent of audiox clock\n");
+			return ret;
+		}
+
+		ret = clk_set_rate(codec_i2s->clk_audio_2x, codec_i2sclock);
+		if (ret) {
+			pr_err("Can't set audio2x clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_parent(codec_i2s->clk_i2s,
+			codec_i2s->clk_audio_2x);
+		if (ret) {
+			pr_err("Can't set parent of clk_i2s clock\n");
+			return ret;
+		}
+
+		/* Modify or ensure the frequency division*/
+		ret = clk_set_rate(codec_i2s->clk_i2s, codec_i2sclock);
+		if (ret) {
+			pr_err("Can't set I2S clock rate: %d\n", ret);
+			return ret;
+		}
+
 	}
+	return 0;
+}
+
+static int configure_baseband_i2s(struct tegra30_i2s *i2s,
+	struct codec_config *i2s_info,
+	int i2sclock, int is_formatdsp)
+{
+	u32 val;
+	int bitcnt;
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	u32  i;
+#endif
 
 	tegra30_i2s_enable_clocks(i2s);
 
@@ -1096,14 +1317,14 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 
 	i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_16;
 
-	if (is_i2smaster)
+	if (i2s_info->is_i2smaster)
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_MASTER_ENABLE;
 
-	if (i2s_mode == TEGRA_DAIFMT_DSP_A) {
+	if (i2s_info->i2s_mode == TEGRA_DAIFMT_DSP_A) {
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_NEG_EDGE;
-	} else if (i2s_mode == TEGRA_DAIFMT_DSP_B) {
+	} else if (i2s_info->i2s_mode == TEGRA_DAIFMT_DSP_B) {
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
@@ -1117,7 +1338,7 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
 	val = 0;
-	for (i = 0; i < channels; i++)
+	for (i = 0; i < i2s_info->channels; i++)
 		val |= (1 << i);
 
 	val |= val <<
@@ -1128,7 +1349,7 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 
 	val = 0;
 	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
-		val = channels  - 1;
+		val = i2s_info->channels - 1;
 
 	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL, val);
 #else
@@ -1145,14 +1366,14 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 	tegra30_i2s_write(i2s, TEGRA30_I2S_OFFSET, val);
 
 	if (is_formatdsp) {
-		bitcnt = (i2sclock/rate) - 1;
+		bitcnt = (i2sclock/i2s_info->rate) - 1;
 		val = bitcnt << TEGRA30_I2S_TIMING_CHANNEL_BIT_COUNT_SHIFT;
-		if (i2sclock % (rate))
+		if (i2sclock % (i2s_info->rate))
 			val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
 	} else {
-		bitcnt = (i2sclock/(2*rate)) - 1;
+		bitcnt = (i2sclock/(2*i2s_info->rate)) - 1;
 		val = bitcnt << TEGRA30_I2S_TIMING_CHANNEL_BIT_COUNT_SHIFT;
-		if (i2sclock % (2*rate))
+		if (i2sclock % (2*i2s_info->rate))
 			val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
 	}
 
@@ -1160,8 +1381,10 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 
 	/* configure the i2s cif*/
 	val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
-	      ((channels - 1) << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
-	      ((channels - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
+		((i2s_info->channels - 1) <<
+		TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
+		((i2s_info->channels - 1) <<
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
 	      TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_16 |
 	      TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_16;
 	val |= TEGRA30_AUDIOCIF_CTRL_DIRECTION_RX;
@@ -1228,6 +1451,10 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 	struct tegra30_i2s  *codec_i2s;
 	struct tegra30_i2s  *bb_i2s;
 	int reg, ret;
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	int val;
+#endif
+	int bb_i2sclock, bb_is_formatdsp, codec_i2sclock, codec_is_formatdsp;
 
 	codec_i2s = &i2scont[codec_info->i2s_id];
 	bb_i2s = &i2scont[bb_info->i2s_id];
@@ -1239,13 +1466,14 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 	bb_i2s->capture_ref_count++;
 
 	/* Make sure i2s is disabled during the configiration */
+	/* Soft reset to make sure DL and UL be not lost*/
 	tegra30_i2s_enable_clocks(codec_i2s);
 	reg = codec_i2s->reg_ctrl;
 	reg &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
 	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
 	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
 	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
-		codec_i2s->reg_ctrl);
+		reg | TEGRA30_I2S_CTRL_SOFT_RESET);
 	tegra30_i2s_disable_clocks(codec_i2s);
 
 	tegra30_i2s_enable_clocks(bb_i2s);
@@ -1254,20 +1482,51 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
 	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
 	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CTRL,
-		bb_i2s->reg_ctrl);
+		reg | TEGRA30_I2S_CTRL_SOFT_RESET);
 	tegra30_i2s_disable_clocks(bb_i2s);
 
 	msleep(20);
 
-	/*Configure codec i2s*/
-	configure_baseband_i2s(codec_i2s, codec_info->is_i2smaster,
-		codec_info->i2s_mode, codec_info->channels,
-		codec_info->rate, codec_info->bitsize, codec_info->bit_clk);
+	/* get bitclock of modem */
+	codec_is_formatdsp = (codec_info->i2s_mode == TEGRA_DAIFMT_DSP_A) ||
+			(codec_info->i2s_mode == TEGRA_DAIFMT_DSP_B);
 
-	/*Configure bb i2s*/
-	configure_baseband_i2s(bb_i2s, bb_info->is_i2smaster,
-		bb_info->i2s_mode, bb_info->channels,
-		bb_info->rate, bb_info->bitsize, bb_info->bit_clk);
+	if (codec_info->bit_clk) {
+		codec_i2sclock = codec_info->bit_clk;
+	} else {
+		codec_i2sclock = codec_info->rate * codec_info->channels *
+			codec_info->bitsize * 2;
+		/* additional 8 for baseband */
+		if (codec_is_formatdsp)
+			codec_i2sclock *= 8;
+	}
+
+	/* get bitclock of codec */
+	bb_is_formatdsp = (bb_info->i2s_mode == TEGRA_DAIFMT_DSP_A) ||
+			(bb_info->i2s_mode == TEGRA_DAIFMT_DSP_B);
+
+	if (bb_info->bit_clk) {
+		bb_i2sclock = bb_info->bit_clk;
+	} else {
+		bb_i2sclock = bb_info->rate * bb_info->channels *
+			bb_info->bitsize * 2;
+		/* additional 8 for baseband */
+		if (bb_is_formatdsp)
+			bb_i2sclock *= 8;
+	}
+	/* If we have two modems and one is master device and the other
+	* is slave.Audio will be inaduible with the slave modem after
+	* using the master modem*/
+	configure_voice_call_clocks(codec_info, codec_i2sclock,
+		bb_info, bb_i2sclock);
+
+	/* Configure codec i2s */
+	configure_baseband_i2s(codec_i2s, codec_info,
+		codec_i2sclock,	codec_is_formatdsp);
+
+	/* Configure bb i2s */
+	configure_baseband_i2s(bb_i2s, bb_info,
+		bb_i2sclock, bb_is_formatdsp);
 
 	if (uses_voice_codec) {
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_APBIF_RX0 +
@@ -1281,16 +1540,6 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0 +
 			    codec_info->i2s_id, TEGRA30_AHUB_TXCIF_I2S0_TX0 +
 			    bb_info->i2s_id);
-		if (!(codec_info->is_i2smaster && bb_info->is_i2smaster)) {
-			tegra30_i2s_write(codec_i2s, TEGRA30_I2S_FLOWCTL,
-				TEGRA30_I2S_FILTER_QUAD);
-			tegra30_i2s_write(bb_i2s, TEGRA30_I2S_FLOWCTL,
-				TEGRA30_I2S_FILTER_QUAD);
-			tegra30_i2s_write(codec_i2s, TEGRA30_I2S_TX_STEP, 4);
-			tegra30_i2s_write(bb_i2s, TEGRA30_I2S_TX_STEP, 4);
-			codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
-			bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
-		}
 	} else {
 
 		/*configure codec dam*/
@@ -1344,6 +1593,40 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 		tegra30_dam_enable(bb_i2s->dam_ifc, TEGRA30_DAM_ENABLE,
 			TEGRA30_DAM_CHIN0_SRC);
 	}
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_FLOWCTL, 0);
+	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_FLOWCTL, 0);
+	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_TX_STEP, 0);
+	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_TX_STEP, 0);
+	bb_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
+	codec_i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
+
+	if (!bb_info->is_i2smaster && codec_info->is_i2smaster) {
+		tegra30_i2s_write(codec_i2s, TEGRA30_I2S_FLOWCTL,
+			TEGRA30_I2S_FLOWCTL_FILTER_QUAD |
+			4 << TEGRA30_I2S_FLOWCTL_START_SHIFT |
+			4 << TEGRA30_I2S_FLOWCTL_HIGH_SHIFT |
+			4 << TEGRA30_I2S_FLOWCTL_LOW_SHIFT);
+		tegra30_i2s_write(bb_i2s, TEGRA30_I2S_FLOWCTL,
+			TEGRA30_I2S_FLOWCTL_FILTER_QUAD |
+			4 << TEGRA30_I2S_FLOWCTL_START_SHIFT |
+			4 << TEGRA30_I2S_FLOWCTL_HIGH_SHIFT |
+			4 << TEGRA30_I2S_FLOWCTL_LOW_SHIFT);
+		tegra30_i2s_write(codec_i2s, TEGRA30_I2S_TX_STEP, 4);
+		tegra30_i2s_write(bb_i2s, TEGRA30_I2S_TX_STEP, 4);
+		codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
+		bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
+
+		val = tegra30_i2s_read(codec_i2s, TEGRA30_I2S_CIF_RX_CTRL);
+		val &= ~(0xf << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT);
+		val |= (4 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT);
+		tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CIF_RX_CTRL, val);
+		val = tegra30_i2s_read(bb_i2s, TEGRA30_I2S_CIF_RX_CTRL);
+		val &= ~(0xf << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT);
+		val |= (4 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT);
+		tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CIF_RX_CTRL, val);
+	}
+#endif
 
 	msleep(20);
 
@@ -1484,6 +1767,7 @@ int tegra30_break_voice_call_connections(struct codec_config *codec_info,
 	/* Disable the clocks */
 	tegra30_i2s_disable_clocks(codec_i2s);
 	tegra30_i2s_disable_clocks(bb_i2s);
+
 	return 0;
 }
 
