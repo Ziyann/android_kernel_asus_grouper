@@ -35,6 +35,7 @@ struct freqcap {
 static unsigned int gpu_high_threshold = 700;
 static unsigned int gpu_window = 80;
 static unsigned int gain_factor = 130;
+static unsigned int core_profile = TEGRA_SYSEDP_PROFILE_NORMAL;
 static unsigned int online_cpu_count;
 static bool gpu_busy;
 static unsigned int core_state;
@@ -52,6 +53,11 @@ static struct freqcap core_policy;
 static struct freqcap forced_caps;
 static struct freqcap cur_caps;
 static DEFINE_MUTEX(core_lock);
+
+static const char *profile_names[TEGRA_SYSEDP_PROFILE_NUM] = {
+	[TEGRA_SYSEDP_PROFILE_NORMAL]	= "profile_normal",
+	[TEGRA_SYSEDP_PROFILE_HIGHCORE]	= "profile_highcore"
+};
 
 /* To save some cycles from a linear search */
 static unsigned int cpu_lut_match(unsigned int power,
@@ -179,7 +185,10 @@ static void update_cur_corecap(void)
 	power = core_edp_states[core_state] * gain_factor / 100;
 	power += core_loan;
 	i = core_platdata->corecap_size - 1;
-	cap = core_platdata->corecap + i;
+
+	cap = core_profile == TEGRA_SYSEDP_PROFILE_HIGHCORE ?
+			core_platdata->high_corecap : core_platdata->corecap;
+	cap += i;
 
 	for (; i >= 0; i--, cap--) {
 		if (cap->power <= power) {
@@ -289,8 +298,47 @@ out:
 	return r ?: count;
 }
 
+static ssize_t core_profile_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%s\n", profile_names[core_profile]);
+}
+
+static ssize_t core_profile_store(struct edp_client *c,
+		struct edp_client_attribute *attr, const char *buf,
+		size_t count)
+{
+	int i;
+	size_t l;
+	const char *name;
+
+	for (i = 0; i < ARRAY_SIZE(profile_names); i++) {
+		name = profile_names[i];
+		l = strlen(name);
+		if ((l <= count) && (strncmp(buf, name, l) == 0))
+			break;
+	}
+
+	if (i == ARRAY_SIZE(profile_names))
+		return -ENOENT;
+
+	if (i == TEGRA_SYSEDP_PROFILE_HIGHCORE && !core_platdata->high_corecap)
+		return -ENODEV;
+
+	mutex_lock(&core_lock);
+
+	core_profile = i;
+	update_cur_corecap();
+	__do_cap_control();
+
+	mutex_unlock(&core_lock);
+
+	return count;
+}
+
 struct edp_client_attribute core_attrs[] = {
 	__ATTR(set_request, 0200, NULL, core_request_store),
+	__ATTR(profile, 0644, core_profile_show, core_profile_store),
 	__ATTR_NULL
 };
 

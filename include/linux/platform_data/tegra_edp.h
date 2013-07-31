@@ -42,8 +42,15 @@ struct tegra_sysedp_platform_data {
 	struct tegra_system_edp_entry *cpufreq_lim;
 	unsigned int cpufreq_lim_size;
 	struct tegra_sysedp_corecap *corecap;
+	struct tegra_sysedp_corecap *high_corecap;
 	unsigned int corecap_size;
 	unsigned int init_req_watts;
+};
+
+enum tegra_sysedp_profile {
+	TEGRA_SYSEDP_PROFILE_NORMAL,
+	TEGRA_SYSEDP_PROFILE_HIGHCORE,
+	TEGRA_SYSEDP_PROFILE_NUM
 };
 
 #ifdef CONFIG_EDP_FRAMEWORK
