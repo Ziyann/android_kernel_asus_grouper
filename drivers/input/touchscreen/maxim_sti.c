@@ -35,7 +35,7 @@
 * Custom features                                                            *
 \****************************************************************************/
 
-#define INPUT_DEVICES         1
+#define INPUT_DEVICES         2
 #define INPUT_ENABLE_DISABLE  1
 #define SUSPEND_POWER_OFF     1
 #define NV_ENABLE_CPU_BOOST   1
@@ -989,9 +989,16 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			input_set_abs_params(dd->input_dev[i],
 					     ABS_MT_TRACKING_ID, 0,
 					     MAX_INPUT_EVENTS, 0, 0);
-			input_set_abs_params(dd->input_dev[i],
-					     ABS_MT_TOOL_TYPE, 0, MT_TOOL_MAX,
-					     0, 0);
+
+			if (i == (INPUT_DEVICES - 1)) {
+				input_set_abs_params(dd->input_dev[i],
+					ABS_MT_TOOL_TYPE, 0, MT_TOOL_MAX,
+					0, 0);
+			} else {
+				input_set_abs_params(dd->input_dev[i],
+					ABS_MT_TOOL_TYPE, 0, MT_TOOL_FINGER,
+					0, 0);
+			}
 
 			ret = input_register_device(dd->input_dev[i]);
 			if (ret < 0) {
