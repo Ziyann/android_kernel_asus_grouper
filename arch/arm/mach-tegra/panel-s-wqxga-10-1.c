@@ -101,9 +101,14 @@ static struct tegra_dsi_cmd dsi_s_wqxga_10_1_init_cmd[] = {
 
 static struct tegra_dsi_cmd dsi_s_wqxga_10_1_suspend_cmd[] = {
 	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_OFF, 0x0),
-	DSI_DLY_MS(67),	/* 3 frame duration per the panel datasheet */
+	DSI_DLY_MS(50),
+#if DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM,
+				DSI_DCS_SET_TEARING_EFFECT_OFF, 0x0),
+	DSI_DLY_MS(20),
+#endif
 	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_ENTER_SLEEP_MODE, 0x0),
-	DSI_DLY_MS(17), /* 1 frame duration per the panel datasheet */
+	DSI_DLY_MS(200),
 };
 
 static struct tegra_dsi_out dsi_s_wqxga_10_1_pdata = {
@@ -130,8 +135,9 @@ static struct tegra_dsi_out dsi_s_wqxga_10_1_pdata = {
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
 	.dsi_init_cmd = dsi_s_wqxga_10_1_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_s_wqxga_10_1_init_cmd),
-	.n_suspend_cmd = ARRAY_SIZE(dsi_s_wqxga_10_1_suspend_cmd),
 	.dsi_suspend_cmd = dsi_s_wqxga_10_1_suspend_cmd,
+	.n_suspend_cmd = ARRAY_SIZE(dsi_s_wqxga_10_1_suspend_cmd),
+	.bl_name = "pwm-backlight",
 };
 
 static int dalmore_dsi_regulator_get(struct device *dev)
