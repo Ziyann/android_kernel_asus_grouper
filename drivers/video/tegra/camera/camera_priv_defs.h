@@ -39,7 +39,9 @@
 #endif
 
 #include <video/tegra_camera.h>
-
+#ifdef CONFIG_THERMAL
+#include <linux/thermal.h>
+#endif /* CONFIG_THERMAL */
 
 /*
  * CAMERA_*_CLK is only for internal driver use.
@@ -68,6 +70,18 @@ struct clock {
 	bool on;
 };
 
+/*
+ * cdev: cooling device registered
+ * cur_state: cooling device current state
+ * max_state: maximum depth of cooling
+ */
+#ifdef CONFIG_THERMAL
+struct camera_throttle {
+	struct thermal_cooling_device *cdev;
+	unsigned long cur_state;
+	unsigned long max_state;
+};
+#endif
 struct tegra_camera {
 	struct device *dev;
 	struct miscdevice misc_dev;
@@ -77,6 +91,9 @@ struct tegra_camera {
 	struct mutex tegra_camera_lock;
 	atomic_t in_use;
 	int power_on;
+#ifdef CONFIG_THERMAL
+	struct camera_throttle camera_throt;
+#endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	tegra_isomgr_handle isomgr_handle;
 #endif

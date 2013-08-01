@@ -20,7 +20,10 @@
 #include "camera_emc.h"
 
 #define TEGRA_CAMERA_NAME "tegra_camera"
-
+#ifdef CONFIG_THERMAL
+#define CAMERA_COOLING_DEV_NAME "camera-throttle"
+#define CAMERA_COOLING_DEV_MAX_STATE 1
+#endif /* CONFIG_THERMAL */
 static struct clock_data clock_init[] = {
 	{ CAMERA_ISP_CLK, "isp", true, 0},
 	{ CAMERA_VI_CLK, "vi", true, 0},
@@ -95,7 +98,82 @@ static long tegra_camera_ioctl(struct file *file,
 	}
 	return 0;
 }
+#ifdef CONFIG_THERMAL
+static int tegra_camera_throttle_get_max_state(
+				struct thermal_cooling_device *cdev,
+				unsigned long *max_state)
+{
+	struct tegra_camera *camera = cdev->devdata;
+	struct camera_throttle *camera_throt = &camera->camera_throt;
 
+	*max_state = camera_throt->max_state;
+
+	return 0;
+}
+
+static int tegra_camera_throttle_get_cur_state(
+				struct thermal_cooling_device *cdev,
+				unsigned long *cur_state)
+{
+	struct tegra_camera *camera = cdev->devdata;
+	struct camera_throttle *camera_throt = &camera->camera_throt;
+
+	*cur_state = camera_throt->cur_state;
+
+	return 0;
+}
+
+static int tegra_camera_throttle_set_cur_state(
+				struct thermal_cooling_device *cdev,
+				unsigned long cur_state)
+{
+	struct tegra_camera *camera = cdev->devdata;
+	struct camera_throttle *camera_throt = &camera->camera_throt;
+
+	camera_throt->cur_state = cur_state;
+	dev_info(camera->dev, "%s: %lu\n", __func__, cur_state);
+
+	return 0;
+}
+
+static struct thermal_cooling_device_ops camera_throttle_cooling_ops = {
+	.get_max_state = tegra_camera_throttle_get_max_state,
+	.get_cur_state = tegra_camera_throttle_get_cur_state,
+	.set_cur_state = tegra_camera_throttle_set_cur_state,
+};
+
+/*
+ * Registers the camera dummy cooling device.
+ * Currently used to report the cooling state information to userspace.
+ * FIX ME: implement the better communication mechanism with userspace.
+ */
+struct thermal_cooling_device *tegra_camera_throttle_register(
+					struct tegra_camera *camera)
+{
+	struct thermal_cooling_device *cdev;
+	cdev = thermal_cooling_device_register(CAMERA_COOLING_DEV_NAME,
+						camera,
+						&camera_throttle_cooling_ops);
+
+	if (IS_ERR(cdev)) {
+		dev_err(camera->dev, "%s: FAILED\n", __func__);
+		camera->camera_throt.cdev = NULL;
+		return ERR_PTR(-ENODEV);
+	}
+
+	camera->camera_throt.cdev = cdev;
+	camera->camera_throt.max_state = CAMERA_COOLING_DEV_MAX_STATE;
+	return cdev;
+}
+
+
+void tegra_camera_throttle_unregister(struct tegra_camera *camera)
+{
+	if (camera->camera_throt.cdev) {
+		thermal_cooling_device_unregister(camera->camera_throt.cdev);
+	}
+}
+#endif /* CONFIG_THERMAL */
 static int tegra_camera_open(struct inode *inode, struct file *file)
 {
 	int ret;
@@ -129,7 +207,10 @@ static int tegra_camera_open(struct inode *inode, struct file *file)
 	ret = tegra_camera_enable_clk(camera);
 	if (ret)
 		goto enable_clk_fail;
-
+#ifdef CONFIG_THERMAL
+	/* register camera thermal cooling device */
+	tegra_camera_throttle_register(camera);
+#endif /* CONFIG_THERMAL */
 	mutex_unlock(&camera->tegra_camera_lock);
 
 	return 0;
@@ -151,6 +232,11 @@ static int tegra_camera_release(struct inode *inode, struct file *file)
 	dev_info(camera->dev, "%s++\n", __func__);
 
 	mutex_lock(&camera->tegra_camera_lock);
+
+#ifdef CONFIG_THERMAL
+	/* unregister camera thermal cooling device */
+	tegra_camera_throttle_unregister(camera);
+#endif
 	/* disable HW clock */
 	ret = tegra_camera_disable_clk(camera);
 	if (ret)
