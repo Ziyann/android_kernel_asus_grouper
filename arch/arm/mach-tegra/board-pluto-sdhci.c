@@ -328,7 +328,7 @@ int __init pluto_sdhci_init(void)
 	int min_vcore_override_mv;
 
 	nominal_core_mv =
-		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+		tegra_dvfs_rail_get_boot_level(tegra_core_rail);
 	if (nominal_core_mv > 0) {
 		tegra_sdhci_platform_data0.nominal_vcore_mv = nominal_core_mv;
 		tegra_sdhci_platform_data2.nominal_vcore_mv = nominal_core_mv;
