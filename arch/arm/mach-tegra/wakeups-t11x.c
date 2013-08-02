@@ -155,7 +155,7 @@ static int tegra_wake_event_irq[] = {
 	-EAGAIN, /* HDMI CEC */			/* wake52 */
 	-EINVAL, /* I2C3 CLK */			/* wake53 */
 	-EAGAIN,				/* wake54 */
-	-EINVAL, /* UART3 CTS */		/* wake55 */
+	INT_UARTC, /* UART3 CTS */		/* wake55 */
 	-EAGAIN, /* SDMMC3 CD */		/* wake56 */
 	-EINVAL, /* spdif_in */			/* wake57 */
 	INT_XUSB_PADCTL, /* XUSB superspeed wake */	/* wake58 */
