@@ -199,4 +199,5 @@ int nvhost_syncpt_wait_timeout_ext(struct platform_device *dev, u32 id, u32 thre
 
 void nvhost_scale3d_set_throughput_hint(int hint);
 
+extern struct mutex kfuse_mutex;
 #endif

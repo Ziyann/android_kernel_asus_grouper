@@ -24,6 +24,8 @@
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
+#include <linux/mutex.h>
+#include <linux/nvhost.h>
 #include <asm/atomic.h>
 
 #include <mach/dc.h>
@@ -672,7 +674,9 @@ static int load_kfuse(struct tegra_dc_hdmi_data *hdmi)
 	int retries;
 
 	/* copy load kfuse into buffer - only needed for early Tegra parts */
+	mutex_lock(&kfuse_mutex);
 	e = tegra_kfuse_read(buf, sizeof buf);
+	mutex_unlock(&kfuse_mutex);
 	if (e) {
 		nvhdcp_err("Kfuse read failure\n");
 		return e;

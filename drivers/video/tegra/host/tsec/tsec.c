@@ -30,6 +30,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
+#include <linux/mutex.h>
 #include "dev.h"
 #include "tsec.h"
 #include "hw_tsec.h"
@@ -51,6 +52,8 @@
 
 #define get_tsec(ndev) ((struct tsec *)(ndev)->dev.platform_data)
 #define set_tsec(ndev, f) ((ndev)->dev.platform_data = f)
+
+DEFINE_MUTEX(kfuse_mutex);
 
 /* The key value in ascii hex */
 static u8 otf_key[TSEC_KEY_LENGTH];
@@ -216,7 +219,7 @@ static int tsec_load_kfuse(struct platform_device *pdev)
 {
 	u32 val;
 	u32 timeout;
-
+	mutex_lock(&kfuse_mutex);
 	val = nvhost_device_readl(pdev, tsec_tegra_ctl_r());
 	val &= ~tsec_tegra_ctl_tkfi_kfuse_m();
 	nvhost_device_writel(pdev, tsec_tegra_ctl_r(), val);
@@ -240,6 +243,7 @@ static int tsec_load_kfuse(struct platform_device *pdev)
 	val = nvhost_device_readl(pdev, tsec_tegra_ctl_r());
 	val |= tsec_tegra_ctl_tkfi_kfuse_m();
 	nvhost_device_writel(pdev, tsec_tegra_ctl_r(), val);
+	mutex_unlock(&kfuse_mutex);
 
 	if (timeout)
 		return 0;
