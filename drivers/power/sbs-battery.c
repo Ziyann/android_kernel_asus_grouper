@@ -170,6 +170,8 @@ struct sbs_info {
 	int				battery_charge_design;
 	int				ignore_changes;
 	int				shutdown_complete;
+	int				lasttime_soc;
+	int				lasttime_status;
 	struct mutex			mutex;
 };
 struct sbs_info *tchip;
@@ -869,7 +871,13 @@ battery_detect:
 		}
 	}
 
-	power_supply_changed(&chip->power_supply);
+	if (chip->battery_status != chip->lasttime_status
+		|| chip->battery_capacity != chip->lasttime_soc) {
+		chip->lasttime_status = chip->battery_status;
+		chip->lasttime_soc = chip->battery_capacity;
+		power_supply_changed(&chip->power_supply);
+	}
+
 	schedule_delayed_work(&chip->work, HZ*2);
 
 	return ret;
@@ -996,6 +1004,8 @@ static int __devinit sbs_probe(struct i2c_client *client,
 	chip->ignore_changes = 1;
 	chip->last_state = POWER_SUPPLY_STATUS_UNKNOWN;
 	chip->power_supply.external_power_changed = sbs_external_power_changed;
+	chip->lasttime_soc = -1;
+	chip->lasttime_status = -1;
 
 	tchip = chip;
 
