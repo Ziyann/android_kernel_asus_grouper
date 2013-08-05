@@ -996,8 +996,9 @@ static int tegra_startup(struct uart_port *u)
 		t->mcr_shadow |= UART_MCR_LOOP;
 
 	dev_dbg(u->dev, "Requesting IRQ %d\n", u->irq);
-	ret = request_irq(u->irq, tegra_uart_isr, IRQF_DISABLED,
-				t->port_name, t);
+	ret = request_irq(u->irq, tegra_uart_isr,
+					IRQF_DISABLED | IRQF_TRIGGER_HIGH,
+					t->port_name, t);
 	if (ret) {
 		dev_err(u->dev, "Failed to register ISR for IRQ %d\n", u->irq);
 		goto fail;
@@ -1584,6 +1585,7 @@ static int __init tegra_uart_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
+	device_set_wakeup_capable(u->dev, 1);
 	u->regshift = 2;
 
 	t->clk = clk_get(&pdev->dev, NULL);
@@ -1666,6 +1668,9 @@ static int tegra_uart_suspend(struct platform_device *pdev, pm_message_t state)
 	u = &t->uport;
 	dev_dbg(t->uport.dev, "tegra_uart_suspend called\n");
 
+	if (device_may_wakeup(u->dev))
+		enable_irq_wake(u->irq);
+
 	/* enable clock before calling suspend so that controller
 	   register can be accessible */
 	if (t->uart_state == TEGRA_UART_CLOCK_OFF) {
@@ -1690,6 +1695,9 @@ static int tegra_uart_resume(struct platform_device *pdev)
 
 	u = &t->uport;
 	dev_dbg(t->uport.dev, "tegra_uart_resume called\n");
+
+	if (device_may_wakeup(u->dev))
+		disable_irq_wake(u->irq);
 
 	if (t->uart_state == TEGRA_UART_SUSPEND)
 		uart_resume_port(&tegra_uart_driver, u);
