@@ -2237,18 +2237,27 @@ config R8169
 	  To compile this driver as a module, choose M here: the module
 	  will be called r8169.  This is recommended.
 
-config SB1250_MAC
-	tristate "SB1250 Gigabit Ethernet support"
-	depends on SIBYTE_SB1xxx_SOC
-	select PHYLIB
+config R8169
+	tristate "Realtek 8169 gigabit ethernet support"
+	depends on PCI
+	select CRC32
+	select MII
 	---help---
-	  This driver supports Gigabit Ethernet interfaces based on the
-	  Broadcom SiByte family of System-On-a-Chip parts.  They include
-	  the BCM1120, BCM1125, BCM1125H, BCM1250, BCM1255, BCM1280, BCM1455
-	  and BCM1480 chips.
+	  Say Y here if you have a Realtek 8169 PCI Gigabit Ethernet adapter.
 
 	  To compile this driver as a module, choose M here: the module
-	  will be called sb1250-mac.
+	  will be called r8169.  This is recommended.
+
+config R8169_FW_LOAD
+	bool "Load firmware for Realtek 8169"
+	depends on R8169
+	select FW_LOADER
+	default y
+	---help---
+	  This enables runtime loading of optional firmware by the Realtek 8169
+	  driver. Some environments do not require firmware, or prefer not to delay
+	  the boot process when firmware is not available. Say N here to disable
+	  firmware loading. If unsure, say Y.
 
 config SIS190
 	tristate "SiS190/SiS191 gigabit ethernet support"
