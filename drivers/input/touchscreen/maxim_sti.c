@@ -1333,12 +1333,10 @@ static void service_irq(struct dev_data *dd)
 			ERROR("unexpected IRQ handler case");
 			return;
 		}
-
-		address[0] = xbuf ? dd->irq_param[2] : dd->irq_param[1];
-
 		read_buf[1] = true;
-		address[1] = dd->irq_param[3];
+		address[1] = xbuf ? dd->irq_param[2] : dd->irq_param[1];
 
+		address[0] = dd->irq_param[3];
 		clear = dd->irq_param[6] | dd->irq_param[7] |
 			dd->irq_param[8] | dd->irq_param[9];
 	} else {
