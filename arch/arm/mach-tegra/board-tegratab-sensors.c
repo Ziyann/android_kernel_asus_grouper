@@ -573,6 +573,29 @@ static struct therm_est_subdevice skin_devs[] = {
 	},
 };
 
+static struct therm_est_subdevice skin_devs_a02[] = {
+	{
+		.dev_data = "Tdiode",
+		.coeffs = {
+			-1, -2, -4, -5,
+			-5, -4, -3, -3,
+			-2, -2, -2, -2,
+			-2, -2, -3, -4,
+			-5, -5, -7, -10
+		},
+	},
+	{
+		.dev_data = "Tboard",
+		.coeffs = {
+			144, 30, -11, -21,
+			-24, -10, 0, 10,
+			9, -3, -1, 14,
+			23, 22, 35, 33,
+			23, -17, -53, -40
+		},
+	},
+};
+
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
 	.trips = skin_trips,
@@ -676,6 +699,14 @@ static struct balanced_throttle skin_throttle = {
 static int __init tegratab_skin_init(void)
 {
 	if (machine_is_tegratab()) {
+		tegra_get_board_info(&board_info);
+		if (board_info.board_id == BOARD_P1640 &&
+			board_info.fab == BOARD_FAB_A02) {
+			skin_data.toffset = -1727;
+			skin_data.ndevs = ARRAY_SIZE(skin_devs_a02);
+			skin_data.devs = skin_devs_a02;
+		}
+
 		balanced_throttle_register(&skin_throttle, "skin-balanced");
 		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
 		platform_device_register(&tegra_skin_therm_est_device);
