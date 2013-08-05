@@ -292,8 +292,6 @@ struct sdhci_ops {
 	void	(*dfs_gov_exit)(struct sdhci_host *host);
 	unsigned long	(*dfs_gov_get_target_freq)(struct sdhci_host *host,
 		struct devfreq_dev_status *dev_status);
-	void	(*retune_mutex_lock)(struct sdhci_host *host);
-	void	(*retune_mutex_unlock)(struct sdhci_host *host);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS

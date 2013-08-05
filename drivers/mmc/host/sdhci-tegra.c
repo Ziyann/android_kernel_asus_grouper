@@ -102,8 +102,6 @@
 #define TAP_CMD_TRIM_DEFAULT_VOLTAGE	1
 #define TAP_CMD_TRIM_HIGH_VOLTAGE	2
 #define TAP_CMD_GO_COMMAND		3
-#define TAP_CMD_SUSPENDED_BIT		(1<<8)
-#define TAP_CMD_TRIM_MASK		0xFF
 
 
 static unsigned int uhs_max_freq_MHz[] = {
@@ -803,8 +801,7 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *sdhci, u8 mask)
 				MMC_PM_KEEP_POWER)) {
 				if (sdhci->mmc->ios.clock >
 					tuning_params[TUNING_LOW_FREQ].freq_hz) {
-					if ((tegra_host->tap_cmd & TAP_CMD_TRIM_MASK)
-						== TAP_CMD_TRIM_HIGH_VOLTAGE)
+					if (tegra_host->tap_cmd == TAP_CMD_TRIM_HIGH_VOLTAGE)
 						best_tap_value = tegra_host->
 							tuning_data[TUNING_HIGH_FREQ_HV].best_tap_value[TUNING_HIGH_FREQ_HV];
 					else
@@ -1109,8 +1106,7 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 		int freq_band;
 
 		if (clock > tuning_params[TUNING_LOW_FREQ].freq_hz) {
-			if ((tegra_host->tap_cmd & TAP_CMD_TRIM_MASK)
-					== TAP_CMD_TRIM_HIGH_VOLTAGE)
+			if (tegra_host->tap_cmd == TAP_CMD_TRIM_HIGH_VOLTAGE)
 				freq_band = TUNING_HIGH_FREQ_HV;
 			else
 				freq_band = TUNING_HIGH_FREQ;
@@ -1938,8 +1934,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 		SDHCI_INT_DATA_CRC, SDHCI_INT_ENABLE);
 
 	if (sdhci->max_clk > tuning_params[TUNING_LOW_FREQ].freq_hz) {
-		if ((tegra_host->tap_cmd & TAP_CMD_TRIM_MASK)
-				== TAP_CMD_TRIM_HIGH_VOLTAGE)
+		if (tegra_host->tap_cmd == TAP_CMD_TRIM_HIGH_VOLTAGE)
 			freq_band = TUNING_HIGH_FREQ_HV;
 		else
 			freq_band = TUNING_HIGH_FREQ;
@@ -2170,22 +2165,6 @@ out:
 	return err;
 }
 
-static void sdhci_tegra_retune_lock(struct sdhci_host *sdhci)
-{
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-
-	mutex_lock(&tegra_host->retune_lock);
-}
-
-static void sdhci_tegra_retune_unlock(struct sdhci_host *sdhci)
-{
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-
-	mutex_unlock(&tegra_host->retune_lock);
-}
-
 static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
@@ -2388,8 +2367,6 @@ static struct sdhci_ops tegra_sdhci_ops = {
 	.switch_signal_voltage_exit = tegra_sdhci_do_calibration,
 	.execute_freq_tuning	= sdhci_tegra_execute_tuning,
 	.sd_error_stats		= sdhci_tegra_sd_error_stats,
-	.retune_mutex_lock	= sdhci_tegra_retune_lock,
-	.retune_mutex_unlock	= sdhci_tegra_retune_unlock,
 #ifdef CONFIG_MMC_FREQ_SCALING
 	.dfs_gov_init		= sdhci_tegra_freq_gov_init,
 	.dfs_gov_get_target_freq	= sdhci_tegra_get_target_freq,
@@ -2545,82 +2522,42 @@ static ssize_t sdhci_handle_boost_mode_tap(struct device *dev,
 	if (tap_cmd == tegra_host->tap_cmd)
 		return count;
 
-	switch (tap_cmd & TAP_CMD_TRIM_MASK) {
+	switch (tap_cmd) {
+	case TAP_CMD_GO_COMMAND:
 	case TAP_CMD_SUSPEND_CONTROLLER:
-		if (tegra_host->tap_cmd & TAP_CMD_SUSPENDED_BIT) {
-			pr_info("%s: suspended: echo %d > cmd_state # to go\n",
-				mmc_hostname(host->mmc),
-				TAP_CMD_GO_COMMAND);
-			return count;
-		}
-		break;
+		return count;
+
 	case TAP_CMD_TRIM_DEFAULT_VOLTAGE:
 	case TAP_CMD_TRIM_HIGH_VOLTAGE:
-		if (!(tegra_host->tap_cmd & TAP_CMD_SUSPENDED_BIT)) {
-			pr_info("%s: need echo %d > cmd_state " \
-				 " # to suspend first\n",
-				mmc_hostname(host->mmc),
-				TAP_CMD_SUSPEND_CONTROLLER);
-			return count;
-		}
 		break;
 
-	case TAP_CMD_GO_COMMAND:
-		if (tegra_host->tap_cmd & TAP_CMD_SUSPENDED_BIT)
-			break;
-		pr_info("%s: not suspended\n", mmc_hostname(host->mmc));
-
-		/* fall through controller command invalid */
 	default:
-		pr_info("\necho 0 > cmd_state  # to suspend\n" \
-			  "echo 1 > cmd_state  # to set normal voltage\n" \
-			  "echo 2 > cmd_state  # to set high voltage\n" \
-			  "echo 3 > cmd_state  # to go\n");
+		pr_info("\necho 1 > cmd_state  # to set normal voltage\n" \
+			  "echo 2 > cmd_state  # to set high voltage\n");
 		return count;
 	}
 
-	switch (tap_cmd & TAP_CMD_TRIM_MASK) {
-	case TAP_CMD_SUSPEND_CONTROLLER:
-		sdhci_tegra_retune_lock(host);
-		spin_lock(&host->lock);
-		disable_irq(host->irq);
-		spin_unlock(&host->lock);
-		tegra_host->tap_cmd = TAP_CMD_SUSPENDED_BIT;
-		break;
-
+	spin_lock(&host->lock);
+	disable_irq(host->irq);
+	tegra_host->tap_cmd = tap_cmd;
+	tuning_data = &tegra_host->tuning_data[tap_cmd];
+	switch (tap_cmd) {
 	case TAP_CMD_TRIM_DEFAULT_VOLTAGE:
 		/* set tap value for voltage range 1.1 to 1.25 */
-		tegra_host->tap_cmd = TAP_CMD_TRIM_DEFAULT_VOLTAGE |
-						TAP_CMD_SUSPENDED_BIT;
-		tuning_data =
-			&tegra_host->tuning_data[TAP_CMD_TRIM_DEFAULT_VOLTAGE];
-		spin_lock(&host->lock);
 		sdhci_tegra_set_tap_delay(host,
 			tuning_data->best_tap_value[TUNING_HIGH_FREQ]);
-		spin_unlock(&host->lock);
 		break;
 
 	case TAP_CMD_TRIM_HIGH_VOLTAGE:
 		/*  set tap value for voltage range 1.25 to 1.39 volts */
-		tegra_host->tap_cmd = TAP_CMD_TRIM_HIGH_VOLTAGE |
-						TAP_CMD_SUSPENDED_BIT;
-		tuning_data =
-			&tegra_host->tuning_data[TAP_CMD_TRIM_DEFAULT_VOLTAGE];
-		spin_lock(&host->lock);
 		sdhci_tegra_set_tap_delay(host,
 			tuning_data->best_tap_value[TUNING_HIGH_FREQ_HV]);
-		spin_unlock(&host->lock);
 		break;
-
-	case TAP_CMD_GO_COMMAND:
-		tegra_host->tap_cmd ^= TAP_CMD_SUSPENDED_BIT;
-		sdhci_tegra_retune_unlock(host);
-		enable_irq(host->irq);
-		break;
-
 	default:
 		break;
 	}
+	spin_unlock(&host->lock);
+	enable_irq(host->irq);
 	return count;
 }
 
@@ -2631,7 +2568,7 @@ static ssize_t sdhci_show_turbo_mode(struct device *dev,
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 
-	return sprintf(buf, "%d\n", tegra_host->tap_cmd & TAP_CMD_TRIM_MASK);
+	return sprintf(buf, "%d\n", tegra_host->tap_cmd);
 }
 
 static DEVICE_ATTR(cmd_state, 0644, sdhci_show_turbo_mode,
