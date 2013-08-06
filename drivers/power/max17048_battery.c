@@ -25,6 +25,7 @@
 #include <linux/max17048_battery.h>
 #include <linux/jiffies.h>
 #include <linux/thermal.h>
+#include <generated/mach-types.h>
 
 #define MAX17048_VCELL		0x02
 #define MAX17048_SOC		0x04
@@ -274,6 +275,23 @@ static uint16_t max17048_get_version(struct i2c_client *client)
 	return max17048_read_word(client, MAX17048_VER);
 }
 
+static int max17048_thz_match(struct thermal_zone_device *thz, void *data)
+{
+	return strcmp((char *)data, thz->type) == 0;
+}
+
+static int max17048_thz_get_temp(void *data, long *temp)
+{
+	struct thermal_zone_device *thz;
+
+	thz = thermal_zone_device_find(data, max17048_thz_match);
+
+	if (!thz || thz->ops->get_temp(thz, temp))
+		*temp = 20000;
+
+	return 0;
+}
+
 static void max17048_update_rcomp(struct max17048_chip *chip, long temp)
 {
 	struct i2c_client *client = chip->client;
@@ -329,8 +347,19 @@ static void max17048_update_rcomp(struct max17048_chip *chip, long temp)
 static void max17048_work(struct work_struct *work)
 {
 	struct max17048_chip *chip;
+	long temp;
 
 	chip = container_of(work, struct max17048_chip, work.work);
+
+	if (machine_is_tegratab()) {
+		/* Use Tskin as Battery Temp */
+		max17048_thz_get_temp("therm_est", &temp);
+
+		if (temp >= 20000)
+			chip->temperature = temp;
+		else
+			chip->temperature = 20000;
+	}
 
 	if (abs(chip->temperature - chip->lasttime_temperature) >= 1500) {
 		chip->lasttime_temperature = chip->temperature;
