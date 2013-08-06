@@ -104,6 +104,8 @@ struct max17048_battery_model tegratab_max17048_mdata = {
 	.vreset		= 0x3c96,
 	.valert		= 0xA2FF,	/*VALRT.MIN 3.24V, VALRT.MAX 5.1V*/
 	.ocvtest	= 55824,
+	.t_co_hot	= -1125,	/* -1.125 */
+	.t_co_cold	= -7625,	/* -7.625 */
 	.data_tbl = {
 		0xAA, 0x30, 0xB7, 0x80, 0xB8, 0xD0, 0xBA, 0xC0,
 		0xBB, 0xC0, 0xBC, 0x30, 0xBC, 0xB0, 0xBD, 0x60,
