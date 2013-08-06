@@ -24,6 +24,7 @@
 #include <linux/interrupt.h>
 #include <linux/max17048_battery.h>
 #include <linux/jiffies.h>
+#include <linux/thermal.h>
 
 #define MAX17048_VCELL		0x02
 #define MAX17048_SOC		0x04
@@ -41,7 +42,7 @@
 #define MAX17048_CMD		0xFF
 #define MAX17048_UNLOCK_VALUE	0x4a57
 #define MAX17048_RESET_VALUE	0x5400
-#define MAX17048_DELAY      (30*HZ)
+#define MAX17048_DELAY      (10*HZ)
 #define MAX17048_BATTERY_FULL	100
 #define MAX17048_BATTERY_LOW	15
 #define MAX17048_VERSION_NO_11	0x11
@@ -74,10 +75,14 @@ struct max17048_chip {
 	int health;
 	/* battery capacity */
 	int capacity_level;
+	/* battery temperature */
+	long temperature;
 
 	int internal_soc;
 	int lasttime_soc;
 	int lasttime_status;
+	long lasttime_temperature;
+
 	int shutdown_complete;
 	struct mutex mutex;
 };
@@ -269,11 +274,68 @@ static uint16_t max17048_get_version(struct i2c_client *client)
 	return max17048_read_word(client, MAX17048_VER);
 }
 
+static void max17048_update_rcomp(struct max17048_chip *chip, long temp)
+{
+	struct i2c_client *client = chip->client;
+	struct max17048_battery_model *mdata = chip->pdata->model_data;
+	int new_rcomp;
+	int ret, val;
+	s64 curr_temp;
+	s64 hot_temp, cold_temp;
+
+	curr_temp = temp;
+	hot_temp = mdata->t_co_hot;
+	cold_temp = mdata->t_co_cold;
+
+	hot_temp = div64_s64(
+			(curr_temp - (s64)20000LL) * hot_temp,
+			(s64)1000000LL);
+	cold_temp = div64_s64(
+			(curr_temp - (s64)20000LL) * cold_temp,
+			(s64)1000000LL);
+
+	if (temp > 20000)
+		new_rcomp = mdata->rcomp + (int)hot_temp;
+	else if (temp < 20000)
+		new_rcomp = mdata->rcomp + (int)cold_temp;
+	else
+		new_rcomp = mdata->rcomp;
+
+	if (new_rcomp > 0xFF)
+		new_rcomp = 0xFF;
+	else if (new_rcomp < 0)
+		new_rcomp = 0;
+
+	dev_info(&client->dev, "%s: new_rcomp %d\n", __func__, new_rcomp);
+
+	val = max17048_read_word(client, MAX17048_CONFIG);
+	if (val < 0) {
+		dev_err(&client->dev,
+				"%s(): Failed in reading register" \
+				"MAX17048_CONFIG err %d\n",
+					__func__, val);
+	} else {
+		/* clear upper byte */
+		val &= 0xFF;
+		/* Apply new Rcomp value */
+		val |= (new_rcomp << 8);
+		ret = max17048_write_word(client, MAX17048_CONFIG, val);
+		if (ret < 0)
+			dev_err(&client->dev,
+				"failed set RCOMP\n");
+	}
+}
+
 static void max17048_work(struct work_struct *work)
 {
 	struct max17048_chip *chip;
 
 	chip = container_of(work, struct max17048_chip, work.work);
+
+	if (abs(chip->temperature - chip->lasttime_temperature) >= 1500) {
+		chip->lasttime_temperature = chip->temperature;
+		max17048_update_rcomp(chip, chip->temperature);
+	}
 
 	max17048_get_vcell(chip->client);
 	max17048_get_soc(chip->client);
@@ -705,6 +767,16 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 	if (ret < 0)
 		return ERR_PTR(ret);
 	model_data->ocvtest = val;
+
+	ret = of_property_read_u32(np, "minus_t_co_hot", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->t_co_hot = -1 * val;
+
+	ret = of_property_read_u32(np, "minus_t_co_cold", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->t_co_cold = -1 * val;
 
 	ret = of_property_read_u32_array(np, "data-tbl", val_array,
 					 MAX17048_DATA_SIZE);

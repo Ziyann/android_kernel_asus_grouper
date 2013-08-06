@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Samsung Electronics
- * Copyright (C) 2012 Nvidia Cooperation
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  * Minkyu Kang <mk7.kang@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -27,6 +27,8 @@ struct max17048_battery_model {
 	uint16_t vreset;
 	uint16_t valert;
 	uint16_t ocvtest;
+	int t_co_hot;
+	int t_co_cold;
 	uint8_t data_tbl[MAX17048_DATA_SIZE];
 };
 
