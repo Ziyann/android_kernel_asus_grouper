@@ -1057,35 +1057,7 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 		dev_err(&pdev->dev, "Failed to enable host partition clk\n");
 		goto enable_pll_re_vco_clk_failed;
 	}
-	/* enable ss clock */
-	err = clk_enable(tegra->host_clk);
-	if (err) {
-		dev_err(&pdev->dev, "Failed to enable host partition clk\n");
-		goto enable_host_clk_failed;
-	}
-
-	err = clk_enable(tegra->ss_clk);
-	if (err) {
-		dev_err(&pdev->dev, "Failed to enable ss partition clk\n");
-		goto eanble_ss_clk_failed;
-	}
-
-	err = clk_enable(tegra->emc_clk);
-	if (err) {
-		dev_err(&pdev->dev, "Failed to enable xusb.emc clk\n");
-		goto eanble_emc_clk_failed;
-	}
-
 	return 0;
-
-eanble_emc_clk_failed:
-	clk_disable(tegra->ss_clk);
-
-eanble_ss_clk_failed:
-	clk_disable(tegra->host_clk);
-
-enable_host_clk_failed:
-	clk_disable(tegra->pll_re_vco_clk);
 
 enable_pll_re_vco_clk_failed:
 	tegra->ss_clk = NULL;
@@ -2446,9 +2418,6 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 
 	clk_enable(tegra->emc_clk);
 	clk_enable(tegra->pll_re_vco_clk);
-	/* Step 2: Enable clock to host partition */
-	clk_enable(tegra->host_clk);
-
 	if (tegra->lp0_exit) {
 		u32 reg;
 
@@ -2488,6 +2457,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 			__func__, ret);
 		goto out;
 	}
+	clk_enable(tegra->host_clk);
 
 	/* Step 4: Deassert reset to host partition clk */
 	tegra_periph_reset_deassert(tegra->host_clk);
@@ -3311,6 +3281,42 @@ static void deinit_firmware(struct tegra_xhci_hcd *tegra)
 		return deinit_filesystem_firmware(tegra);
 }
 
+static int tegra_enable_xusb_clk(struct tegra_xhci_hcd *tegra,
+		struct platform_device *pdev)
+{
+	int err = 0;
+	/* enable ss clock */
+	err = clk_enable(tegra->host_clk);
+	if (err) {
+		dev_err(&pdev->dev, "Failed to enable host partition clk\n");
+		goto enable_host_clk_failed;
+	}
+
+	err = clk_enable(tegra->ss_clk);
+	if (err) {
+		dev_err(&pdev->dev, "Failed to enable ss partition clk\n");
+		goto eanble_ss_clk_failed;
+	}
+
+	err = clk_enable(tegra->emc_clk);
+	if (err) {
+		dev_err(&pdev->dev, "Failed to enable xusb.emc clk\n");
+		goto eanble_emc_clk_failed;
+	}
+
+	return 0;
+
+eanble_emc_clk_failed:
+	clk_disable(tegra->ss_clk);
+
+eanble_ss_clk_failed:
+	clk_disable(tegra->host_clk);
+
+enable_host_clk_failed:
+	clk_disable(tegra->pll_re_vco_clk);
+	return err;
+}
+
 /* TODO: we have to refine error handling in tegra_xhci_probe() */
 static int tegra_xhci_probe(struct platform_device *pdev)
 {
@@ -3386,6 +3392,10 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBC);
 	if (ret)
 		dev_err(&pdev->dev, "could not unpowergate xusbc partition\n");
+
+	ret = tegra_enable_xusb_clk(tegra, pdev);
+	if (ret)
+		dev_err(&pdev->dev, "could not enable partition clock\n");
 
 	tegra->pdata = dev_get_platdata(&pdev->dev);
 	tegra->bdata = tegra->pdata->bdata;
