@@ -734,8 +734,8 @@ static struct imx091_reg imx091_524X390_i2c[] = {
  */
 static struct imx091_mode_data imx091_4208x3120 = {
 	.sensor_mode = {
-		.res_x			= 4208,
-		.res_y			= 3120,
+		.res_x			= 4096,
+		.res_y			= 3072,
 		.active_start_x		= 0,
 		.active_stary_y		= 0,
 		.peak_frame_rate	= 15000, /* / _INT2FLOAT_DIVISOR */
@@ -863,8 +863,8 @@ static struct imx091_mode_data imx091_1308x736 = {
 
 static struct imx091_mode_data imx091_2104x1560 = {
 	.sensor_mode = {
-		.res_x			= 2104,
-		.res_y			= 1560,
+		.res_x			= 2048,
+		.res_y			= 1536,
 		.active_start_x		= 0,
 		.active_stary_y		= 0,
 		.peak_frame_rate	= 30000, /* / _INT2FLOAT_DIVISOR */
