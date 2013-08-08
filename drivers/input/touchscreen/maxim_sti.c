@@ -35,12 +35,16 @@
 * Custom features                                                            *
 \****************************************************************************/
 
-#define INPUT_DEVICES         2
-#define INPUT_ENABLE_DISABLE  1
-#define SUSPEND_POWER_OFF     1
-#define NV_ENABLE_CPU_BOOST   1
+#define INPUT_DEVICES               2
+#define INPUT_ENABLE_DISABLE        1
+#define SUSPEND_POWER_OFF           1
+#define NV_ENABLE_CPU_BOOST         1
+#define NV_STYLUS_FINGER_EXCLUSION  1
 
-#ifdef NV_ENABLE_CPU_BOOST
+#define ID_FINGER   0
+#define ID_STYLUS   (INPUT_DEVICES - 1)
+
+#if NV_ENABLE_CPU_BOOST
 #define INPUT_IDLE_PERIOD     (msecs_to_jiffies(50))
 #endif
 
@@ -65,6 +69,10 @@ struct dev_data {
 	bool                         suspend_in_progress;
 	bool                         resume_in_progress;
 	bool                         eraser_active;
+#if (INPUT_DEVICES > 1)
+	bool                         last_finger_active;
+	bool                         last_stylus_active;
+#endif
 	bool                         legacy_acceleration;
 	bool                         irq_registered;
 	u16                          irq_param[MAX_IRQ_PARAMS];
@@ -84,7 +92,7 @@ struct dev_data {
 	struct regulator             *reg_avdd;
 	struct regulator             *reg_dvdd;
 	void                         (*service_irq)(struct dev_data *dd);
-#ifdef NV_ENABLE_CPU_BOOST
+#if NV_ENABLE_CPU_BOOST
 	unsigned long                last_irq_jiffies;
 #endif
 };
@@ -966,14 +974,14 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 				input_set_drvdata(dd->input_dev[i], dd);
 			}
 #endif
-#ifdef NV_ENABLE_CPU_BOOST
+#if NV_ENABLE_CPU_BOOST
 			if (i == 0)
 				input_set_capability(dd->input_dev[i], EV_MSC,
 						     MSC_ACTIVITY);
 #endif
 			__set_bit(EV_SYN, dd->input_dev[i]->evbit);
 			__set_bit(EV_ABS, dd->input_dev[i]->evbit);
-			if (i == (INPUT_DEVICES - 1)) {
+			if (i == ID_STYLUS) {
 				__set_bit(EV_KEY, dd->input_dev[i]->evbit);
 				__set_bit(BTN_TOOL_RUBBER,
 					  dd->input_dev[i]->keybit);
@@ -990,7 +998,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 					     ABS_MT_TRACKING_ID, 0,
 					     MAX_INPUT_EVENTS, 0, 0);
 
-			if (i == (INPUT_DEVICES - 1)) {
+			if (i == ID_STYLUS) {
 				input_set_abs_params(dd->input_dev[i],
 					ABS_MT_TOOL_TYPE, 0, MT_TOOL_MAX,
 					0, 0);
@@ -1016,6 +1024,10 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			dd->input_dev[i] = NULL;
 		}
 		dd->eraser_active = false;
+#if (INPUT_DEVICES > 1)
+		dd->last_finger_active = false;
+		dd->last_stylus_active = false;
+#endif
 		if (dd->irq_registered) {
 			free_irq(dd->spi->irq, dd);
 			dd->irq_registered = false;
@@ -1029,7 +1041,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		if (input_msg->events == 0) {
 			if (dd->eraser_active) {
 				input_report_key(
-					dd->input_dev[INPUT_DEVICES - 1],
+					dd->input_dev[ID_STYLUS],
 					BTN_TOOL_RUBBER, 0);
 				dd->eraser_active = false;
 			}
@@ -1037,23 +1049,73 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 				input_mt_sync(dd->input_dev[i]);
 				input_sync(dd->input_dev[i]);
 			}
+#if (INPUT_DEVICES > 1)
+			dd->last_finger_active = false;
+			dd->last_stylus_active = false;
+#endif
 		} else {
+#if (INPUT_DEVICES > 1)
+			bool current_finger_active = false;
+			bool current_stylus_active = false;
 			for (i = 0; i < input_msg->events; i++) {
+				if (!current_finger_active &&
+					(input_msg->event[i].tool_type
+					== DR_INPUT_FINGER)) {
+					current_finger_active = true;
+				}
+				if (!current_stylus_active &&
+					((input_msg->event[i].tool_type
+					== DR_INPUT_STYLUS) ||
+					(input_msg->event[i].tool_type
+					== DR_INPUT_ERASER))) {
+					current_stylus_active = true;
+				}
+			}
+#if NV_STYLUS_FINGER_EXCLUSION
+			if (dd->last_finger_active && !dd->last_stylus_active &&
+				current_stylus_active) {
+#else
+			if (dd->last_finger_active && !current_finger_active) {
+#endif
+				input_mt_sync(dd->input_dev[ID_FINGER]);
+				input_sync(dd->input_dev[ID_FINGER]);
+			}
+			if (dd->last_stylus_active && !current_stylus_active) {
+				if (dd->eraser_active) {
+					input_report_key(
+						dd->input_dev[ID_STYLUS],
+						BTN_TOOL_RUBBER, 0);
+					dd->eraser_active = false;
+				}
+				input_mt_sync(dd->input_dev[ID_STYLUS]);
+				input_sync(dd->input_dev[ID_STYLUS]);
+			}
+			dd->last_finger_active = current_finger_active;
+			dd->last_stylus_active = current_stylus_active;
+#endif
+			for (i = 0; i < input_msg->events; i++) {
+#if (INPUT_DEVICES > 1) && NV_STYLUS_FINGER_EXCLUSION
+				if ((input_msg->event[i].tool_type
+					== DR_INPUT_FINGER) &&
+					current_stylus_active) {
+					continue;
+				}
+#endif
 				switch (input_msg->event[i].tool_type) {
 				case DR_INPUT_FINGER:
-					inp = 0;
+					inp = ID_FINGER;
 					input_report_abs(dd->input_dev[inp],
 							 ABS_MT_TOOL_TYPE,
 							 MT_TOOL_FINGER);
 					break;
 				case DR_INPUT_STYLUS:
-					inp = INPUT_DEVICES - 1;
+					inp = ID_STYLUS;
 					input_report_abs(dd->input_dev[inp],
 							 ABS_MT_TOOL_TYPE,
 							 MT_TOOL_PEN);
 					break;
 				case DR_INPUT_ERASER:
-					inp = INPUT_DEVICES - 1;
+					inp = ID_STYLUS;
 					input_report_key(dd->input_dev[inp],
 						BTN_TOOL_RUBBER, 1);
 					dd->eraser_active = true;
@@ -1212,7 +1274,7 @@ static irqreturn_t irq_handler(int irq, void *context)
 
 	trace_touchscreen_maxim_irq("irq_handler");
 
-#ifdef NV_ENABLE_CPU_BOOST
+#if NV_ENABLE_CPU_BOOST
 	if (time_after(jiffies, dd->last_irq_jiffies + INPUT_IDLE_PERIOD))
 		input_event(dd->input_dev[0], EV_MSC, MSC_ACTIVITY, 1);
 	dd->last_irq_jiffies = jiffies;
@@ -1639,7 +1701,7 @@ static int probe(struct spi_device *spi)
 	list_add_tail(&dd->dev_list, &dev_list);
 	spin_unlock_irqrestore(&dev_lock, flags);
 
-#ifdef NV_ENABLE_CPU_BOOST
+#if NV_ENABLE_CPU_BOOST
 	dd->last_irq_jiffies = jiffies;
 #endif
 
