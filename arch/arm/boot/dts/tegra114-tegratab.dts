@@ -243,16 +243,16 @@
 						pll0 = <0x01003f10>;
 						pll1 = <0x10300b00>;
 						pe-current = <0x00000000>;
-						drive-current = <0x20202020>;
-						peak-current = <0x05050505>;
+						drive-current = <0x21212121>;
+						peak-current = <0x03030303>;
 					};
 					tmds-cfg@2 {
 						pclk = <148500000>;
 						pll0 = <0x01003f10>;
 						pll1 = <0x10300b00>;
 						pe-current = <0x00000000>;
-						drive-current = <0x22222222>;
-						peak-current = <0x05050505>;
+						drive-current = <0x24242424>;
+						peak-current = <0x03030303>;
 					};
 					tmds-cfg@3 {
 						pclk = <0x7fffffff>;
