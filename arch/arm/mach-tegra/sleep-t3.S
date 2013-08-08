@@ -490,8 +490,8 @@ loop_i2c_status_resume:
 	cmp r3, r1
 	beq lp1_voltset
 
-	ldr r3, [r4, #I2C_STATUS]
-	cmp r3, #0
+	ldr r8, [r4, #I2C_STATUS]
+	cmp r8, #0
 	bne loop_i2c_status_resume
 
 lp1_voltskip_resume:
@@ -804,9 +804,9 @@ lp1_clocks_prepare:
 	add r3, r2, r3
 loop_i2c_status_suspend:
 	add r2, r2, #0xFA /* Check status every 250us */
+	wait_until r2, r7, r9
 	cmp r3, r2
 	beq lp1_volt_skip  /* Waited for 2ms, I2C transaction didn't take place */
-	wait_until r2, r7, r9
 
 	ldr r0, [r1, #I2C_STATUS]
 	cmp r0, #0
