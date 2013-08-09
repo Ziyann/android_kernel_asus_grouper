@@ -29,8 +29,12 @@
 #include <linux/of_gpio.h>
 #include <media/ad5823.h>
 
-#define POS_LOW		(146)
-#define POS_HIGH	(568)
+#define AD5823_ACTUATOR_RANGE	1023
+#define AD5823_POS_LOW_DEFAULT	(0)
+#define AD5823_POS_HIGH_DEFAULT	(1023)
+#define AD5823_FOCUS_MACRO	(568)
+#define AD5823_FOCUS_INFINITY	(146)
+
 #define SETTLETIME_MS	(15)
 #define FOCAL_LENGTH	(4.507f)
 #define FNUMBER		(2.8f)
@@ -41,7 +45,7 @@
 struct ad5823_info {
 	struct i2c_client *i2c_client;
 	struct regulator *regulator;
-	struct ad5823_config config;
+	struct nv_focuser_config config;
 	struct ad5823_platform_data *pdata;
 	struct miscdevice miscdev;
 	struct regmap *regmap;
@@ -51,16 +55,16 @@ static int ad5823_set_position(struct ad5823_info *info, u32 position)
 {
 	int ret = 0;
 
-	if (position < info->config.pos_low ||
-		position > info->config.pos_high) {
+	if (position < info->config.pos_actual_low ||
+		position > info->config.pos_actual_high) {
 		dev_err(&info->i2c_client->dev,
 			"%s: position(%d) out of bound([%d, %d])\n",
-			__func__, position, info->config.pos_low,
-			info->config.pos_high);
-		if (position < info->config.pos_low)
-			position = info->config.pos_low;
-		else
-			position = info->config.pos_high;
+			__func__, position, info->config.pos_actual_low,
+			info->config.pos_actual_high);
+		if (position < info->config.pos_actual_low)
+			position = info->config.pos_actual_low;
+		if (position > info->config.pos_actual_high)
+			position = info->config.pos_actual_high;
 	}
 
 	ret |= regmap_write(info->regmap, AD5823_VCM_MOVE_TIME,
@@ -104,9 +108,35 @@ static long ad5823_ioctl(struct file *file,
 				__func__);
 			return -EFAULT;
 		}
-		info->config.pos_low = cal.pos_low;
-		info->config.pos_high = cal.pos_high;
+		info->config.pos_working_low = cal.pos_low;
+		info->config.pos_working_high = cal.pos_high;
 		break;
+
+	case AD5823_IOCTL_SET_CONFIG:
+	{
+		if (info->config.pos_working_low != 0)
+			cal.pos_low = info->config.pos_working_low;
+		if (info->config.pos_working_high != 0)
+			cal.pos_high = info->config.pos_working_high;
+
+		if (copy_from_user(&info->config, (const void __user *)arg,
+			sizeof(struct nv_focuser_config))) {
+			dev_err(&info->i2c_client->dev,
+				"%s:Failed to get config from user.\n",
+				__func__);
+		return -EFAULT;
+		}
+
+		if (cal.pos_low != 0) {
+			info->config.pos_working_low = cal.pos_low;
+			info->config.focuser_set[0].inf = cal.pos_low;
+		}
+		if (cal.pos_high != 0) {
+			info->config.pos_working_high = cal.pos_high;
+			info->config.focuser_set[0].macro = cal.pos_high;
+		}
+	}
+	break;
 
 	default:
 		return -EINVAL;
@@ -215,7 +245,6 @@ static int ad5823_probe(struct i2c_client *client,
 		.val_bits = 8,
 	};
 
-
 	dev_dbg(&client->dev, "ad5823: probing sensor.\n");
 
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
@@ -272,13 +301,23 @@ static int ad5823_probe(struct i2c_client *client,
 	if (info->regulator)
 		regulator_disable(info->regulator);
 
-	info->i2c_client		= client;
-	info->config.settle_time	= SETTLETIME_MS;
-	info->config.focal_length	= FOCAL_LENGTH;
-	info->config.fnumber		= FNUMBER;
-	info->config.pos_low		= POS_LOW;
-	info->config.pos_high		= POS_HIGH;
-	info->miscdev			= ad5823_device;
+	info->config.focal_length = FOCAL_LENGTH;
+	info->config.fnumber = FNUMBER;
+	info->config.max_aperture = FNUMBER;
+	info->config.range_ends_reversed = 0;
+
+	info->config.pos_working_low = AD5823_FOCUS_INFINITY;
+	info->config.pos_working_high = AD5823_FOCUS_MACRO;
+	info->config.pos_actual_low = AD5823_POS_LOW_DEFAULT;
+	info->config.pos_actual_high = AD5823_POS_HIGH_DEFAULT;
+
+	info->config.num_focuser_sets = 1;
+	info->config.focuser_set[0].macro = AD5823_FOCUS_MACRO;
+	info->config.focuser_set[0].hyper = AD5823_FOCUS_INFINITY;
+	info->config.focuser_set[0].inf = AD5823_FOCUS_INFINITY;
+	info->config.focuser_set[0].settle_time = SETTLETIME_MS;
+
+	info->miscdev   = ad5823_device;
 
 	i2c_set_clientdata(client, info);
 
