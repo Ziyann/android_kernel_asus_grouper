@@ -1046,7 +1046,7 @@ static int dc_hdmi_out_disable(void)
 
 static int dc_hdmi_hotplug_init(struct device *dev)
 {
-	int err;
+	int err = 0;
 	int i = 0;
 	struct property *prop;
 	const char *regulator;
@@ -1071,9 +1071,10 @@ static int dc_hdmi_hotplug_init(struct device *dev)
 				pr_err("hdmi: couldn't get regulator\n");
 				of_regulators_dc1[i] = NULL;
 				return PTR_ERR(of_regulators_dc1[i]);
+			} else {
+				err = regulator_enable(of_regulators_dc1[i]);
 			}
 		}
-		err = regulator_enable(of_regulators_dc1[i]);
 		if (err < 0) {
 			pr_err("hdmi: couldn't enable regulator avdd_hdmi 5v0\n");
 			return err;
