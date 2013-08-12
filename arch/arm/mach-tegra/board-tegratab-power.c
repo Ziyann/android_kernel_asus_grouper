@@ -120,6 +120,11 @@ struct max17048_battery_model tegratab_max17048_mdata = {
 
 struct max17048_platform_data tegratab_max17048_pdata = {
 	.model_data = &tegratab_max17048_mdata,
+	.set_current_threshold = ina230_set_current_threshold,
+	.current_normal = TEGRATAB_BATTERY_MAX_CURRENT,
+	.current_threshold_num = 2,
+	.current_threshold_soc = {4, 8},
+	.current_threshold = {1800, 2500},
 };
 
 static struct i2c_board_info __initdata tegratab_max17048_boardinfo[] = {

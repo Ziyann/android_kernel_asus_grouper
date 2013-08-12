@@ -336,7 +336,7 @@ static struct ina230_platform_data power_mon_ina230_info[] = {
 		/* Current threshold for detect system overcurrent.
 		   Yoku(4100mA/3.7V) suggest 4.5A for max continuous
 		   discharge current. It is 6.5A in datasheet. */
-		.current_threshold = 4500,
+		.current_threshold = TEGRATAB_BATTERY_MAX_CURRENT,
 		.shunt_polarity_inverted = 1,
 	}
 };

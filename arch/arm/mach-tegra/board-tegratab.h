@@ -126,4 +126,5 @@ enum tegra_bb_type {
 #define UTMI2_PORT_OWNER_XUSB	0x2
 #define HSIC1_PORT_OWNER_XUSB	0x4
 
+#define TEGRATAB_BATTERY_MAX_CURRENT	4500
 #endif
