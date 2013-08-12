@@ -943,6 +943,26 @@ static int __devexit max17048_remove(struct i2c_client *client)
 static void max17048_shutdown(struct i2c_client *client)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
+	struct max17048_battery_model *mdata = chip->pdata->model_data;
+	int ret, val;
+
+	/* reset RCOMP to default value */
+	val = max17048_read_word(client, MAX17048_CONFIG);
+	if (val < 0) {
+		dev_err(&client->dev,
+				"%s(): Failed in reading register" \
+				"MAX17048_CONFIG err %d\n",
+					__func__, val);
+	} else {
+		/* clear upper byte */
+		val &= 0xFF;
+		/* Apply defaut Rcomp value */
+		val |= (mdata->rcomp << 8);
+		ret = max17048_write_word(client, MAX17048_CONFIG, val);
+		if (ret < 0)
+			dev_err(&client->dev,
+				"failed set RCOMP\n");
+	}
 
 	if (client->irq)
 		disable_irq(client->irq);
