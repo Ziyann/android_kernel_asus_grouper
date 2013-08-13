@@ -27,8 +27,8 @@
 #include "genetlink.h"
 #endif
 
-#define DRIVER_VERSION  "1.3.1"
-#define DRIVER_RELEASE  "August 5, 2013"
+#define DRIVER_VERSION  "1.4.0"
+#define DRIVER_RELEASE  "August 12, 2013"
 
 /****************************************************************************\
 * Netlink: common kernel/user space macros                                   *
@@ -151,6 +151,7 @@ enum {
 	DR_CHIP_ACCESS_METHOD,
 	DR_CONFIG_IRQ,
 	DR_CONFIG_INPUT,
+	DR_CONFIG_WATCHDOG,
 	DR_DECONFIG,
 	DR_INPUT,
 	DR_LEGACY_FWDL,
@@ -200,6 +201,10 @@ struct __attribute__ ((__packed__)) dr_config_irq {
 struct __attribute__ ((__packed__)) dr_config_input {
 	__u16  x_range;
 	__u16  y_range;
+};
+
+struct __attribute__ ((__packed__)) dr_config_watchdog {
+	__u32  pid;
 };
 
 struct __attribute__ ((__packed__)) dr_input_event {

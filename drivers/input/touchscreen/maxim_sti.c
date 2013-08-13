@@ -62,6 +62,7 @@ struct chip_access_method {
 struct dev_data {
 	u8                           *tx_buf;
 	u8                           *rx_buf;
+	u8                           send_fail_count;
 	u32                          nl_seq;
 	u8                           nl_mc_group_count;
 	bool                         nl_enabled;
@@ -74,8 +75,12 @@ struct dev_data {
 	bool                         last_stylus_active;
 #endif
 	bool                         legacy_acceleration;
+#if INPUT_ENABLE_DISABLE
+	bool                         input_no_deconfig;
+#endif
 	bool                         irq_registered;
 	u16                          irq_param[MAX_IRQ_PARAMS];
+	pid_t                        fusion_process;
 	char                         input_phys[128];
 	struct input_dev             *input_dev[INPUT_DEVICES];
 	struct completion            suspend_resume;
@@ -848,6 +853,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 	struct fu_irqline_status      *irqline_status;
 	struct dr_config_irq          *config_irq_msg;
 	struct dr_config_input        *config_input_msg;
+	struct dr_config_watchdog     *config_watchdog_msg;
 	struct dr_input               *input_msg;
 	struct dr_legacy_acceleration *legacy_acceleration_msg;
 	u8                            i, inp;
@@ -955,6 +961,9 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		return false;
 	case DR_CONFIG_INPUT:
 		config_input_msg = msg;
+		for (i = 0; i < INPUT_DEVICES; i++)
+			if (dd->input_dev[i] != NULL)
+				return false;
 		for (i = 0; i < INPUT_DEVICES; i++) {
 			dd->input_dev[i] = input_allocate_device();
 			if (dd->input_dev[i] == NULL) {
@@ -1016,25 +1025,32 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			}
 		}
 		return false;
+	case DR_CONFIG_WATCHDOG:
+		config_watchdog_msg = msg;
+		dd->fusion_process = (pid_t)config_watchdog_msg->pid;
+		return false;
 	case DR_DECONFIG:
-		for (i = 0; i < INPUT_DEVICES; i++) {
-			if (dd->input_dev[i] == NULL)
-				continue;
-			input_unregister_device(dd->input_dev[i]);
-			dd->input_dev[i] = NULL;
-		}
-		dd->eraser_active = false;
-#if (INPUT_DEVICES > 1)
-		dd->last_finger_active = false;
-		dd->last_stylus_active = false;
-#endif
 		if (dd->irq_registered) {
 			free_irq(dd->spi->irq, dd);
 			dd->irq_registered = false;
 		}
 		stop_scan_canned(dd);
+		if (!dd->input_no_deconfig) {
+			for (i = 0; i < INPUT_DEVICES; i++) {
+				if (dd->input_dev[i] == NULL)
+					continue;
+				input_unregister_device(dd->input_dev[i]);
+				dd->input_dev[i] = NULL;
+			}
+		}
+#if (INPUT_DEVICES > 1)
+		dd->last_finger_active = false;
+		dd->last_stylus_active = false;
+#endif
+		dd->eraser_active = false;
 		dd->legacy_acceleration = false;
 		dd->service_irq = service_irq;
+		dd->fusion_process = (pid_t)0;
 		return false;
 	case DR_INPUT:
 		input_msg = msg;
@@ -1358,6 +1374,15 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 		if (ret < 0) {
 			ERROR("can't send IRQ buffer %d", ret);
 			msleep(300);
+			if (++dd->send_fail_count >= 10 &&
+			    dd->fusion_process != (pid_t)0) {
+				(void)kill_pid(
+					find_get_pid(dd->fusion_process),
+					SIGKILL, 1);
+				wake_up_process(dd->thread);
+			}
+		} else {
+			dd->send_fail_count = 0;
 		}
 		ret = nl_msg_new(dd, MC_FUSION);
 		if (ret < 0)
@@ -1473,6 +1498,15 @@ static void service_irq(struct dev_data *dd)
 		if (ret < 0) {
 			ERROR("can't send IRQ buffer %d", ret);
 			msleep(300);
+			if (++dd->send_fail_count >= 10 &&
+			    dd->fusion_process != (pid_t)0) {
+				(void)kill_pid(
+					find_get_pid(dd->fusion_process),
+					SIGKILL, 1);
+				wake_up_process(dd->thread);
+			}
+		} else {
+			dd->send_fail_count = 0;
 		}
 		ret = nl_msg_new(dd, MC_FUSION);
 		if (ret < 0)
@@ -1507,6 +1541,16 @@ static int processing_thread(void *arg)
 			}
 
 		/* priority 1: start up fusion process */
+		if (dd->fusion_process != (pid_t)0 && get_pid_task(
+					find_get_pid(dd->fusion_process),
+					PIDTYPE_PID) == NULL) {
+			stop_scan_canned(dd);
+			dd->start_fusion = true;
+			dd->fusion_process = (pid_t)0;
+#if INPUT_ENABLE_DISABLE
+			dd->input_no_deconfig = true;
+#endif
+		}
 		if (dd->start_fusion) {
 			do {
 				ret = call_usermodehelper(argv[0], argv, NULL,
@@ -1729,6 +1773,9 @@ static int remove(struct spi_device *spi)
 	struct dev_data         *dd = spi_get_drvdata(spi);
 	unsigned long           flags;
 	u8                      i;
+
+	if (dd->fusion_process != (pid_t)0)
+		(void)kill_pid(find_get_pid(dd->fusion_process), SIGKILL, 1);
 
 	/* BEWARE: tear-down sequence below is carefully staged:            */
 	/* 1) first the feeder of Netlink messages to the processing thread */
