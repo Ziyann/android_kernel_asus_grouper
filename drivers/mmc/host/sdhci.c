@@ -2,7 +2,7 @@
  *  linux/drivers/mmc/host/sdhci.c - Secure Digital Host Controller Interface driver
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
- *  Copyright (c) 2013, NVIDIA CORPORATION. All Rights Reserved.
+ *  Copyright (c) 2013-2014, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2044,6 +2044,9 @@ int sdhci_enable(struct mmc_host *mmc)
 	unsigned int approved;
 	int ret;
 	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
+#ifdef CONFIG_MMC_FREQ_SCALING
+	unsigned long freq = 0;
+#endif
 
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
@@ -2065,6 +2068,13 @@ int sdhci_enable(struct mmc_host *mmc)
 		if (ret)
 			dev_err(&pdev->dev, "Unable to set SD_EDP_HIGH state\n");
 	}
+#ifdef CONFIG_MMC_FREQ_SCALING
+	if (mmc->df) {
+		mmc->dev_stats->busy_time = 0;
+		schedule_delayed_work(&mmc->dfs_work,
+			msecs_to_jiffies(10));
+	}
+#endif
 
 	return 0;
 }
@@ -2079,6 +2089,18 @@ static void mmc_host_clk_gate(struct sdhci_host *host)
 	if (host->ops->set_clock)
 		host->ops->set_clock(host, 0);
 
+	/*
+	 * Cancel any pending DFS work if clocks are turned off.
+	 */
+#ifdef CONFIG_MMC_FREQ_SCALING
+	if (mmc->df) {
+		cancel_delayed_work_sync(&mmc->dfs_work);
+		mutex_lock(&mmc->df->lock);
+		mmc->df->previous_freq = mmc->actual_clock;
+		mutex_unlock(&mmc->df->lock);
+
+	}
+#endif
 	if (host->sd_edp_client) {
 		ret = edp_update_client_request(host->sd_edp_client,
 				SD_EDP_LOW, NULL);
