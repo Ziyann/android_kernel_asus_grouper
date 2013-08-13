@@ -2044,6 +2044,11 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 			if (ret < 0)
 				return ret;
 			old_selector = ret;
+			/* exit if no change */
+			if (old_selector == selector) {
+				ret = 0;
+				goto out;
+			}
 			ret = rdev->desc->ops->set_voltage_time_sel(rdev,
 						old_selector, selector);
 			if (ret < 0)
@@ -2085,6 +2090,7 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 				     (void *)min_uV);
 	}
 
+out:
 	trace_regulator_set_voltage_complete(rdev_get_name(rdev), selector);
 
 	return ret;
