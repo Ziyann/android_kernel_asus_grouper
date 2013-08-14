@@ -35,6 +35,7 @@ struct freqcap {
 static unsigned int gpu_high_threshold = 700;
 static unsigned int gpu_window = 80;
 static unsigned int gain_factor = 130;
+static unsigned int gain_factor_highcore = 130;
 static unsigned int core_profile = TEGRA_SYSEDP_PROFILE_NORMAL;
 static unsigned int online_cpu_count;
 static bool gpu_busy;
@@ -182,7 +183,9 @@ static void update_cur_corecap(void)
 	if (!core_platdata)
 		return;
 
-	power = core_edp_states[core_state] * gain_factor / 100;
+	power = core_edp_states[core_state] *
+			(core_profile == TEGRA_SYSEDP_PROFILE_HIGHCORE ?
+			 gain_factor_highcore : gain_factor) / 100;
 	power += core_loan;
 	i = core_platdata->corecap_size - 1;
 
