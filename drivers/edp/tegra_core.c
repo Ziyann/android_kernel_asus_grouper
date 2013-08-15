@@ -33,6 +33,7 @@ struct freqcap {
 };
 
 static unsigned int gpu_high_threshold = 700;
+static unsigned int gpu_high_threshold_highcore = 500;
 static unsigned int gpu_window = 80;
 static unsigned int gain_factor = 130;
 static unsigned int gain_factor_highcore = 130;
@@ -240,7 +241,9 @@ void tegra_edp_notify_gpu_load(unsigned int load)
 	bool old;
 
 	old = gpu_busy;
-	gpu_busy = load >= gpu_high_threshold;
+	gpu_busy = load >=
+		(core_profile == TEGRA_SYSEDP_PROFILE_HIGHCORE ?
+		 gpu_high_threshold_highcore : gpu_high_threshold);
 
 	if (gpu_busy == old || force_gpu_pri || !core_platdata)
 		return;
