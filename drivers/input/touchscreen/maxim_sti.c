@@ -667,6 +667,7 @@ static void stop_scan_canned(struct dev_data *dd)
 			     sizeof(value));
 }
 
+#if !SUSPEND_POWER_OFF
 static void start_scan_canned(struct dev_data *dd)
 {
 	u16  value;
@@ -677,8 +678,9 @@ static void start_scan_canned(struct dev_data *dd)
 		value = dd->irq_param[14];
 		(void)dd->chip.write(dd, dd->irq_param[12], (u8 *)&value,
 				     sizeof(value));
+	}
 }
-}
+#endif
 
 static int regulator_control(struct dev_data *dd, bool on)
 {
@@ -947,6 +949,8 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		}
 		memcpy(dd->irq_param, config_irq_msg->irq_param,
 		       config_irq_msg->irq_params * sizeof(dd->irq_param[0]));
+		if (dd->irq_registered)
+			return false;
 		dd->service_irq = service_irq;
 		ret = request_irq(dd->spi->irq, irq_handler,
 			(config_irq_msg->irq_edge == DR_IRQ_RISING_EDGE) ?
@@ -1303,7 +1307,7 @@ static irqreturn_t irq_handler(int irq, void *context)
 static void service_irq_legacy_acceleration(struct dev_data *dd)
 {
 	struct fu_async_data  *async_data;
-	u16                   len, rx_len, offset = 0;
+	u16                   len, rx_len = 0, offset = 0;
 	u16                   buf[255], rx_limit = 250 * sizeof(u16);
 	int                   ret = 0, counter = 0;
 
