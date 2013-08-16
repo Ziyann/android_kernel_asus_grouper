@@ -280,6 +280,8 @@ struct sdhci_ops {
 
 	void	(*platform_suspend)(struct sdhci_host *host);
 	void	(*platform_resume)(struct sdhci_host *host);
+	void	(*platform_get_bus)(struct sdhci_host *host);
+	void	(*platform_release_bus)(struct sdhci_host *host);
 	int	(*switch_signal_voltage)(struct sdhci_host *host,
 				unsigned int signal_voltage);
 	void	(*switch_signal_voltage_exit)(struct sdhci_host *host);

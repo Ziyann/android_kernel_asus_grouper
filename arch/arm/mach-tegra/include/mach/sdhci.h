@@ -48,6 +48,7 @@ struct tegra_sdhci_platform_data {
 	int pm_caps;
 	int nominal_vcore_mv;
 	int min_vcore_override_mv;
+	int boot_vcore_mv;
 	unsigned int max_clk_limit;
 	unsigned int ddr_clk_limit;
 	unsigned int tap_delay;
@@ -59,6 +60,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int edp_states[SD_EDP_NUM_STATES];
 	bool power_off_rail;
 	bool en_freq_scaling;
+	bool en_nominal_vcore_tuning;
 };
 
 #endif
