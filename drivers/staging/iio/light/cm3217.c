@@ -370,7 +370,7 @@ static int lightsensor_enable(struct cm3217_info *lpi)
 		pr_err("[LS][CM3217 error]%s: set auto light sensor fail\n",
 		       __func__);
 
-	queue_work(lpi->lp_wq, &report_work.work);
+	queue_delayed_work(lpi->lp_wq, &report_work, lpi->polling_delay);
 	lpi->als_enable = 1;
 
 	mutex_unlock(&lpi->enable_lock);
@@ -468,7 +468,8 @@ static long lightsensor_ioctl(struct file *file, unsigned int cmd,
 		D("[LS][CM3217] %s LIGHTSENSOR_IOCTL_SET_DELAY, delay %ld\n",
 			__func__, delay);
 		delay = delay / 1000;
-		lpi->polling_delay = msecs_to_jiffies(delay);
+		if (delay > LS_POLLING_DELAY)
+			lpi->polling_delay = msecs_to_jiffies(delay);
 		break;
 
 	default:
