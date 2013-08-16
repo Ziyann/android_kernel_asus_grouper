@@ -100,6 +100,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_NON_STANDARD_TUNING		(1<<3)
 /* Controller doesn't calculate max_discard_to */
 #define SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO		(1<<4)
+/* Controller needs a dummy write after INT_CLK_EN for clock to be stable */
+#define SDHCI_QUIRK2_INT_CLK_STABLE_REQ_DUMMY_REG_WRITE	(1<<5)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
