@@ -54,7 +54,7 @@ struct tegra_xusb_platform_data *tegra_xusb_init(
 	tegra_xusb_plat_data.rx_eq = (0x3928 << 8);
 	tegra_xusb_plat_data.cdr_cntl = (0x26 << 24);
 	tegra_xusb_plat_data.dfe_cntl = 0x002008EE;
-	tegra_xusb_plat_data.hs_slew = (0xE << 6);
+	tegra_xusb_plat_data.hs_slew = (0xC << 6);
 	tegra_xusb_plat_data.ls_rslew = (0x3 << 14);
 	tegra_xusb_plat_data.hs_disc_lvl = (0x5 << 2);
 #endif
