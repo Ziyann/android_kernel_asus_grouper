@@ -538,9 +538,11 @@ static int device_fw_load(struct dev_data *dd, const struct firmware *fw)
 static int fw_request_load(struct dev_data *dd)
 {
 	const struct firmware *fw;
+	struct maxim_sti_pdata *pdata = dd->spi->dev.platform_data;
+	char *fw_name = pdata->fw_name;
 	int  ret;
 
-	ret = request_firmware(&fw, "maxim_fp35.bin", &dd->spi->dev);
+	ret = request_firmware(&fw, fw_name, &dd->spi->dev);
 	if (ret || fw == NULL) {
 		ERROR("firmware request failed (%d,%p)", ret, fw);
 		return -1;

@@ -254,6 +254,7 @@ struct __attribute__ ((__packed__)) fu_async_data {
 struct maxim_sti_pdata {
 	char      *touch_fusion;
 	char      *config_file;
+	char      *fw_name;
 	char      *nl_family;
 	u8        nl_mc_groups;
 	u8        chip_access_method;
