@@ -33,13 +33,16 @@
 
 enum nct_id_type {
 	NCT_ID_START = 0,
-	NCT_ID_SERIAL_NUMBER = NCT_ID_START,
+	NCT_ID_SERIAL_NUMBER_0 = NCT_ID_START,
 	NCT_ID_WIFI_MAC_ADDR,
 	NCT_ID_BT_ADDR,
 	NCT_ID_CM_ID,
 	NCT_ID_LBH_ID,
 	NCT_ID_FACTORY_MODE,
 	NCT_ID_RAMDUMP,
+	NCT_ID_SERIAL_NUMBER_1,
+	NCT_ID_SERIAL_NUMBER_2,
+	NCT_ID_SERIAL_NUMBER_3,
 	NCT_ID_TEST,
 	NCT_ID_END = NCT_ID_TEST,
 	NCT_ID_DISABLED = 0xEEEE,
@@ -75,13 +78,16 @@ struct nct_ramdump_type {
 };
 
 union nct_item_type {
-	struct nct_serial_number_type	serial_number;
+	struct nct_serial_number_type	serial_number_0;
 	struct nct_wifi_mac_addr_type	wifi_mac_addr;
 	struct nct_bt_addr_type		bt_addr;
 	struct nct_cm_id_type		cm_id;
 	struct nct_lbh_id_type		lbh_id;
 	struct nct_factory_mode_type	factory_mode;
 	struct nct_ramdump_type		ramdump;
+	struct nct_serial_number_type	serial_number_1;
+	struct nct_serial_number_type	serial_number_2;
+	struct nct_serial_number_type	serial_number_3;
 	u8	u8[MAX_NCT_DATA_SIZE];
 	u16	u16[MAX_NCT_DATA_SIZE/2];
 	u32	u32[MAX_NCT_DATA_SIZE/4];

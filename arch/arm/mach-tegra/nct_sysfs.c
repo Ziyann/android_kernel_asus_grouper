@@ -41,8 +41,8 @@ static ssize_t nct_item_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf);
 
 
-static const struct kobj_attribute serial_number_attr =
-	__ATTR(serial_number, 0444, nct_item_show, 0);
+static const struct kobj_attribute serial_number_0_attr =
+	__ATTR(serial_number_0, 0444, nct_item_show, 0);
 static const struct kobj_attribute wifi_mac_addr_attr =
 	__ATTR(wifi_mac_addr, 0444, nct_item_show, 0);
 static const struct kobj_attribute bt_addr_attr =
@@ -51,13 +51,22 @@ static const struct kobj_attribute cm_id_attr =
 	__ATTR(cm_id, 0444, nct_item_show, 0);
 static const struct kobj_attribute lbh_id_attr =
 	__ATTR(lbh_id, 0444, nct_item_show, 0);
+static const struct kobj_attribute serial_number_1_attr =
+	__ATTR(serial_number_1, 0444, nct_item_show, 0);
+static const struct kobj_attribute serial_number_2_attr =
+	__ATTR(serial_number_2, 0444, nct_item_show, 0);
+static const struct kobj_attribute serial_number_3_attr =
+	__ATTR(serial_number_3, 0444, nct_item_show, 0);
 
 static const struct attribute *nct_item_attrs[] = {
-	&serial_number_attr.attr,
+	&serial_number_0_attr.attr,
 	&wifi_mac_addr_attr.attr,
 	&bt_addr_attr.attr,
 	&cm_id_attr.attr,
 	&lbh_id_attr.attr,
+	&serial_number_1_attr.attr,
+	&serial_number_2_attr.attr,
+	&serial_number_3_attr.attr,
 	NULL
 };
 
@@ -68,11 +77,11 @@ static ssize_t nct_item_show(struct kobject *kobj,
 	union nct_item_type item;
 	int err;
 
-	if (attr == &serial_number_attr) {
-		err = tegra_nct_read_item(NCT_ID_SERIAL_NUMBER, &item);
+	if (attr == &serial_number_0_attr) {
+		err = tegra_nct_read_item(NCT_ID_SERIAL_NUMBER_0, &item);
 		if (err < 0)
 			return 0;
-		rval = sprintf(buf, "%s\n", item.serial_number.sn);
+		rval = sprintf(buf, "%s\n", item.serial_number_0.sn);
 	} else if (attr == &wifi_mac_addr_attr) {
 		err = tegra_nct_read_item(NCT_ID_WIFI_MAC_ADDR, &item);
 		if (err < 0)
@@ -105,8 +114,24 @@ static ssize_t nct_item_show(struct kobject *kobj,
 		if (err < 0)
 			return 0;
 		rval = sprintf(buf, "%04d\n", item.lbh_id.id);
+	} else if (attr == &serial_number_1_attr) {
+		err = tegra_nct_read_item(NCT_ID_SERIAL_NUMBER_1, &item);
+		if (err < 0)
+			return 0;
+		rval = sprintf(buf, "%s\n", item.serial_number_1.sn);
+	} else if (attr == &serial_number_2_attr) {
+		err = tegra_nct_read_item(NCT_ID_SERIAL_NUMBER_2, &item);
+		if (err < 0)
+			return 0;
+		rval = sprintf(buf, "%s\n", item.serial_number_2.sn);
+	} else if (attr == &serial_number_3_attr) {
+		err = tegra_nct_read_item(NCT_ID_SERIAL_NUMBER_3, &item);
+		if (err < 0)
+			return 0;
+		rval = sprintf(buf, "%s\n", item.serial_number_3.sn);
+	} else {
+		pr_err("tegra_nct: not supported entry\n");
 	}
-
 	return rval;
 }
 
