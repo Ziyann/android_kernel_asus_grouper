@@ -766,8 +766,13 @@ static void st_tty_close(struct tty_struct *tty)
 	 */
 	spin_lock_irqsave(&st_gdata->lock, flags);
 	for (i = ST_BT; i < ST_MAX_CHANNELS; i++) {
-		if (st_gdata->is_registered[i] == true)
+		if (st_gdata->is_registered[i] == true) {
 			pr_err("%d not un-registered", i);
+
+			if (!test_bit(ST_REG_PENDING, &st_gdata->st_state)) {
+				st_reg_complete(st_gdata, -ETIMEDOUT);
+			}
+		}
 		st_gdata->list[i] = NULL;
 		st_gdata->is_registered[i] = false;
 	}
