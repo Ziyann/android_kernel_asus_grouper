@@ -430,7 +430,7 @@ int __init dalmore_sdhci_init(void)
 		tegra_sdhci_platform_data3.trim_delay = 0;
 	tegra_get_board_info(&board_info);
 	if (board_info.fab == BOARD_FAB_A05) {
-		tegra_sdhci_platform_data0.max_clk_limit = 156000000;
+		tegra_sdhci_platform_data0.max_clk_limit = 204000000;
 		tegra_sdhci_platform_data0.en_freq_scaling = true;
 		tegra_sdhci_platform_data2.wp_gpio = -1;
 		tegra_sdhci_platform_data2.max_clk_limit = 204000000;
