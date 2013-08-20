@@ -732,10 +732,13 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 static void tegra_ehci_hcd_shutdown(struct platform_device *pdev)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
-	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
+	struct usb_hcd *hcd;
 
-	if (hcd->driver->shutdown)
-		hcd->driver->shutdown(hcd);
+	if (tegra->ehci) {
+		hcd = ehci_to_hcd(tegra->ehci);
+		if (hcd->driver->shutdown)
+			hcd->driver->shutdown(hcd);
+	}
 }
 
 static struct of_device_id tegra_ehci_of_match[] __devinitdata = {
