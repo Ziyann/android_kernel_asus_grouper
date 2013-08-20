@@ -29,6 +29,7 @@
 #include <linux/cpufreq.h>
 #include <linux/syscore_ops.h>
 #include <linux/platform_device.h>
+#include <linux/pm_qos.h>
 
 #include <asm/clkdev.h>
 
@@ -5238,6 +5239,13 @@ static unsigned long tegra11_clk_shared_bus_update(struct clk *bus,
 	unsigned long iso_bw = 0;
 	unsigned long ceiling = bus->max_rate;
 	u32 usage_flags = 0;
+
+	if (bus->flags & PERIPH_EMC_ENB) {
+		rate = max_t(unsigned long, rate,
+				pm_qos_request(PM_QOS_EMC_FREQ_MIN) * 1000);
+		ceiling = min_t(unsigned long, ceiling,
+				pm_qos_request(PM_QOS_EMC_FREQ_MAX) * 1000);
+	}
 
 	list_for_each_entry(c, &bus->shared_bus_list,
 			u.shared_bus_user.node) {

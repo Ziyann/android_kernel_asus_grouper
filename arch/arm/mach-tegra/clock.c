@@ -32,6 +32,7 @@
 #include <linux/bitops.h>
 #include <linux/io.h>
 #include <linux/bug.h>
+#include <linux/pm_qos.h>
 #include <trace/events/power.h>
 
 #include <mach/clk.h>
@@ -992,6 +993,27 @@ static int __init tegra_dfll_cpu_start(void)
 	return 0;
 }
 
+static int emc_freq_notify(struct notifier_block *nb, unsigned long val, void *p);
+
+static struct notifier_block min_emc_freq_notifier = {
+	.notifier_call = emc_freq_notify,
+};
+static struct notifier_block max_emc_freq_notifier = {
+	.notifier_call = emc_freq_notify,
+};
+
+static int emc_freq_notify(struct notifier_block *nb, unsigned long val,
+			   void *p)
+{
+	struct clk *c = tegra_get_clock_by_name("emc");
+
+	pr_debug("%s: PM QoS %s %lu\n",
+		__func__, nb == &min_emc_freq_notifier ? "min" : "max", val);
+	tegra_clk_shared_bus_update(c);
+
+	return NOTIFY_OK;
+}
+
 static int __init tegra_clk_late_init(void)
 {
 	tegra_init_disable_boot_clocks(); /* must before dvfs late init */
@@ -999,6 +1021,14 @@ static int __init tegra_clk_late_init(void)
 		tegra_dfll_cpu_start();	/* after successful dvfs init only */
 	tegra_sync_cpu_clock();		/* after attempt to get dfll ready */
 	tegra_recalculate_cpu_edp_limits();
+
+	if (pm_qos_add_notifier(PM_QOS_EMC_FREQ_MIN, &min_emc_freq_notifier))
+		WARN(1, "%s: Failed to register min emc freq PM QoS notifier\n",
+		     __func__);
+	if(pm_qos_add_notifier(PM_QOS_EMC_FREQ_MAX, &max_emc_freq_notifier))
+		WARN(1, "%s: Failed to register max emc freq PM QoS notifier\n",
+		     __func__);
+
 	return 0;
 }
 late_initcall(tegra_clk_late_init);
