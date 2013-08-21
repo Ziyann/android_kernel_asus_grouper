@@ -628,6 +628,7 @@ zcal_done:
 	str	r1, [r0, #EMC_ZCAL_INTERVAL]
 	ldr	r1, [r5, #0x0]
 	str	r1, [r0, #EMC_CFG]
+	emc_timing_update r1, r0
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	mov32	r1, TEGRA_EMC1_BASE
