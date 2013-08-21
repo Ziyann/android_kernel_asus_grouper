@@ -36,6 +36,8 @@ static struct clock_data clock_init[] = {
 	{ CAMERA_CILCD_CLK, "cilcd", true, 0},
 	{ CAMERA_CILE_CLK, "cile", true, 0},
 	{ CAMERA_PLL_D2_CLK, "pll_d2", false, 0},
+	{ CAMERA_PLL_P_CLK, "pll_p", false, 0},
+	{ CAMERA_PLL_C_CLK, "pll_c", false, 0},
 #endif
 	{ CAMERA_SCLK, "sclk", true, 80000000},
 };
