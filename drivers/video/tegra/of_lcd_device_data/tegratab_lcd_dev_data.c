@@ -158,6 +158,7 @@ static int lgd_wxga_7_0_disable(void)
 		regulator_disable(dvdd_lcd_1v8);
 	if (avdd_lcd_3v3)
 		regulator_disable(avdd_lcd_3v3);
+	msleep(1000); /*LCD panel VDD on needs to be 1000>ms after it's off*/
 	return 0;
 }
 
