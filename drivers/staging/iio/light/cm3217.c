@@ -266,6 +266,7 @@ static void report_lsensor_input_event(struct cm3217_info *lpi, bool resume)
 		level = fLevel;
 	}
 
+	input_abs_set_val(lpi->ls_input_dev, ABS_MISC, -1);
 	input_report_abs(lpi->ls_input_dev, ABS_MISC, adc_value);
 	input_sync(lpi->ls_input_dev);
 
