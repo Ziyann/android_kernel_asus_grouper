@@ -41,6 +41,11 @@ struct max17048_platform_data {
 	int current_threshold_num;
 	int current_threshold_soc[MAX17048_MAX_SOC_STEP];
 	int current_threshold[MAX17048_MAX_SOC_STEP];
+
+	void (*sysedp_throttle)(unsigned int power);
+	int sysedp_throttle_num;
+	int sysedp_throttle_soc[MAX17048_MAX_SOC_STEP];
+	unsigned int sysedp_throttle_power[MAX17048_MAX_SOC_STEP];
 };
 
 void max17048_battery_status(int status, int chrg_type);

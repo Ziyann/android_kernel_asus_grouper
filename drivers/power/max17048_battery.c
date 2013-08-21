@@ -26,6 +26,7 @@
 #include <linux/jiffies.h>
 #include <linux/thermal.h>
 #include <linux/platform_data/ina230.h>
+#include <linux/platform_data/tegra_edp.h>
 #include <generated/mach-types.h>
 
 #define MAX17048_VCELL		0x02
@@ -327,6 +328,27 @@ static void max17048_set_current_threshold(struct i2c_client *client)
 	}
 }
 
+static void max17048_sysedp_throttle(struct i2c_client *client)
+{
+	struct max17048_chip *chip = i2c_get_clientdata(client);
+	int i;
+	unsigned int power = ULONG_MAX;
+
+	/* edp throttle by SOC */
+	/* sysedp_throttle_power array should be sorted in ascending order */
+	if (chip->pdata->sysedp_throttle) {
+		for (i = 0; i < chip->pdata->sysedp_throttle_num; i++) {
+			if ((chip->internal_soc <=
+				chip->pdata->sysedp_throttle_soc[i]) &&
+				chip->pdata->sysedp_throttle_power[i]) {
+				power = chip->pdata->sysedp_throttle_power[i];
+				break;
+			}
+		}
+		chip->pdata->sysedp_throttle(power);
+	}
+}
+
 static uint16_t max17048_get_version(struct i2c_client *client)
 {
 	return max17048_read_word(client, MAX17048_VER);
@@ -428,6 +450,7 @@ static void max17048_work(struct work_struct *work)
 	max17048_get_vcell(chip->client);
 	max17048_get_soc(chip->client);
 	max17048_set_current_threshold(chip->client);
+	max17048_sysedp_throttle(chip->client);
 
 	if (chip->soc != chip->lasttime_soc ||
 		chip->status != chip->lasttime_status) {
@@ -725,6 +748,7 @@ static irqreturn_t max17048_irq(int id, void *dev)
 		max17048_get_vcell(client);
 		max17048_get_soc(client);
 		max17048_set_current_threshold(client);
+		max17048_sysedp_throttle(client);
 
 		chip->lasttime_soc = chip->soc;
 		dev_info(&client->dev,
@@ -919,6 +943,40 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 
 		for (i = 0; i < pdata->current_threshold_num; i++)
 			pdata->current_threshold[i] = soc_array[i];
+	}
+
+	if ((!of_property_read_string(np, "sysedp_throttle", &str)) &&
+		(!strncmp(str, "sysedp_lite", strlen(str)))) {
+		pdata->sysedp_throttle = sysedp_lite_throttle;
+	} else {
+		pdata->sysedp_throttle = NULL;
+	}
+
+	ret = of_property_read_u32(np, "sysedp_throttle_num", &val);
+	if (ret < 0)
+		pdata->sysedp_throttle_num = 0;
+	else
+		pdata->sysedp_throttle_num = val;
+
+	if (pdata->sysedp_throttle_num > MAX17048_MAX_SOC_STEP)
+		pdata->sysedp_throttle_num = MAX17048_MAX_SOC_STEP;
+
+	if (pdata->sysedp_throttle != NULL && pdata->sysedp_throttle_num) {
+		ret = of_property_read_u32_array(np, "sysedp_throttle_soc",
+					soc_array, pdata->sysedp_throttle_num);
+		if (ret < 0)
+			return ERR_PTR(ret);
+
+		for (i = 0; i < pdata->sysedp_throttle_num; i++)
+			pdata->sysedp_throttle_soc[i] = soc_array[i];
+
+		ret = of_property_read_u32_array(np, "sysedp_throttle_power",
+					soc_array, pdata->sysedp_throttle_num);
+		if (ret < 0)
+			return ERR_PTR(ret);
+
+		for (i = 0; i < pdata->sysedp_throttle_num; i++)
+			pdata->sysedp_throttle_power[i] = soc_array[i];
 	}
 	return pdata;
 }
