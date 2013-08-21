@@ -43,6 +43,7 @@ struct cpufreq_interactive_cpuinfo {
 	u64 freq_change_time;
 	u64 freq_change_time_in_idle;
 	u64 freq_change_time_in_iowait;
+	unsigned int io_consecutive;
 	u64 last_high_freq_time;
 	struct cpufreq_policy *policy;
 	struct cpufreq_frequency_table *freq_table;
@@ -69,6 +70,9 @@ static unsigned long max_boost;
 
 /* Consider IO as busy */
 static unsigned long io_is_busy;
+
+/* Consider IO as busy if consecutive IOs are above this value. */
+static unsigned long io_busy_threshold;
 
 /*
  * Targeted sustainable load relatively to current frequency.
@@ -190,6 +194,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 	unsigned int delta_idle;
 	unsigned int delta_iowait;
 	unsigned int delta_time;
+	unsigned int io_consecutive;
 	int cpu_load;
 	int load_since_change;
 	u64 time_in_idle;
@@ -231,6 +236,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 	delta_idle = (unsigned int)(now_idle - time_in_idle);
 	delta_iowait = (unsigned int)(now_iowait - time_in_iowait);
 	delta_time = (unsigned int)(pcpu->timer_run_time - idle_exit_time);
+	io_consecutive = pcpu->io_consecutive;
 
 	/*
 	 * If timer ran less than 1ms after short-term sample started, retry.
@@ -238,13 +244,21 @@ static void cpufreq_interactive_timer(unsigned long data)
 	if (delta_time < 1000)
 		goto rearm;
 
-	if (!io_is_busy)
+	if (io_busy_threshold && delta_iowait)
+		io_consecutive++;
+	else if (io_consecutive)
+		io_consecutive = 0;
+
+	if (!io_is_busy &&
+		(!io_consecutive || (io_consecutive < io_busy_threshold)))
 		delta_idle += delta_iowait;
 
 	if (delta_idle > delta_time)
 		cpu_load = 0;
 	else
 		cpu_load = 100 * (delta_time - delta_idle) / delta_time;
+
+	pcpu->io_consecutive = io_consecutive;
 
 	delta_idle = (unsigned int)(now_idle - pcpu->freq_change_time_in_idle);
 	delta_iowait = (unsigned int)(now_iowait - pcpu->freq_change_time_in_iowait);
@@ -374,6 +388,7 @@ static void cpufreq_interactive_idle_start(void)
 				smp_processor_id(), &pcpu->idle_exit_time);
 			pcpu->time_in_iowait = get_cpu_iowait_time(
 				smp_processor_id(), NULL);
+			pcpu->io_consecutive = 0;
 			pcpu->timer_idlecancel = 0;
 			mod_timer(&pcpu->cpu_timer,
 				  jiffies + usecs_to_jiffies(timer_rate));
@@ -431,6 +446,7 @@ static void cpufreq_interactive_idle_end(void)
 		pcpu->time_in_iowait =
 			get_cpu_iowait_time(smp_processor_id(),
 						NULL);
+		pcpu->io_consecutive = 0;
 		pcpu->timer_idlecancel = 0;
 		mod_timer(&pcpu->cpu_timer,
 			  jiffies + usecs_to_jiffies(timer_rate));
@@ -526,6 +542,7 @@ DECL_CPUFREQ_INTERACTIVE_ATTR(midrange_freq)
 DECL_CPUFREQ_INTERACTIVE_ATTR(midrange_go_maxspeed_load)
 DECL_CPUFREQ_INTERACTIVE_ATTR(boost_factor)
 DECL_CPUFREQ_INTERACTIVE_ATTR(io_is_busy)
+DECL_CPUFREQ_INTERACTIVE_ATTR(io_busy_threshold)
 DECL_CPUFREQ_INTERACTIVE_ATTR(max_boost)
 DECL_CPUFREQ_INTERACTIVE_ATTR(midrange_max_boost)
 DECL_CPUFREQ_INTERACTIVE_ATTR(sustain_load)
@@ -544,6 +561,7 @@ static struct attribute *interactive_attributes[] = {
 	&max_boost_attr.attr,
 	&midrange_max_boost_attr.attr,
 	&io_is_busy_attr.attr,
+	&io_busy_threshold_attr.attr,
 	&sustain_load_attr.attr,
 	&min_sample_time_attr.attr,
 	&timer_rate_attr.attr,
@@ -606,6 +624,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			pcpu->freq_change_time_in_iowait =
 				get_cpu_iowait_time(j, NULL);
 			pcpu->time_in_iowait = pcpu->freq_change_time_in_iowait;
+			pcpu->io_consecutive = 0;
 			if (!pcpu->last_high_freq_time)
 				pcpu->last_high_freq_time = pcpu->freq_change_time;
 			pcpu->timer_idlecancel = 1;
