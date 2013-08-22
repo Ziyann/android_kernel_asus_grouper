@@ -220,8 +220,8 @@ int tegra_dc_sync_windows(struct tegra_dc_win *windows[], int n)
 		tegra_dc_windows_are_clean(windows, n),
 		HZ);
 #endif
-	/* tegra_dc_io_start() done in update_windows */
-	tegra_dc_io_end(windows[0]->dc);
+	/* tegra_dc_hold_dc_out() called in update_windows */
+	tegra_dc_release_dc_out(windows[0]->dc);
 	return ret;
 }
 EXPORT_SYMBOL(tegra_dc_sync_windows);
@@ -343,7 +343,6 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 		return -EFAULT;
 	}
 
-	tegra_dc_io_start(dc);
 	tegra_dc_hold_dc_out(dc);
 
 	if (no_vsync)
@@ -570,7 +569,6 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 
 	tegra_dc_writel(dc, update_mask, DC_CMD_STATE_CONTROL);
 
-	tegra_dc_release_dc_out(dc);
 	/* tegra_dc_io_end() is called in tegra_dc_sync_windows() */
 	mutex_unlock(&dc->lock);
 	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE)

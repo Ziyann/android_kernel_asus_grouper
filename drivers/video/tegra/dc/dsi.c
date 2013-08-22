@@ -1751,10 +1751,6 @@ static void tegra_dsi_stop_dc_stream(struct tegra_dc *dc,
 	/* extra reference to dc clk */
 	clk_prepare_enable(dc->clk);
 
-	/* Mask the MSF interrupt. */
-	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE)
-		tegra_dc_mask_interrupt(dc, MSF_INT);
-
 	tegra_dc_writel(dc, DISP_CTRL_MODE_STOP, DC_CMD_DISPLAY_COMMAND);
 	tegra_dc_writel(dc, 0, DC_DISP_DISP_WIN_OPTIONS);
 	tegra_dc_writel(dc, GENERAL_UPDATE, DC_CMD_STATE_CONTROL);
@@ -1853,9 +1849,6 @@ static void tegra_dsi_start_dc_stream(struct tegra_dc *dc,
 		tegra_dc_writel(dc, GENERAL_UPDATE, DC_CMD_STATE_CONTROL);
 		tegra_dc_writel(dc, GENERAL_ACT_REQ | NC_HOST_TRIG,
 						DC_CMD_STATE_CONTROL);
-
-		/* Unmask the MSF interrupt. */
-		tegra_dc_unmask_interrupt(dc, MSF_INT);
 	} else {
 		/* set continuous mode */
 		tegra_dc_writel(dc, DISP_CTRL_MODE_C_DISPLAY,
