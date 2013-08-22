@@ -770,6 +770,7 @@ static int __devinit max17048_probe(struct i2c_client *client,
 			goto irq_reg_error;
 		}
 	}
+	device_set_wakeup_capable(&client->dev, 1);
 
 	return 0;
 irq_clear_error:
@@ -817,7 +818,7 @@ static int max17048_suspend(struct i2c_client *client,
 	struct max17048_chip *chip = i2c_get_clientdata(client);
 	int ret;
 
-	if (client->irq) {
+	if (device_may_wakeup(&client->dev)) {
 		enable_irq_wake(chip->client->irq);
 	}
 	cancel_delayed_work_sync(&chip->work);
@@ -843,7 +844,7 @@ static int max17048_resume(struct i2c_client *client)
 	}
 
 	schedule_delayed_work(&chip->work, MAX17048_DELAY);
-	if (client->irq) {
+	if (device_may_wakeup(&client->dev)) {
 		disable_irq_wake(client->irq);
 	}
 
