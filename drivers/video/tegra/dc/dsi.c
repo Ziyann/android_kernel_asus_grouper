@@ -1564,9 +1564,14 @@ static void tegra_dsi_setup_cmd_mode_pkt_length(struct tegra_dc *dc,
 	unsigned long	val;
 	unsigned long	act_bytes;
 
-	act_bytes = dc->mode.h_active * dsi->pixel_scaler_mul /
-			dsi->pixel_scaler_div + 1;
-
+	if (dsi->info.ganged_type) {
+		act_bytes = DIV_ROUND_UP(dc->mode.h_active, 2);
+		act_bytes = (act_bytes) * dsi->pixel_scaler_mul /
+				dsi->pixel_scaler_div + 1;
+	} else {
+		act_bytes = dc->mode.h_active * dsi->pixel_scaler_mul /
+				dsi->pixel_scaler_div + 1;
+	}
 	val = DSI_PKT_LEN_0_1_LENGTH_0(0) | DSI_PKT_LEN_0_1_LENGTH_1(0);
 	tegra_dsi_writel(dsi, val, DSI_PKT_LEN_0_1);
 
@@ -1631,8 +1636,8 @@ static void tegra_dsi_set_pkt_seq(struct tegra_dc *dc,
 	if (dsi->info.pkt_seq)
 		pkt_seq = dsi->info.pkt_seq;
 	else if (dsi->info.video_data_type ==
-			TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE) {
-		pkt_seq = dsi_pkt_seq_cmd_mode;
+		TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE) {
+			pkt_seq = dsi_pkt_seq_cmd_mode;
 	} else {
 		switch (dsi->info.video_burst_mode) {
 		case TEGRA_DSI_VIDEO_BURST_MODE_LOWEST_SPEED:
