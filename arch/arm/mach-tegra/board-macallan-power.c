@@ -852,7 +852,7 @@ int __init macallan_soctherm_init(void)
 
 static struct edp_manager macallan_sysedp_manager = {
 	.name = "battery",
-	.max = 22000
+	.max = 19000
 };
 
 void __init macallan_sysedp_init(void)
