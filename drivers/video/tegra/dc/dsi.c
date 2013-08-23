@@ -1819,6 +1819,20 @@ static void tegra_dsi_stop_dc_stream_at_frame_end(struct tegra_dc *dc,
 	tegra_dsi_reset_underflow_overflow(dsi);
 }
 
+static void tegra_dc_gpio_to_spio(struct tegra_dc_dsi_data *dsi, unsigned gpio)
+{
+	int err;
+
+	/* convert to spio */
+	err = gpio_request(gpio, "temp_request");
+	if (err < 0) {
+		dev_err(&dsi->dc->ndev->dev,
+			"dsi: %s: gpio request failed %d\n", __func__, err);
+		return;
+	}
+	gpio_free(gpio);
+}
+
 static void tegra_dsi_start_dc_stream(struct tegra_dc *dc,
 					struct tegra_dc_dsi_data *dsi)
 {
@@ -1854,6 +1868,9 @@ static void tegra_dsi_start_dc_stream(struct tegra_dc *dc,
 		tegra_dc_writel(dc, GENERAL_UPDATE, DC_CMD_STATE_CONTROL);
 		tegra_dc_writel(dc, GENERAL_ACT_REQ | NC_HOST_TRIG,
 						DC_CMD_STATE_CONTROL);
+
+		if (dsi->info.te_gpio)
+			tegra_dc_gpio_to_spio(dsi, dsi->info.te_gpio);
 	} else {
 		/* set continuous mode */
 		tegra_dc_writel(dc, DISP_CTRL_MODE_C_DISPLAY,
