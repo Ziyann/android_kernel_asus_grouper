@@ -117,7 +117,8 @@ static noinline void __init tegratab_bt_st(void)
 static struct resource tegratab_st_host_wake_resources[] = {
 	[0] = {
 		.name = "host_wake",
-		.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
+		.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE |
+					IORESOURCE_IRQ_OPTIONAL,
 	},
 };
 
@@ -131,8 +132,7 @@ static struct platform_device tegratab_st_host_wake_device = {
 static noinline void __init tegratab_tegra_setup_st_host_wake(void)
 {
 	tegratab_st_host_wake_resources[0].start =
-		tegratab_st_host_wake_resources[0].end =
-		gpio_to_irq(TEGRA_GPIO_PU6);
+		tegratab_st_host_wake_resources[0].end = INT_UARTC;
 	platform_device_register(&tegratab_st_host_wake_device);
 }
 #endif
