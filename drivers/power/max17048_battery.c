@@ -48,6 +48,8 @@
 #define MAX17048_DELAY      (10*HZ)
 #define MAX17048_BATTERY_FULL	100
 #define MAX17048_BATTERY_LOW	15
+#define MAX17048_BATTERY_HOT	(60*1000)
+#define MAX17048_BATTERY_COLD	(-10*1000)
 #define MAX17048_VERSION_NO_11	0x11
 #define MAX17048_VERSION_NO_12	0x12
 
@@ -217,6 +219,14 @@ static int max17048_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
 		/* unit is uV */
 		val->intval = max17048_get_ocv(chip);
+		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		/* show 1 places of decimals, 681 means 68.1C */
+		val->intval = chip->temperature / 100;
+		break;
+	case POWER_SUPPLY_PROP_TEMP_AMBIENT:
+		/* show 1 places of decimals, 681 means 68.1C */
+		val->intval = chip->temperature / 100;
 		break;
 	default:
 	return -EINVAL;
@@ -434,10 +444,7 @@ static void max17048_work(struct work_struct *work)
 		/* Use Tskin as Battery Temp */
 		max17048_thz_get_temp("therm_est", &temp);
 
-		if (temp >= 20000)
-			chip->temperature = temp;
-		else
-			chip->temperature = 20000;
+		chip->temperature = temp;
 	}
 
 	if (abs(chip->temperature - chip->lasttime_temperature) >= 1500) {
@@ -451,6 +458,16 @@ static void max17048_work(struct work_struct *work)
 	max17048_get_soc(chip->client);
 	max17048_set_current_threshold(chip->client);
 	max17048_sysedp_throttle(chip->client);
+
+	if (chip->temperature > MAX17048_BATTERY_HOT) {
+		chip->health = POWER_SUPPLY_HEALTH_OVERHEAT;
+		dev_info(&chip->client->dev, "%s: BATTERY HOT, Temp %ldC\n",
+				__func__, chip->temperature / 1000);
+	} else if (chip->temperature < MAX17048_BATTERY_COLD) {
+		dev_info(&chip->client->dev, "%s: BATTERY COLD, Temp %ldC\n",
+				__func__, chip->temperature / 1000);
+		chip->health = POWER_SUPPLY_HEALTH_COLD;
+	}
 
 	if (chip->soc != chip->lasttime_soc ||
 		chip->status != chip->lasttime_status) {
@@ -503,7 +520,9 @@ static enum power_supply_property max17048_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
-	POWER_SUPPLY_PROP_VOLTAGE_OCV
+	POWER_SUPPLY_PROP_VOLTAGE_OCV,
+	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_TEMP_AMBIENT,
 };
 
 static int max17048_write_rcomp_seg(struct i2c_client *client,
