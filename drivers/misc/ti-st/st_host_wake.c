@@ -2,6 +2,7 @@
  *  Shared Transport Host wake up driver
  *  For protocols registered over Shared Transport
  *  Copyright (C) 2011-2012 Texas Instruments
+ *  Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -176,15 +177,16 @@ static int st_host_wake_probe(struct platform_device *pdev)
 		goto free_bsi;
 	}
 
-	if (res->flags & IORESOURCE_IRQ_LOWEDGE)
-		ret = request_irq(bsi->host_wake_irq, st_host_wake_isr,
-				IRQF_DISABLED | IRQF_TRIGGER_FALLING,
-				"bluetooth hostwake", dev_id);
-	else
-		ret = request_irq(bsi->host_wake_irq, st_host_wake_isr,
-				IRQF_DISABLED | IRQF_TRIGGER_RISING,
-				"bluetooth hostwake", dev_id);
-
+	if (!(res->flags & IORESOURCE_IRQ_OPTIONAL)) {
+		if (res->flags & IORESOURCE_IRQ_LOWEDGE)
+			ret = request_irq(bsi->host_wake_irq, st_host_wake_isr,
+					IRQF_DISABLED | IRQF_TRIGGER_FALLING,
+					"bluetooth hostwake", dev_id);
+		else
+			ret = request_irq(bsi->host_wake_irq, st_host_wake_isr,
+					IRQF_DISABLED | IRQF_TRIGGER_RISING,
+					"bluetooth hostwake", dev_id);
+	}
 	if (ret < 0) {
 		pr_err("Couldn't acquire HOST_WAKE IRQ");
 		goto free_bsi;
