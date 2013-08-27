@@ -2392,20 +2392,13 @@ static void tegra_sdhci_post_resume(struct sdhci_host *sdhci)
 /*
  * For tegra specific tuning, core voltage has to be fixed at different
  * voltages to get the tap values. Fixing the core voltage during tuning for one
- * device might affect transfers of other SDMMC devices. To handle this, lock
- * tuning_mutex to prevent any transfers during tuning execution. This is not
- * required once tuning is done.
+ * device might affect transfers of other SDMMC devices. Check if tuning mutex
+ * is locked before starting a data transfer.
  */
 static void tegra_sdhci_get_bus(struct sdhci_host *sdhci)
 {
-	if (boot_volt_req_refcount)
-		mutex_lock(&tuning_mutex);
-}
-
-static void tegra_sdhci_release_bus(struct sdhci_host *sdhci)
-{
-	if (boot_volt_req_refcount)
-		mutex_unlock(&tuning_mutex);
+	while (mutex_is_locked(&tuning_mutex))
+		;
 }
 
 static int show_polling_period(void *data, u64 *value)
@@ -2655,7 +2648,6 @@ static struct sdhci_ops tegra_sdhci_ops = {
 	.platform_resume	= tegra_sdhci_post_resume,
 	.platform_reset_exit	= tegra_sdhci_reset_exit,
 	.platform_get_bus	= tegra_sdhci_get_bus,
-	.platform_release_bus	= tegra_sdhci_release_bus,
 	.set_uhs_signaling	= tegra_sdhci_set_uhs_signaling,
 	.switch_signal_voltage	= tegra_sdhci_signal_voltage_switch,
 	.switch_signal_voltage_exit = tegra_sdhci_do_calibration,

@@ -1342,10 +1342,8 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		}
 
 		/* For a data cmd, check for plat specific preparation */
-		spin_unlock_irqrestore(&host->lock, flags);
 		if (mrq->data)
 			host->ops->platform_get_bus(host);
-		spin_lock_irqsave(&host->lock, flags);
 
 		if (mrq->sbc && !(host->flags & SDHCI_AUTO_CMD23))
 			sdhci_send_command(host, mrq->sbc);
@@ -2387,8 +2385,6 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 		sdhci_dumpregs(host);
 
 		return;
-	} else {
-		host->ops->platform_release_bus(host);
 	}
 
 	if (intmask & SDHCI_INT_DATA_TIMEOUT) {
