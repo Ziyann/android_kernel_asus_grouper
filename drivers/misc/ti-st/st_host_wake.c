@@ -44,6 +44,7 @@ struct st_host_wake_info {
 	struct regulator *vdd_3v3;
 	struct regulator *vdd_1v8;
 	unsigned int supp_proto_reg;
+	bool is_request_irq;
 };
 
 static unsigned long flags;
@@ -159,6 +160,7 @@ static int st_host_wake_probe(struct platform_device *pdev)
 		pr_warn("%s: regulator vddio_st_1v8 not available\n", __func__);
 		bsi->vdd_1v8 = NULL;
 	}
+	bsi->is_request_irq = 0;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_IRQ,
 						"host_wake");
@@ -186,6 +188,7 @@ static int st_host_wake_probe(struct platform_device *pdev)
 			ret = request_irq(bsi->host_wake_irq, st_host_wake_isr,
 					IRQF_DISABLED | IRQF_TRIGGER_RISING,
 					"bluetooth hostwake", dev_id);
+		bsi->is_request_irq = 1;
 	}
 	if (ret < 0) {
 		pr_err("Couldn't acquire HOST_WAKE IRQ");
@@ -194,6 +197,8 @@ static int st_host_wake_probe(struct platform_device *pdev)
 
 	clear_bit(HOST_WAKE, &flags);
 	bsi->supp_proto_reg = 0;
+
+	device_init_wakeup(&pdev->dev, 1);
 
 	goto finish;
 
@@ -207,7 +212,8 @@ static int st_host_wake_remove(struct platform_device *pdev)
 {
 	pr_debug("%s", __func__);
 
-	free_irq(bsi->host_wake_irq, dev_id);
+	if (bsi->is_request_irq)
+		free_irq(bsi->host_wake_irq, dev_id);
 
 	if (bsi->vdd_3v3)
 		regulator_put(bsi->vdd_3v3);
@@ -223,7 +229,8 @@ static int st_host_wake_resume(struct platform_device *pdev)
 {
 	pr_info("%s", __func__);
 
-	if (test_bit(HOST_WAKE, &flags) && test_bit(IRQ_WAKE, &flags)) {
+	if (test_bit(HOST_WAKE, &flags) && test_bit(IRQ_WAKE, &flags)
+			&& device_may_wakeup(&pdev->dev)) {
 		pr_info("disable the host_wake irq");
 		disable_irq_wake(bsi->host_wake_irq);
 		clear_bit(IRQ_WAKE, &flags);
@@ -232,13 +239,15 @@ static int st_host_wake_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static int st_host_wake_suspend(struct platform_device *p, pm_message_t s)
+static int st_host_wake_suspend(struct platform_device *pdev,
+					pm_message_t state)
 {
 	int retval = 0;
 
 	pr_info("%s", __func__);
 
-	if (test_bit(HOST_WAKE, &flags) && (!test_bit(IRQ_WAKE, &flags))) {
+	if (test_bit(HOST_WAKE, &flags) && (!test_bit(IRQ_WAKE, &flags))
+			&& device_may_wakeup(&pdev->dev)) {
 		retval = enable_irq_wake(bsi->host_wake_irq);
 		if (retval < 0) {
 			pr_err("Failed to enable HOST_WAKE irq (%d)", retval);
