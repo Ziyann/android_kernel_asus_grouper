@@ -1181,15 +1181,6 @@ static int processing_thread(void *arg)
 				if (ret != 0)
 					msleep(100);
 			} while (ret != 0 && !kthread_should_stop());
-
-			/* power-up and reset-high */
-			ret = regulator_control(dd, true);
-			if (ret < 0)
-				ERROR("failed to enable regulators");
-
-			usleep_range(300, 400);
-			pdata->reset(pdata, 1);
-
 			dd->start_fusion = false;
 		}
 		if (kthread_should_stop())
@@ -1311,6 +1302,13 @@ static int probe(struct spi_device *spi)
 	ret = pdata->init(pdata, true);
 	if (ret < 0)
 		goto platform_failure;
+
+	/* power-up and reset-high */
+	ret = regulator_control(dd, true);
+	if (ret < 0)
+		goto platform_failure;
+	usleep_range(300, 400);
+	pdata->reset(pdata, 1);
 
 	/* start processing thread */
 	dd->thread_sched.sched_priority = MAX_USER_RT_PRIO / 2;
@@ -1459,7 +1457,7 @@ static struct spi_driver driver = {
 	.driver = {
 		.name   = MAXIM_STI_NAME,
 		.owner  = THIS_MODULE,
-#ifdef CONFIG_PM_SLEEP
+#if defined(CONFIG_PM_SLEEP) && !INPUT_ENABLE_DISABLE
 		.pm     = &pm_ops,
 #endif
 	},
