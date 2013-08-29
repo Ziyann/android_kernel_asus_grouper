@@ -21,6 +21,7 @@
 #include <linux/regmap.h>
 #include <linux/regulator/driver.h>
 #include <linux/iio/machine.h>
+#include <linux/thermal.h>
 
 #define PALMAS_NUM_CLIENTS		3
 
@@ -257,6 +258,10 @@ struct palmas_platform_data {
 	struct palmas_extcon_platform_data *extcon_pdata;
 
 	int watchdog_timer_initial_period;
+
+	/* Hotdie Threshold temperature */
+	unsigned long hd_threshold_temp;
+	char *tz_name;
 
 	/* Long press delay for hard shutdown */
 	int long_press_delay;
