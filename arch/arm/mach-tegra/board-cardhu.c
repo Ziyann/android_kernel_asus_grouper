@@ -1388,7 +1388,6 @@ static void __init tegra_cardhu_init(void)
 		cardhu_sata_init();
 	cardhu_pins_state_init();
 	cardhu_emc_init();
-	tegra_release_bootloader_fb();
 	cardhu_pci_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();

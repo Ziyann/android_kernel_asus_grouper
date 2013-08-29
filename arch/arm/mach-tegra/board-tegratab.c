@@ -800,7 +800,6 @@ static void __init tegra_tegratab_late_init(void)
 	tegratab_bt_st();
 	tegratab_tegra_setup_st_host_wake();
 #endif
-	tegra_release_bootloader_fb();
 	tegratab_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
