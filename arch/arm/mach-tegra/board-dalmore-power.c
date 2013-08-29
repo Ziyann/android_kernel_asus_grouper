@@ -1076,6 +1076,8 @@ int __init dalmore_palmas_regulator_init(void)
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
+	/* Set LDO6 startup time to 600us */
+	reg_idata_ldo6.constraints.startup_delay = 600;
 	power_config = get_power_config();
 	if (board_info.fab == BOARD_FAB_A05) {
 		set_dalmore_power_config2();
