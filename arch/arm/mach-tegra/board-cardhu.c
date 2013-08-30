@@ -249,6 +249,7 @@ static noinline void __init cardhu_setup_bluesleep(void)
 static __initdata struct tegra_clk_init_table cardhu_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
+	{ "pll_a",	NULL,		564480000,	true},
 	{ "hda",	"pll_p",	108000000,	false},
 	{ "hda2codec_2x", "pll_p",	48000000,	false},
 	{ "pwm",	"pll_p",	3187500,	false},
