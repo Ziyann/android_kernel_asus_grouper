@@ -302,6 +302,9 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 		} else if (mode->xres == 1280 && mode->yres == 720) {
 			sensor_mode = IMX135_MODE_1280X720;
 			quality_hdr = 0;
+		} else if (mode->xres == 640 && mode->yres == 480) {
+			sensor_mode = IMX135_MODE_640X480;
+			quality_hdr = 0;
 		} else {
 			pr_err("%s: invalid resolution supplied to set mode %d %d\n",
 				 __func__, mode->xres, mode->yres);
