@@ -797,7 +797,14 @@ static int cpufreq_add_dev_policy(unsigned int cpu,
 
 	gov = __find_governor(per_cpu(cpufreq_cpu_governor, cpu));
 	if (gov) {
-		policy->governor = gov;
+		struct cpufreq_policy *first_cp = per_cpu(cpufreq_cpu_data,
+						cpumask_first(cpu_online_mask));
+		/* Set same governor as a first CPU. */
+		if (first_cp && first_cp->governor &&
+				strcmp(first_cp->governor->name, gov->name))
+			policy->governor = first_cp->governor;
+		else
+			policy->governor = gov;
 		pr_debug("Restoring governor %s for cpu %d\n",
 		       policy->governor->name, cpu);
 	}
