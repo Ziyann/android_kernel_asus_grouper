@@ -108,6 +108,15 @@ static const struct resource wdt_resource[] = {
 	},
 };
 
+static const struct resource thermal_resource[] = {
+	{
+		.name = "palmas-junction-temp",
+		.start = PALMAS_HOTDIE_IRQ,
+		.end = PALMAS_HOTDIE_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 enum palmas_ids {
 	PALMAS_PIN_MUX_ID,
 	PALMAS_PMIC_ID,
@@ -122,6 +131,7 @@ enum palmas_ids {
 	PALMAS_PWM_ID,
 	PALMAS_USB_ID,
 	PALMAS_EXTCON_ID,
+	PALMAS_THERM_ID,
 };
 
 static const struct mfd_cell palmas_children[] = {
@@ -188,7 +198,13 @@ static const struct mfd_cell palmas_children[] = {
 		.num_resources = ARRAY_SIZE(palma_extcon_resource),
 		.resources = palma_extcon_resource,
 		.id = PALMAS_EXTCON_ID,
-	}
+	},
+	{
+		.name = "palmas-thermal",
+		.num_resources = ARRAY_SIZE(thermal_resource),
+		.resources = thermal_resource,
+		.id = PALMAS_THERM_ID,
+	},
 };
 
 static bool is_volatile_palma_func_reg(struct device *dev, unsigned int reg)
