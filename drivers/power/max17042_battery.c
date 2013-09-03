@@ -338,7 +338,8 @@ static int max17042_get_property(struct power_supply *psy,
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		else
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
-		if (chip->cap >= 100)
+		if (chip->cap >= 100
+			&& chip->status == POWER_SUPPLY_STATUS_CHARGING)
 			val->intval = POWER_SUPPLY_STATUS_FULL;
 		break;
 	default:
