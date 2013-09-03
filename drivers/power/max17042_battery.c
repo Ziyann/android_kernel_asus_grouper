@@ -183,6 +183,9 @@ static int max17042_get_property(struct power_supply *psy,
 	struct max17042_chip *chip = container_of(psy,
 				struct max17042_chip, battery);
 	int ret;
+	int soc_low_byte;
+	int soc_high_byte;
+	int soc_roundoff;
 
 	if (!chip->init_complete)
 		return -EAGAIN;
@@ -253,8 +256,15 @@ static int max17042_get_property(struct power_supply *psy,
 		if (ret < 0)
 			return ret;
 
-		val->intval = ret >> 8;
-		chip->cap = val->intval;
+		soc_low_byte = ret & 0x00FF;
+		soc_roundoff = soc_low_byte > 0 ? 1:0;
+
+		soc_high_byte = ret >> 8;
+		chip->cap = soc_high_byte + soc_roundoff;
+
+		if (chip->cap >= 100)
+			chip->cap = 100;
+		val->intval = chip->cap;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
