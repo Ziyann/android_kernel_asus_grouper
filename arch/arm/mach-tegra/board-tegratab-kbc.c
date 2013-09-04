@@ -89,7 +89,7 @@ static int tegratab_wakeup_key(void)
 	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PO5))
 		wakeup_key = SW_TABLET_MODE;
 	else
-		wakeup_key = KEY_RESERVED;
+		wakeup_key = KEY_UNKNOWN;
 
 	return wakeup_key;
 }
