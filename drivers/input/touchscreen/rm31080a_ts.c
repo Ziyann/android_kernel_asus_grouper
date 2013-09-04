@@ -768,7 +768,8 @@ static int rm_tch_cmd_process(u8 selCase, u8 *pCmdTbl, struct rm_tch_ts *ts)
 				if (pCmdTbl[_SUB_CMD] == KRL_SUB_CMD_INIT_TIMER) {
 					init_ts_timer();
 				} else if (pCmdTbl[_SUB_CMD] == KRL_SUB_CMD_ADD_TIMER) {
-					add_timer(&ts_timer_triggle);
+					if (!timer_pending(&ts_timer_triggle))
+						add_timer(&ts_timer_triggle);
 				} else if (pCmdTbl[_SUB_CMD] == KRL_SUB_CMD_DEL_TIMER) {
 					del_timer(&ts_timer_triggle);
 				} else
@@ -800,7 +801,7 @@ static int rm_tch_cmd_process(u8 selCase, u8 *pCmdTbl, struct rm_tch_ts *ts)
 			case KRL_CMD_READ_IMG:
 				/*rm_printk("Raydium - KRL_CMD_READ_IMG - 0x%x:0x%x:%d \n", pCmdTbl[_ADDR], g_pu8BurstReadBuf, g_stCtrl.u16DataLength);*/
 				if (g_pu8BurstReadBuf)
-					ret = rm_tch_spi_read(pCmdTbl[_ADDR] | 0x80, g_pu8BurstReadBuf, g_stCtrl.u16DataLength);
+					ret = rm_tch_spi_read(pCmdTbl[_ADDR], g_pu8BurstReadBuf, g_stCtrl.u16DataLength);
 				g_pu8BurstReadBuf = NULL;
 				break;
 			default:
@@ -1300,8 +1301,8 @@ static void rm_tch_disable_irq(struct rm_tch_ts *ts)
 */
 static void rm_tch_ctrl_slowscan(u32 level)
 {
-	mutex_lock(&g_stTs.mutex_scan_mode);
 	if (g_stTs.u8ScanModeState == RM_SCAN_IDLE_MODE) {
+		rm_tch_ctrl_leave_auto_mode();
 		rm_ctrl_pause_auto_mode();
 	}
 
@@ -1313,9 +1314,9 @@ static void rm_tch_ctrl_slowscan(u32 level)
 	if (level > RM_SLOW_SCAN_LEVEL_100)
 		level = RM_SLOW_SCAN_LEVEL_MAX;
 
-	rm_tch_cmd_process((u8)level, g_stRmSlowScanCmd, NULL);
+	rm_tch_cmd_process((u8)(level - 1), g_stRmSlowScanCmd, NULL);
 
-	rm_printk("##Raydium - rm_tch_ctrl_slowscan:%x,%x,%x \n", level, g_stRmSlowScanCmd[0], g_stRmSlowScanCmd[1]);
+	rm_printk("##Raydium - rm_tch_ctrl_slowscan:%x,%x,%x \n", (level - 1), g_stRmSlowScanCmd[0], g_stRmSlowScanCmd[1]);
 
 
 	if (g_stTs.u8ScanModeState == RM_SCAN_IDLE_MODE) {
@@ -1323,7 +1324,6 @@ static void rm_tch_ctrl_slowscan(u32 level)
 		usleep_range(1000, 1200);
 		rm_tch_ctrl_scan_start();
 	}
-	mutex_unlock(&g_stTs.mutex_scan_mode);
 }
 
 static u32 rm_tch_slowscan_round(u32 val)
@@ -1684,6 +1684,7 @@ static void rm_tch_init_ts_structure(void)
 	mutex_init(&g_stTs.mutex_scan_mode);
 	mutex_init(&g_stTs.mutex_spi_rw);
 }
+
 static int rm31080_voltage_notifier_1v8(struct notifier_block *nb,
 					unsigned long event, void *ignored)
 {
@@ -1720,7 +1721,6 @@ static int rm31080_voltage_notifier_3v3(struct notifier_block *nb,
 
 	return NOTIFY_OK;
 }
-
 /*=============================================================================*/
 static void rm_ctrl_start(struct rm_tch_ts *ts)
 {
@@ -1745,11 +1745,19 @@ static void rm_ctrl_stop(struct rm_tch_ts *ts)
 	g_stTs.bIsSuspended = true;
 	g_stTs.bInitFinish = 0;
 
+	if (g_stTs.u8ScanModeState == RM_SCAN_IDLE_MODE) {
+		rm_ctrl_pause_auto_mode();
+	}
+
+	rm_tch_ctrl_wait_for_scan_finish();
+
 	mutex_lock(&g_stTs.mutex_scan_mode);
 
 	rm_tch_cmd_process(0, g_stRmEndCmd, ts);
 
-	printk(KERN_ALERT "Raydium - Sending SUSPEND done\n");
+	rm_tch_ctrl_wait_for_scan_finish();
+
+	rm_tch_cmd_process(1, g_stRmEndCmd, ts);
 
 	mutex_unlock(&g_stTs.mutex_scan_mode);
 }
@@ -1767,7 +1775,8 @@ static int rm_tch_resume(struct device *dev)
 	struct rm_tch_ts *ts = dev_get_drvdata(dev);
 	wake_lock_timeout(&g_stTs.Wakelock_Initialization,
 		TCH_WAKE_LOCK_TIMEOUT);
-	rm_ctrl_start(ts);
+	if (wake_lock_active(&g_stTs.Wakelock_Initialization))
+		rm_ctrl_start(ts);
 	return 0;
 }
 
@@ -1921,7 +1930,7 @@ struct rm_tch_ts *rm_tch_input_init(struct device *dev, unsigned int irq,
 	input_set_abs_params(input_dev, ABS_MT_TRACKING_ID, 0, 32, 0, 0);
 
 	err = request_threaded_irq(ts->irq, NULL, rm_tch_irq,
-						IRQF_TRIGGER_RISING, dev_name(dev), ts);
+						IRQF_TRIGGER_RISING | IRQF_ONESHOT, dev_name(dev), ts);
 	if (err) {
 		dev_err(dev, "Raydium - irq %d busy?\n", ts->irq);
 		goto err_free_mem;
@@ -2148,7 +2157,7 @@ static int rm_tch_spi_setting(u32 speed)
 }
 #endif
 
-static int __devexit rm_tch_spi_remove(struct spi_device *spi)
+static int rm_tch_spi_remove(struct spi_device *spi)
 {
 	struct rm_tch_ts *ts = spi_get_drvdata(spi);
 	del_timer(&ts_timer_triggle);
@@ -2248,7 +2257,7 @@ err_null_regulator:
 	return 1;
 }
 
-static int __devinit rm_tch_spi_probe(struct spi_device *spi)
+static int rm_tch_spi_probe(struct spi_device *spi)
 {
 	struct rm_tch_ts *ts;
 	struct rm_spi_ts_platform_data *pdata;
@@ -2325,7 +2334,6 @@ err_misc_reg:
 		regulator_disable(ts->regulator_3v3);
 		regulator_disable(ts->regulator_1v8);
 	}
-
 	if (ts->clk)
 		clk_disable(ts->clk);
 err_regulator_init:
@@ -2361,7 +2369,7 @@ static struct spi_driver rm_tch_spi_driver = {
 #endif
 	},
 	.probe = rm_tch_spi_probe,
-	.remove = __devexit_p(rm_tch_spi_remove),
+	.remove = rm_tch_spi_remove,
 };
 
 static int __init rm_tch_spi_init(void)
