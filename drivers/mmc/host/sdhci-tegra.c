@@ -2200,7 +2200,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	else
 		return -EINVAL;
 
-	SDHCI_TEGRA_DBG("%s: Starting freq tuning\n", mmc_hostname(sdhci->mmc));
+	pr_err("%s: Starting freq tuning\n", mmc_hostname(sdhci->mmc));
 	mutex_lock(&tuning_mutex);
 	if (sdhci->flags & SDHCI_NEEDS_RETUNING)
 		is_retuning_req = true;
@@ -2297,7 +2297,7 @@ out:
 	sdhci_writel(sdhci, ier, SDHCI_SIGNAL_ENABLE);
 	mutex_unlock(&tuning_mutex);
 
-	SDHCI_TEGRA_DBG("%s: Freq tuning done\n", mmc_hostname(sdhci->mmc));
+	pr_err("%s: Freq tuning done\n", mmc_hostname(sdhci->mmc));
 	return err;
 }
 
@@ -2397,8 +2397,17 @@ static void tegra_sdhci_post_resume(struct sdhci_host *sdhci)
  */
 static void tegra_sdhci_get_bus(struct sdhci_host *sdhci)
 {
-	while (mutex_is_locked(&tuning_mutex))
-		;
+	unsigned int timeout = 100;
+
+	while (mutex_is_locked(&tuning_mutex)) {
+		msleep(10);
+		--timeout;
+		if (!timeout) {
+			dev_err(mmc_dev(sdhci->mmc),
+				"Tuning mutex locked for long time\n");
+			return;
+		}
+	};
 }
 
 /*
@@ -2543,6 +2552,7 @@ static ssize_t sdhci_handle_boost_mode_tap(struct device *dev,
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct tegra_tuning_data *tuning_data;
 	u32 present_state;
+	u8 timeout;
 	bool clk_set_for_tap_prog = false;
 
 	tap_cmd = memparse(p, &p);
@@ -2578,8 +2588,13 @@ static ssize_t sdhci_handle_boost_mode_tap(struct device *dev,
 			clk_set_for_tap_prog = true;
 		}
 	} else {
+		timeout = 20;
 		/* Wait for any on-going data transfers */
 		do {
+			if (!timeout)
+				break;
+			mdelay(1);
+			--timeout;
 			present_state = sdhci_readl(host, SDHCI_PRESENT_STATE);
 		} while(present_state & (SDHCI_DOING_WRITE | SDHCI_DOING_READ));
 	}
