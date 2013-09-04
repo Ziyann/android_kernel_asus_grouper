@@ -30,7 +30,14 @@ struct of_tegra_lcd_devdata tegratab_lgd_lcd;
 
 #define LGD_LCD_REGULATORS_COUNT		3
 
+#define WORKAROUND_TO_REMOVE_LGD7_T4_TIME	1
+
 static bool lgd_lcd_reg_requested;
+
+#if WORKAROUND_TO_REMOVE_LGD7_T4_TIME
+extern atomic_t touch_dvdd_on;
+#endif
+
 static struct regulator *lgd_lcd_regs[LGD_LCD_REGULATORS_COUNT];
 
 static struct regulator *avdd_lcd_3v3;
@@ -103,6 +110,39 @@ static int lgd_wxga_7_0_enable(struct device *dev)
 		pr_err("lgd lcd regulator get failed\n");
 		goto fail;
 	}
+#if WORKAROUND_TO_REMOVE_LGD7_T4_TIME
+	/*
+	 * LGD WXGA 7" panel spec requests 1s delay between
+	 * "panel 3v3 off" and "3v3 on" if all panel
+	 * related power rails (1v8, 3v3) are not turned off.
+
+	 * precondition for work around
+	 *  - In power off, panel off then touch off.
+	 *  - In power on, touch on then panel on.
+
+	 * why work around is necessary?
+	 *  - Same 1v8 rail is shared by touch and panel.
+	 *  - In panel off, 3v3 rail off and 1v8 rail off
+	 *    are requested, but 1v8 rail isn't turned off
+	 *    in panel off timeframe because of touch module.
+	 *    It is possible to get panel on request without
+	 *    touch off/on control. In this case, 1S delay
+	 *    is necessary per spec. If 1v8 is turned off
+	 *    and on by touch module before panel on request,
+	 *    then, we don't need 1S delay. If 1v8 is turned
+	 *    off in panel on request time, we don't need
+	 *    1S delay, either.
+	 */
+
+	if ((!atomic_read(&touch_dvdd_on)) &&
+		regulator_is_enabled(dvdd_lcd_1v8)) {
+		msleep(1000);
+	}
+	/*
+	 * Clean touch_dvdd_on
+	 */
+	atomic_set(&touch_dvdd_on, 0);
+#endif
 
 	if (dvdd_lcd_1v8) {
 		err = regulator_enable(dvdd_lcd_1v8);
@@ -152,13 +192,23 @@ fail:
 
 static int lgd_wxga_7_0_disable(void)
 {
-	msleep(100); /*MIPI off to VDD off needs to be 50~150ms per spec*/
+	msleep(50); /*MIPI off to VDD off needs to be 50~150ms per spec*/
 
 	if (dvdd_lcd_1v8)
 		regulator_disable(dvdd_lcd_1v8);
 	if (avdd_lcd_3v3)
 		regulator_disable(avdd_lcd_3v3);
+
+#if WORKAROUND_TO_REMOVE_LGD7_T4_TIME
+	/*
+	 * Clean touch_dvdd_on here.
+	 * pre condition for the work around mentions
+	 * the sequence in power off is "panel off => touch off".
+	 */
+	atomic_set(&touch_dvdd_on, 0);
+#else
 	msleep(1000); /*LCD panel VDD on needs to be 1000>ms after it's off*/
+#endif
 	return 0;
 }
 

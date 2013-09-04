@@ -109,6 +109,9 @@ struct dev_data {
 #endif
 };
 
+atomic_t touch_dvdd_on = ATOMIC_INIT(0);
+static int prev_dvdd_rail_state;
+
 static struct list_head  dev_list;
 static spinlock_t        dev_lock;
 
@@ -711,6 +714,10 @@ static int regulator_control(struct dev_data *dd, bool on)
 			regulator_disable(dd->reg_dvdd);
 			return ret;
 		}
+		if (prev_dvdd_rail_state == 0)
+			atomic_set(&touch_dvdd_on, 1);
+
+		prev_dvdd_rail_state = 1;
 	} else {
 		if (regulator_is_enabled(dd->reg_avdd))
 			ret = regulator_disable(dd->reg_avdd);
@@ -726,6 +733,12 @@ static int regulator_control(struct dev_data *dd, bool on)
 			regulator_enable(dd->reg_avdd);
 			return ret;
 		}
+
+		if (!regulator_is_enabled(dd->reg_dvdd)) {
+			prev_dvdd_rail_state = 0;
+			msleep(200);
+		} else
+			prev_dvdd_rail_state = 1;
 	}
 
 	return 0;
@@ -1945,6 +1958,7 @@ static struct spi_driver driver = {
 static int __devinit maxim_sti_init(void)
 {
 	INIT_LIST_HEAD(&dev_list);
+	prev_dvdd_rail_state = 0;
 	spin_lock_init(&dev_lock);
 	return spi_register_driver(&driver);
 }
