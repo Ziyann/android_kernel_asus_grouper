@@ -664,10 +664,8 @@ static int suspend(struct device *dev)
 	pdata->reset(pdata, 0);
 	usleep_range(100, 120);
 	ret = regulator_control(dd, false);
-	if (ret < 0) {
-		pdata->reset(pdata, 1);
+	if (ret < 0)
 		return ret;
-	}
 
 	return 0;
 }
@@ -682,6 +680,7 @@ static int resume(struct device *dev)
 		return 0;
 
 	/* power-up and reset-high */
+	pdata->reset(pdata, 0);
 	ret = regulator_control(dd, true);
 	if (ret < 0)
 		return ret;
