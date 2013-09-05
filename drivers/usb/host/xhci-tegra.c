@@ -2383,11 +2383,12 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 		 * tctrl_val = 0x1f - (16 - ffz(utmip_tctrl_val)
 		 * rctrl_val = 0x1f - (16 - ffz(utmip_rctrl_val)
 		 */
-		pmc_data.utmip_rctrl_val = 0xf + ffz(utmip_rctrl_val);
-		pmc_data.utmip_tctrl_val = 0xf + ffz(utmip_tctrl_val);
+		utmip_rctrl_val = 0xf + ffz(utmip_rctrl_val);
+		utmip_tctrl_val = 0xf + ffz(utmip_tctrl_val);
 
+		utmi_phy_update_trking_data(utmip_tctrl_val, utmip_rctrl_val);
 		xhci_dbg(tegra->xhci, "rctrl_val = 0x%x, tctrl_val = 0x%x\n",
-			pmc_data.utmip_rctrl_val, pmc_data.utmip_tctrl_val);
+			utmip_rctrl_val, utmip_tctrl_val);
 
 		/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 1 and
 		 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 1
@@ -2399,8 +2400,8 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 		/* Program these values into PMC regiseter and program the
 		 * PMC override
 		 */
-		reg = PMC_TCTRL_VAL(pmc_data.utmip_tctrl_val) |
-			PMC_RCTRL_VAL(pmc_data.utmip_rctrl_val);
+		reg = PMC_TCTRL_VAL(utmip_tctrl_val) |
+			PMC_RCTRL_VAL(utmip_rctrl_val);
 		tegra_usb_pmc_reg_update(PMC_UTMIP_TERM_PAD_CFG,
 			0xffffffff, reg);
 
