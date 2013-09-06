@@ -55,6 +55,9 @@
  * Forward Declarations
  *----------------------------------------------------------------------------*/
 
+extern void tegra_hdmi_enable_clk(void);
+extern void tegra_hdmi_disable_clk(void);
+
 /*
  * Creates and registers the device to be managed by the specified driver.
  *
@@ -743,10 +746,12 @@ static long tf_device_ioctl(struct file *file, unsigned int ioctl_num,
 			break;
 
 		case TF_MESSAGE_TYPE_INVOKE_CLIENT_COMMAND:
+			tegra_hdmi_enable_clk();
 			trace_invoke_client_command(NVSEC_INVOKE_CMD_START);
 			result = tf_invoke_client_command(connection,
 				&command, &answer);
 			trace_invoke_client_command(NVSEC_INVOKE_CMD_DONE);
+			tegra_hdmi_disable_clk();
 			break;
 
 		case TF_MESSAGE_TYPE_CANCEL_CLIENT_COMMAND:

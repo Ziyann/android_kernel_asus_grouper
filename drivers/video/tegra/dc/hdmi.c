@@ -110,6 +110,7 @@ struct tegra_dc_hdmi_data {
 };
 
 struct tegra_dc_hdmi_data *dc_hdmi;
+atomic_t __maybe_unused tf_hdmi_enable = ATOMIC_INIT(0);
 
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 const struct tmds_config tmds_config[] = {
@@ -471,6 +472,34 @@ static inline void tegra_hdmi_hotplug_enable(struct tegra_dc_hdmi_data *hdmi)
 	enable_irq(gpio_to_irq(dc->out->hotplug_gpio));
 }
 
+void tegra_hdmi_enable_clk(void)
+{
+	struct tegra_dc_hdmi_data *hdmi = dc_hdmi;
+	struct tegra_dc *dc = hdmi->dc;
+
+	mutex_lock(&dc->lock);
+	clk_prepare_enable(hdmi->disp1_clk);
+	clk_prepare_enable(hdmi->disp2_clk);
+	clk_prepare_enable(hdmi->clk);
+	mutex_unlock(&dc->lock);
+	atomic_set(&tf_hdmi_enable, 1);
+}
+EXPORT_SYMBOL(tegra_hdmi_enable_clk);
+
+void tegra_hdmi_disable_clk(void)
+{
+	struct tegra_dc_hdmi_data *hdmi = dc_hdmi;
+	struct tegra_dc *dc = hdmi->dc;
+
+	atomic_set(&tf_hdmi_enable, 0);
+	mutex_lock(&dc->lock);
+	clk_disable_unprepare(hdmi->clk);
+	clk_disable_unprepare(hdmi->disp1_clk);
+	clk_disable_unprepare(hdmi->disp2_clk);
+	mutex_unlock(&dc->lock);
+
+}
+EXPORT_SYMBOL(tegra_hdmi_disable_clk);
 
 #ifdef CONFIG_DEBUG_FS
 static int dbg_hdmi_show(struct seq_file *m, void *unused)
@@ -1874,9 +1903,11 @@ static void tegra_dc_hdmi_enable(struct tegra_dc *dc)
 	clk_set_rate(hdmi->clk, dc->mode.pclk);
 
 	clk_prepare_enable(hdmi->clk);
-	tegra_periph_reset_assert(hdmi->clk);
-	mdelay(1);
-	tegra_periph_reset_deassert(hdmi->clk);
+	if (!atomic_read(&tf_hdmi_enable)) {
+		tegra_periph_reset_assert(hdmi->clk);
+		mdelay(1);
+		tegra_periph_reset_deassert(hdmi->clk);
+	}
 
 	/* TODO: copy HDCP keys from KFUSE to HDMI */
 
@@ -2093,7 +2124,6 @@ static void tegra_dc_hdmi_disable(struct tegra_dc *dc)
 	clk_disable_unprepare(hdmi->hda2codec_clk);
 	clk_disable_unprepare(hdmi->hda_clk);
 #endif
-	tegra_periph_reset_assert(hdmi->clk);
 	hdmi->clk_enabled = false;
 	clk_disable_unprepare(hdmi->clk);
 	tegra_dvfs_set_rate(hdmi->clk, 0);
