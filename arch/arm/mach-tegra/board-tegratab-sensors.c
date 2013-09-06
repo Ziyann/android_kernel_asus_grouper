@@ -599,13 +599,10 @@ static struct therm_est_subdevice skin_devs_a02[] = {
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
 	.trips = skin_trips,
-	.toffset = 5588,
 	.polling_period = 1100,
 	.passive_delay = 15000,
 	.tc1 = 10,
 	.tc2 = 1,
-	.ndevs = ARRAY_SIZE(skin_devs),
-	.devs = skin_devs,
 };
 
 static struct throttle_table skin_throttle_table[] = {
@@ -700,8 +697,16 @@ static int __init tegratab_skin_init(void)
 {
 	if (machine_is_tegratab()) {
 		tegra_get_board_info(&board_info);
-		if (board_info.board_id == BOARD_P1640 &&
-			board_info.fab == BOARD_FAB_A02) {
+		if (board_info.board_id == BOARD_E1569 ||
+			(board_info.board_id == BOARD_P1640 &&
+			(board_info.fab == BOARD_FAB_A00 ||
+			board_info.fab == BOARD_FAB_A01))) {
+			/* Use this for E1569 and P1640 A00/A01 */
+			skin_data.toffset = 5588;
+			skin_data.ndevs = ARRAY_SIZE(skin_devs);
+			skin_data.devs = skin_devs;
+		} else {
+			/* Use this after P1640 A02. */
 			skin_data.toffset = -1727;
 			skin_data.ndevs = ARRAY_SIZE(skin_devs_a02);
 			skin_data.devs = skin_devs_a02;
