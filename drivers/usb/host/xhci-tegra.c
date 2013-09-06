@@ -235,7 +235,7 @@ struct tegra_xhci_hcd {
 	bool hs_wake_event;
 	bool host_resume_req;
 	bool lp0_exit;
-	bool dfe_ctle_ctx_saved;
+	bool dfe_ctx_saved[XUSB_SS_PORT_COUNT];
 	unsigned long last_jiffies;
 	unsigned long host_phy_base;
 
@@ -1423,84 +1423,61 @@ static void tegra_xusb_set_bw(struct tegra_xhci_hcd *tegra, unsigned int bw)
 	clk_set_rate(tegra->emc_clk, freq_khz * 1000);
 }
 
-static void tegra_xhci_save_dfe_ctle_context(struct tegra_xhci_hcd *tegra,
+static void tegra_xhci_save_dfe_context(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
 	struct xhci_hcd *xhci = tegra->xhci;
 	u32 offset;
 	u32 reg;
 
-	xhci_info(xhci, "saving dfe_cntl and ctle context for port %d\n", port);
+	xhci_info(xhci, "saving dfe_cntl context for port %d\n", port);
 
-	offset = port ? IOPHY_MISC_PAD1_CTL_6_0 : IOPHY_MISC_PAD0_CTL_6_0;
+	offset = MISC_PAD_CTL_6_0(port);
 
-	/* save tap1_val[] for the port for dfe_cntl */
+	/*
+	 * Value set to IOPHY_MISC_PAD_x_CTL_6 where x P0/P1/S0/ is from,
+	 * T114 refer PG USB3_FW_Programming_Guide_Host.doc section 14.3.10
+	 */
 	reg = readl(tegra->padctl_base + offset);
-	reg &= ~(0xff << 16);
-	reg |= (0x32 << 16);
+	reg &= ~MISC_OUT_SEL(~0);
+	reg |= MISC_OUT_SEL(0x32);
 	writel(reg, tegra->padctl_base + offset);
 
 	reg = readl(tegra->padctl_base + offset);
-	tegra->sregs.tap1_val[port] = ((reg & (0x1f << 24)) >> 24);
+	tegra->sregs.tap1_val[port] = MISC_OUT_TAP_VAL(reg);
 
 	/* save amp_val[] for the port for dfe_cntl */
 	reg = readl(tegra->padctl_base + offset);
-	reg &= ~(0xff << 16);
-	reg |= (0x33 << 16);
+	reg &= ~MISC_OUT_SEL(~0);
+	reg |= MISC_OUT_SEL(0x33);
 	writel(reg, tegra->padctl_base + offset);
 
 	reg = readl(tegra->padctl_base + offset);
-	tegra->sregs.amp_val[port] = ((reg & (0x7f << 24)) >> 24);
+	tegra->sregs.amp_val[port] = MISC_OUT_AMP_VAL(reg);
 
-	/* save ctle_z_val[] for the port for ctle */
-	reg = readl(tegra->padctl_base + offset);
-	reg &= ~(0xff << 16);
-	reg |= (0x20 << 16);
-	writel(reg, tegra->padctl_base + offset);
-
-	reg = readl(tegra->padctl_base + offset);
-	tegra->sregs.ctle_z_val[port] = ((reg & (0x3f << 24)) >> 24);
-
-	/* save ctle_g_val[] for the port for ctle */
-	reg = readl(tegra->padctl_base + offset);
-	reg &= ~(0xff << 16);
-	reg |= (0x21 << 16);
-	writel(reg, tegra->padctl_base + offset);
-
-	reg = readl(tegra->padctl_base + offset);
-	tegra->sregs.ctle_g_val[port] = ((reg & (0x3f << 24)) >> 24);
-	tegra->dfe_ctle_ctx_saved = true;
+	tegra->dfe_ctx_saved[port] = true;
 }
 
-static void tegra_xhci_restore_dfe_ctle_context(struct tegra_xhci_hcd *tegra,
+static void tegra_xhci_restore_dfe_context(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
 	struct xhci_hcd *xhci = tegra->xhci;
-	u32 ctl4_offset, ctl2_offset;
 	u32 reg;
 
 	/* don't restore if not saved */
-	if (tegra->dfe_ctle_ctx_saved == false)
+	if (tegra->dfe_ctx_saved[port] == false)
 		return;
 
-	ctl4_offset = port ? IOPHY_USB3_PAD1_CTL_4_0 : IOPHY_USB3_PAD0_CTL_4_0;
-	ctl2_offset = port ? IOPHY_USB3_PAD1_CTL_2_0 : IOPHY_USB3_PAD0_CTL_2_0;
-
-	xhci_info(xhci, "restoring dfe_cntl/ctle context of port %d\n", port);
+	xhci_info(xhci, "restoring dfe_cntl context of port %d\n", port);
 
 	/* restore dfe_cntl for the port */
-	reg = readl(tegra->padctl_base + ctl4_offset);
-	reg &= ~((0x7f << 16) | (0x1f << 24));
-	reg |= ((tegra->sregs.amp_val[port] << 16) |
-		(tegra->sregs.tap1_val[port] << 24));
-	writel(reg, tegra->padctl_base + ctl4_offset);
+	reg = readl(tegra->padctl_base + USB3_PAD_CTL_4_0(port));
+	reg &= ~(DFE_CNTL_AMP_VAL(~0) |
+			DFE_CNTL_TAP_VAL(~0));
+	reg |= DFE_CNTL_AMP_VAL(tegra->sregs.amp_val[port]) |
+		DFE_CNTL_TAP_VAL(tegra->sregs.tap1_val[port]);
+	writel(reg, tegra->padctl_base + USB3_PAD_CTL_4_0(port));
 
-	/* restore ctle for the port */
-	reg = readl(tegra->padctl_base + ctl2_offset);
-	reg &= ~((0x3f << 8) | (0x3f << 16));
-	reg |= ((tegra->sregs.ctle_g_val[port] << 8) |
-		(tegra->sregs.ctle_z_val[port] << 16));
-	writel(reg, tegra->padctl_base + ctl2_offset);
 }
 
 static void tegra_xhci_program_ulpi_pad(struct tegra_xhci_hcd *tegra,
@@ -1625,7 +1602,7 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	u32 reg;
 
 	ctl2_offset = port ? IOPHY_USB3_PAD1_CTL_2_0 : IOPHY_USB3_PAD0_CTL_2_0;
-	ctl4_offset = port ? IOPHY_USB3_PAD1_CTL_4_0 : IOPHY_USB3_PAD0_CTL_4_0;
+	ctl4_offset = USB3_PAD_CTL_4_0(port);
 	ctl5_offset = port ? IOPHY_MISC_PAD1_CTL_5_0 : IOPHY_MISC_PAD0_CTL_5_0;
 
 	reg = readl(tegra->padctl_base + ctl2_offset);
@@ -1649,7 +1626,7 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 		(port ? TEGRA_XUSB_SS1_PORT_MAP : TEGRA_XUSB_SS0_PORT_MAP));
 	writel(reg, tegra->padctl_base + SS_PORT_MAP_0);
 
-	tegra_xhci_restore_dfe_ctle_context(tegra, port);
+	tegra_xhci_restore_dfe_context(tegra, port);
 }
 
 /* This function assigns the USB ports to the controllers,
@@ -2626,8 +2603,8 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
 		break;
 	case MBOX_CMD_SAVE_DFE_CTLE_CTX:
-		tegra_xhci_save_dfe_ctle_context(tegra, tegra->cmd_data);
-		tegra_xhci_restore_dfe_ctle_context(tegra, tegra->cmd_data);
+		tegra_xhci_save_dfe_context(tegra, tegra->cmd_data);
+		tegra_xhci_restore_dfe_context(tegra, tegra->cmd_data);
 		sw_resp |= (MBOX_CMD_ACK << MBOX_CMD_SHIFT);
 		goto send_sw_response;
 	case MBOX_CMD_ACK:
@@ -3325,6 +3302,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	struct tegra_xhci_hcd *tegra;
 	struct resource	*res;
 	struct usb_hcd	*hcd;
+	unsigned port;
 	u32 pmc_reg;
 	int ret;
 	int irq;
@@ -3555,8 +3533,9 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->hs_wake_event = false;
 	tegra->host_resume_req = false;
 	tegra->lp0_exit = false;
-	tegra->dfe_ctle_ctx_saved = false;
 	tegra->no_of_oc_retries = 0;
+	for (port = 0; port < XUSB_SS_PORT_COUNT; port++)
+		tegra->dfe_ctx_saved[port] = false;
 
 	/* reset wake event to NONE */
 	pmc_reg = tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0);

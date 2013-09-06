@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/xusb.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Ajay Gupta <ajayg@nvidia.com>
@@ -29,6 +29,7 @@
  */
 #define TEGRA_XUSB_SS_P0	(1 << 0)
 #define TEGRA_XUSB_SS_P1	(1 << 1)
+#define XUSB_SS_PORT_COUNT	(2)
 #define TEGRA_XUSB_USB2_P0	(1 << 8)
 #define TEGRA_XUSB_USB2_P1	(1 << 9)
 #define TEGRA_XUSB_HSIC_P0	(1 << 16)
