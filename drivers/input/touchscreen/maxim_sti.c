@@ -69,6 +69,7 @@ struct dev_data {
 	bool                         start_fusion;
 	bool                         suspend_in_progress;
 	bool                         resume_in_progress;
+	bool                         input_ignore;
 	bool                         eraser_active;
 #if (INPUT_DEVICES > 1)
 	bool                         last_finger_active;
@@ -1051,12 +1052,15 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		dd->last_finger_active = false;
 		dd->last_stylus_active = false;
 #endif
+		dd->input_ignore = false;
 		dd->eraser_active = false;
 		dd->legacy_acceleration = false;
 		dd->service_irq = service_irq;
 		dd->fusion_process = (pid_t)0;
 		return false;
 	case DR_INPUT:
+		if (dd->input_ignore)
+			return false;
 		input_msg = msg;
 		if (input_msg->events == 0) {
 			if (dd->eraser_active) {
@@ -1141,6 +1145,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 					dd->eraser_active = true;
 					break;
 				default:
+					inp = ID_FINGER;
 					ERROR("invalid input tool type (%d)",
 					      input_msg->event[i].tool_type);
 					break;
@@ -1162,6 +1167,11 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			for (i = 0; i < INPUT_DEVICES; i++)
 				input_sync(dd->input_dev[i]);
 		}
+		return false;
+	case DR_RESUME_ACK:
+		dd->input_ignore = false;
+		if (dd->irq_registered)
+			enable_irq(dd->spi->irq);
 		return false;
 	case DR_LEGACY_FWDL:
 		ret = fw_request_load(dd);
@@ -1352,7 +1362,7 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 
 			if (async_data->address +
 					offset / sizeof(u16) != buf[1]) {
-				ERROR("sequence number incorrect");
+				ERROR("sequence number incorrect %04X", buf[1]);
 				start_legacy_acceleration_canned(dd);
 				ret = -EBUSY;
 				break;
@@ -1502,8 +1512,9 @@ static void service_irq(struct dev_data *dd)
 		if (ret < 0) {
 			ERROR("can't send IRQ buffer %d", ret);
 			msleep(300);
-			if (++dd->send_fail_count >= 10 &&
-			    dd->fusion_process != (pid_t)0) {
+			if (read_buf[0] == false ||
+			    (++dd->send_fail_count >= 10 &&
+			     dd->fusion_process != (pid_t)0)) {
 				(void)kill_pid(
 					find_get_pid(dd->fusion_process),
 					SIGKILL, 1);
@@ -1530,7 +1541,7 @@ static int processing_thread(void *arg)
 	char                    *argv[] = { pdata->touch_fusion, "daemon",
 					    pdata->nl_family,
 					    pdata->config_file, NULL };
-	int                     ret;
+	int                     ret, ret2;
 
 	sched_setscheduler(current, SCHED_FIFO, &dd->thread_sched);
 
@@ -1567,7 +1578,7 @@ static int processing_thread(void *arg)
 		if (kthread_should_stop())
 			break;
 
-		/* priority 1: process pending Netlink messages */
+		/* priority 2: process pending Netlink messages */
 		while ((skb = skb_dequeue(&dd->incoming_skb_queue)) != NULL) {
 			if (kthread_should_stop())
 				break;
@@ -1577,12 +1588,13 @@ static int processing_thread(void *arg)
 		if (kthread_should_stop())
 			break;
 
-		/* priority 2: suspend/resume */
+		/* priority 3: suspend/resume */
 		if (dd->suspend_in_progress) {
 			if (dd->irq_registered)
 				disable_irq(dd->spi->irq);
 			stop_scan_canned(dd);
 			complete(&dd->suspend_resume);
+			dd->input_ignore = true;
 			while (!dd->resume_in_progress) {
 				/* the line below is a MUST */
 				set_current_state(TASK_INTERRUPTIBLE);
@@ -1591,32 +1603,44 @@ static int processing_thread(void *arg)
 #if !SUSPEND_POWER_OFF
 			start_scan_canned(dd);
 #endif
-			if (dd->irq_registered)
-				enable_irq(dd->spi->irq);
 			dd->resume_in_progress = false;
 			dd->suspend_in_progress = false;
 			complete(&dd->suspend_resume);
 
-			ret = nl_add_attr(dd->outgoing_skb->data, FU_RESUME,
-					  NULL, 0);
-			if (ret < 0)
-				ERROR("can't add data to resume buffer");
-			(void)skb_put(dd->outgoing_skb,
-				      NL_SIZE(dd->outgoing_skb->data));
-			ret = genlmsg_multicast(dd->outgoing_skb, 0,
-					dd->nl_mc_groups[MC_FUSION].id,
-					GFP_KERNEL);
-			if (ret < 0)
-				ERROR("can't send resume message %d", ret);
-			ret = nl_msg_new(dd, MC_FUSION);
-			if (ret < 0)
-				ERROR("could not allocate outgoing skb (%d)",
-				      ret);
+			do {
+				ret = nl_add_attr(dd->outgoing_skb->data,
+						  FU_RESUME, NULL, 0);
+				if (ret < 0) {
+					ERROR("can't add data to resume " \
+					      "buffer");
+					nl_msg_init(dd->outgoing_skb->data,
+						    dd->nl_family.id,
+						    dd->nl_seq - 1, MC_FUSION);
+					msleep(100);
+					continue;
+				}
+				(void)skb_put(dd->outgoing_skb,
+					      NL_SIZE(dd->outgoing_skb->data));
+				ret = genlmsg_multicast(dd->outgoing_skb, 0,
+						dd->nl_mc_groups[MC_FUSION].id,
+						GFP_KERNEL);
+				if (ret < 0) {
+					ERROR("can't send resume message %d",
+					      ret);
+					msleep(100);
+				}
+				ret2 = nl_msg_new(dd, MC_FUSION);
+				if (ret2 < 0)
+					ERROR("could not allocate outgoing " \
+					      "skb (%d)", ret2);
+			} while (ret != 0);
 		}
 
-		/* priority 3: service interrupt */
+		/* priority 4: service interrupt */
 		if (dd->irq_registered && pdata->irq(pdata) == 0)
 			dd->service_irq(dd);
+		if (dd->irq_registered && pdata->irq(pdata) == 0)
+			continue;
 
 		/* nothing more to do; sleep */
 		schedule();
