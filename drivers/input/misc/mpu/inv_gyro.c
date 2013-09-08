@@ -683,12 +683,13 @@ static int nvi_pwr_mgmt_1_war(struct inv_gyro_state_s *inf)
 	int err;
 
 	for (i = 0; i < POWER_UP_TIME; i++) {
-		inv_i2c_single_write(inf, inf->reg->pwr_mgmt_1, 0);
-		val = -1;
-		err = inv_i2c_read(inf, inf->reg->pwr_mgmt_1, 1, &val);
-		if (!val)
-			break;
-
+		err = inv_i2c_single_write(inf, inf->reg->pwr_mgmt_1, 0);
+		if (err > 0) {
+			val = -1;
+			err = inv_i2c_read(inf, inf->reg->pwr_mgmt_1, 1, &val);
+			if (err > 0 && !val)
+				break;
+		}
 		mdelay(1);
 	}
 	inf->hw.pwr_mgmt_1 = val;
