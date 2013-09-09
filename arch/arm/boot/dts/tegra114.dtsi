@@ -118,6 +118,13 @@
 		status = "disabled";
 	};
 
+	memory-controller@7001b000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra11-emc";
+		reg = <0x7001b000 0x800>;
+	};
+
 	sdhci@78000600 {
 		compatible = "nvidia,tegra114-sdhci", "nvidia,tegra20-sdhci";
 		reg = <0x78000600 0x200>;
