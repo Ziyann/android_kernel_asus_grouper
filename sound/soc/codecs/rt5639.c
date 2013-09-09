@@ -49,6 +49,10 @@ struct rt5639_init_reg {
 };
 
 static struct rt5639_init_reg init_list[] = {
+    //Make sure we are not in test mode
+    {RT5639_PRIV_INDEX  ,0x001B},   //MX6A
+    {RT5639_PRIV_DATA   ,0x0200},   //MX6C
+
 	{RT5639_GEN_CTRL1	, 0x3f01},/* fa[12:13] = 1'b;
 					     fa[8~11]=1; fa[0]=1 */
 	{RT5639_ADDA_CLK1	, 0x1114},/* 73[2] = 1'b */
@@ -110,6 +114,7 @@ static struct rt5639_init_reg init_list[] = {
 					/*( if sticky set regBE : 8800 ) */
 #endif
 	{RT5639_JD_CTRL		, 0x6000},/* JD2 as jack detection source */
+
 };
 #define RT5639_INIT_REG_LEN ARRAY_SIZE(init_list)
 
