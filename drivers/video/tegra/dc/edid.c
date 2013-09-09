@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -239,15 +239,19 @@ int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 		switch (code) {
 		case 1:
 		{
-			edid->eld.sad_count = len;
+			int sad_n = edid->eld.sad_count * 3;
+			edid->eld.sad_count += len / 3;
+			pr_debug("%s: incrementing eld.sad_count by %d to %d\n",
+				 __func__, len / 3, edid->eld.sad_count);
 			edid->eld.conn_type = 0x00;
 			edid->eld.support_hdcp = 0x00;
-			for (i = 0; (i < len) && (i < ELD_MAX_SAD); i ++)
-				edid->eld.sad[i] = ptr[i + 1];
+			for (i = 0; (i < len) && (sad_n < ELD_MAX_SAD_BYTES);
+			     i++, sad_n++)
+				edid->eld.sad[sad_n] = ptr[i + 1];
 			len++;
 			ptr += len; /* adding the header */
 			/* Got an audio data block so enable audio */
-			if(basic_audio == true)
+			if (basic_audio == true)
 				edid->eld.spk_alloc = 1;
 			break;
 		}

@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -26,6 +26,7 @@
 
 #define ELD_MAX_MNL	16
 #define ELD_MAX_SAD	16
+#define ELD_MAX_SAD_BYTES (ELD_MAX_SAD * 3)
 struct tegra_edid;
 
 /*
@@ -46,7 +47,7 @@ struct tegra_edid_hdmi_eld {
 	u8	aud_synch_delay;
 	u8	spk_alloc;
 	u8	sad_count;
-	u8	sad[ELD_MAX_SAD];
+	u8	sad[ELD_MAX_SAD_BYTES];
 };
 
 struct tegra_edid *tegra_edid_create(int bus);
