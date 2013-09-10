@@ -2352,67 +2352,63 @@ static void wait_remote_wakeup_ports(struct usb_hcd *hcd)
 
 static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 {
-	u32 reg, utmip_rctrl_val, utmip_tctrl_val;
+	u32 reg, utmip_rctrl_val, utmip_tctrl_val, pad_mux, portmux, portowner;
 
-	/* Program XUSB as port owner for both Port 0 and port 1 */
-	reg = readl(tegra->padctl_base + USB2_PAD_MUX_0);
-	reg &= ~(USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1));
-	reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(0) |
-		USB2_OTG_PAD_PORT_OWNER_XUSB(1);
-	writel(reg, tegra->padctl_base + USB2_PAD_MUX_0);
+	portmux = USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1);
+	portowner = USB2_OTG_PAD_PORT_OWNER_XUSB(0) |
+			USB2_OTG_PAD_PORT_OWNER_XUSB(1);
 
-	/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 0 and
-	 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 0
-	 */
-	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
-	reg &= ~((1 << 12) | (1 << 13));
-	writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
+	/* Use xusb padctl space only when xusb owns all UTMIP port */
+	pad_mux = readl(tegra->padctl_base + USB2_PAD_MUX_0);
 
-	/* wait 20us */
-	usleep_range(20, 30);
+	if ((pad_mux & portmux) == portowner) {
+		/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 0 and
+		 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 0
+		 */
+		reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
+		reg &= ~((1 << 12) | (1 << 13));
+		writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
 
-	/* Read XUSB_PADCTL:: XUSB_PADCTL_USB2_BIAS_PAD_CTL_1_0
-	 * :: TCTRL and RCTRL
-	 */
-	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_1_0);
-	utmip_rctrl_val = RCTRL(reg);
-	utmip_tctrl_val = TCTRL(reg);
+		/* wait 20us */
+		usleep_range(20, 30);
 
-	/*
-	 * tctrl_val = 0x1f - (16 - ffz(utmip_tctrl_val)
-	 * rctrl_val = 0x1f - (16 - ffz(utmip_rctrl_val)
-	 */
-	pmc_data.utmip_rctrl_val = 0xf + ffz(utmip_rctrl_val);
-	pmc_data.utmip_tctrl_val = 0xf + ffz(utmip_tctrl_val);
+		/* Read XUSB_PADCTL:: XUSB_PADCTL_USB2_BIAS_PAD_CTL_1_0
+		 * :: TCTRL and RCTRL
+		 */
+		reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_1_0);
+		utmip_rctrl_val = RCTRL(reg);
+		utmip_tctrl_val = TCTRL(reg);
 
-	xhci_dbg(tegra->xhci, "rctrl_val = 0x%x, tctrl_val = 0x%x\n",
-		pmc_data.utmip_rctrl_val, pmc_data.utmip_tctrl_val);
+		/*
+		 * tctrl_val = 0x1f - (16 - ffz(utmip_tctrl_val)
+		 * rctrl_val = 0x1f - (16 - ffz(utmip_rctrl_val)
+		 */
+		pmc_data.utmip_rctrl_val = 0xf + ffz(utmip_rctrl_val);
+		pmc_data.utmip_tctrl_val = 0xf + ffz(utmip_tctrl_val);
 
-	/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 1 and
-	 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 1
-	 */
-	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
-	reg |= (1 << 13);
-	writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
+		xhci_dbg(tegra->xhci, "rctrl_val = 0x%x, tctrl_val = 0x%x\n",
+			pmc_data.utmip_rctrl_val, pmc_data.utmip_tctrl_val);
 
-	/* Program these values into PMC regiseter and program the
-	 * PMC override
-	 */
-	reg = PMC_TCTRL_VAL(pmc_data.utmip_tctrl_val) |
-		PMC_RCTRL_VAL(pmc_data.utmip_rctrl_val);
-	tegra_usb_pmc_reg_update(PMC_UTMIP_TERM_PAD_CFG, 0xffffffff, reg);
+		/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 1 and
+		 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 1
+		 */
+		reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
+		reg |= (1 << 13);
+		writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
 
-	reg = UTMIP_RCTRL_USE_PMC_P2 | UTMIP_TCTRL_USE_PMC_P2;
-	tegra_usb_pmc_reg_update(PMC_SLEEP_CFG, reg, reg);
+		/* Program these values into PMC regiseter and program the
+		 * PMC override
+		 */
+		reg = PMC_TCTRL_VAL(pmc_data.utmip_tctrl_val) |
+			PMC_RCTRL_VAL(pmc_data.utmip_rctrl_val);
+		tegra_usb_pmc_reg_update(PMC_UTMIP_TERM_PAD_CFG,
+			0xffffffff, reg);
 
-	/* Restore correct port ownership in padctl */
-	reg = readl(tegra->padctl_base + USB2_PAD_MUX_0);
-	reg &= ~(USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1));
-	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
-		reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(0);
-	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
-		reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(1);
-	writel(reg, tegra->padctl_base + USB2_PAD_MUX_0);
+		reg = UTMIP_RCTRL_USE_PMC_P2 | UTMIP_TCTRL_USE_PMC_P2;
+		tegra_usb_pmc_reg_update(PMC_SLEEP_CFG, reg, reg);
+	} else {
+		/* TODO use common PMC API to use SNPS register space */
+	}
 }
 
 /* Host ELPG Exit triggered by PADCTL irq */
