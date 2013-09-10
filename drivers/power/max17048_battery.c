@@ -204,7 +204,7 @@ static int max17048_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
 		/* unit is uV */
-		val->intval = max17048_get_ocv(chip) * 1000;
+		val->intval = max17048_get_ocv(chip);
 		break;
 	default:
 	return -EINVAL;
