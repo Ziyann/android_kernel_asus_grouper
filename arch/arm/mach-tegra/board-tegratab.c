@@ -634,20 +634,6 @@ struct maxim_sti_pdata maxim_sti_pdata = {
 	.gpio_irq             = TOUCH_GPIO_IRQ_MAXIM_STI_SPI
 };
 
-struct maxim_sti_pdata maxim_sti_pdata_rd = {
-	.touch_fusion         = "/vendor/bin/touch_fusion_rd",
-	.config_file          = "/vendor/firmware/touch_fusion.cfg",
-	.fw_name              = "maxim_fp35.bin",
-	.nl_family            = TF_FAMILY_NAME,
-	.nl_mc_groups         = 5,
-	.chip_access_method   = 2,
-	.default_reset_state  = 0,
-	.tx_buf_size          = 4100,
-	.rx_buf_size          = 4100,
-	.gpio_reset           = TOUCH_GPIO_RST_MAXIM_STI_SPI,
-	.gpio_irq             = TOUCH_GPIO_IRQ_MAXIM_STI_SPI
-};
-
 static struct tegra_spi_device_controller_data dev_cdata = {
 	.rx_clk_tap_delay = 0,
 	.is_hw_based_cs = true,
@@ -660,7 +646,7 @@ struct spi_board_info maxim_sti_spi_board = {
 	.chip_select = 0,
 	.max_speed_hz = 12 * 1000 * 1000,
 	.mode = SPI_MODE_0,
-	.platform_data = &maxim_sti_pdata_rd,
+	.platform_data = &maxim_sti_pdata,
 	.controller_data = &dev_cdata
 };
 #else
@@ -705,8 +691,6 @@ static int __init tegratab_touch_init(void)
 
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_P1640) {
-		if (board_info.fab == BOARD_FAB_A00)
-			maxim_sti_spi_board.platform_data = &maxim_sti_pdata;
 		(void)touch_init_maxim_sti(&maxim_sti_spi_board);
 	}
 #else
