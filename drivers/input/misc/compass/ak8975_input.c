@@ -1384,7 +1384,7 @@ static int akm_remove(struct i2c_client *client)
 
 static void akm_shutdown(struct i2c_client *client)
 {
-	akm_remove(client);
+	dev_info(&client->dev, "%s\n", __func__);
 }
 
 static struct mpu_platform_data *akm_parse_dt(struct i2c_client *client)
