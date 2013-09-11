@@ -44,6 +44,7 @@
 			reg = <0x0d>;
 			orientation = [00 01 00 01 00 00 00 00 ff];
 			config = "mpu";
+			sec-slave-id = <18>;
 		};
 	};
 
