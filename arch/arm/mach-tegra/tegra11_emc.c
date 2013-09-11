@@ -40,6 +40,7 @@
 #include "board.h"
 #include "tegra11_emc.h"
 #include "fuse.h"
+#include "tegra-board-id.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;
@@ -1139,8 +1140,25 @@ static struct device_node *tegra_emc_ramcode_devnode(struct device_node *np)
 	for_each_child_of_node(np, iter) {
 		if (of_property_read_u32(iter, "nvidia,ram-code", &reg))
 			continue;
+#ifdef CONFIG_MACH_TEGRATAB
+		{
+			struct board_info board_info;
+			tegra_get_board_info(&board_info);
+
+			if (board_info.board_id == BOARD_P1640 &&
+					board_info.fab >= BOARD_FAB_A04) {
+				if (reg == tegra_bct_strapping)
+					return of_node_get(iter);
+			} else if (board_info.board_id == BOARD_P1640) {
+				/* force select ram strapping 0x0 */
+				if (reg == 0x0)
+					return of_node_get(iter);
+			}
+		}
+#else
 		if (reg == tegra_bct_strapping)
 			return of_node_get(iter);
+#endif /* CONFIG_MACH_TEGRATAB */
 	}
 
 	return NULL;
