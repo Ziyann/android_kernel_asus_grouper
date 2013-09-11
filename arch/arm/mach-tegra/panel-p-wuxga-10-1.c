@@ -197,13 +197,6 @@ static int dalmore_dsi_gpio_get(void)
 		goto fail;
 	}
 
-	/* free pwm GPIO */
-	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
-	if (err < 0) {
-		pr_err("panel pwm gpio request failed\n");
-		goto fail;
-	}
-	gpio_free(DSI_PANEL_BL_PWM);
 	gpio_requested = true;
 	return 0;
 fail:
@@ -268,6 +261,9 @@ static int dsi_p_wuxga_10_1_enable(struct device *dev)
 {
 	int err = 0;
 
+	struct tegra_dc_out *pdata = ((struct tegra_dc_platform_data *)
+		(dev->platform_data))->default_out;
+
 	if (machine_is_dalmore())
 		err = dalmore_dsi_regulator_get(dev);
 	else if (machine_is_macallan())
@@ -324,7 +320,7 @@ static int dsi_p_wuxga_10_1_enable(struct device *dev)
 			goto fail;
 		}
 	}
-
+if (!(pdata->flags & TEGRA_DC_OUT_INITIALIZED_MODE)) {
 	msleep(100);
 #if DSI_PANEL_RESET
 	gpio_direction_output(gpio_lcd_rst, 1);
@@ -334,6 +330,7 @@ static int dsi_p_wuxga_10_1_enable(struct device *dev)
 	gpio_set_value(gpio_lcd_rst, 1);
 	msleep(20);
 #endif
+}
 
 	return 0;
 fail:
@@ -571,22 +568,27 @@ static int dsi_p_wuxga_10_1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &disp_device->dev;
 }
 
+#if !(DC_CTRL_MODE & TEGRA_DC_OUT_INITIALIZED_MODE)
 static int dsi_p_wuxga_10_1_display_init(struct device *dev)
 {
 	return atomic_read(&display_ready);
 }
+#endif
 
 static struct platform_pwm_backlight_data dsi_p_wuxga_10_1_bl_data = {
 	.pwm_id		= 1,
 	.max_brightness	= 255,
 	.dft_brightness	= 224,
 	.pwm_period_ns	= 1000000,
+	.pwm_gpio = DSI_PANEL_BL_PWM,
 	.notify		= dsi_p_wuxga_10_1_bl_notify,
 	.edp_states = { 3950, 2950, 1850, 940, 750, 0},
 	.edp_brightness = {255, 213, 136, 73, 60, 0},
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= dsi_p_wuxga_10_1_check_fb,
+#if !(DC_CTRL_MODE & TEGRA_DC_OUT_INITIALIZED_MODE)
 	.init = dsi_p_wuxga_10_1_display_init,
+#endif
 };
 
 static struct platform_device __maybe_unused

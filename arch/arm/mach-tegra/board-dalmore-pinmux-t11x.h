@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-pinmux-t11x.h
  *
- * Copyright (c) 2012-2013, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -241,14 +241,15 @@ static struct gpio_init_pin_info init_gpio_mode_dalmore_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PCC2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG0, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG1, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH2, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH1, false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH2, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH3, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH4, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH5, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH5, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH6, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH7, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG2, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG3, true, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG3, true, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG4, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH0, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK0, true, 0),

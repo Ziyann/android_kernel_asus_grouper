@@ -67,7 +67,7 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_set_nontristate[] 
 
 	DEFAULT_PINMUX(GMI_AD0,         GMI,    NORMAL,       NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD1,         GMI,    NORMAL,       NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD10,        GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD10,        GMI,  PULL_UP,      NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD11,        GMI,    NORMAL,       NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD12,        GMI,    PULL_UP,      NORMAL,    INPUT),
 	DEFAULT_PINMUX(GMI_AD2,         GMI,    NORMAL,       NORMAL,    INPUT),

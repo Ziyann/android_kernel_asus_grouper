@@ -162,7 +162,7 @@ TPS65090_PDATA_INIT(DCDC2, dcdc2, NULL, 1, 1, 0, true, -1, -1);
 TPS65090_PDATA_INIT(DCDC3, dcdc3, NULL, 1, 1, 0, true, -1, -1);
 TPS65090_PDATA_INIT(LDO1, ldo1, NULL, 1, 1, 0, false, -1, -1);
 TPS65090_PDATA_INIT(LDO2, ldo2, NULL, 1, 1, 0, false, -1, -1);
-TPS65090_PDATA_INIT(FET1, fet1, NULL, 0, 0, 0, false, -1, 800);
+TPS65090_PDATA_INIT(FET1, fet1, NULL, 0, 1, 0, false, -1, 800);
 TPS65090_PDATA_INIT(FET3, fet3, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
 TPS65090_PDATA_INIT(FET4, fet4, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
 TPS65090_PDATA_INIT(FET5, fet5, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
@@ -980,7 +980,7 @@ FIXED_REG(8,	dvdd_ts,	dvdd_ts,
 	TEGRA_GPIO_PH5,	false,	false,	1,	1800);
 
 FIXED_REG(9,	lcd_bl_en,	lcd_bl_en,
-	NULL,	0,	0,
+	NULL,	0,	1,
 	TEGRA_GPIO_PH2,	false,	true,	0,	5000);
 
 FIXED_REG(10,	avdd_hdmi_pll,	avdd_hdmi_pll,
