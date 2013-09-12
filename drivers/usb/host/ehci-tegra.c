@@ -387,8 +387,8 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 	EHCI_DBG("%s() BEGIN\n", __func__);
 
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
-if (pm_qos_request_active(&tegra->boost_cpu_freq_req))
-	pm_qos_update_request(&tegra->boost_cpu_freq_req,
+	if (pm_qos_request_active(&tegra->boost_cpu_freq_req))
+		pm_qos_update_request(&tegra->boost_cpu_freq_req,
 			PM_QOS_DEFAULT_VALUE);
 	tegra->cpu_boost_in_work = false;
 #endif
@@ -413,8 +413,8 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	EHCI_DBG("%s() BEGIN\n", __func__);
 
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
-if (pm_qos_request_active(&tegra->boost_cpu_freq_req))
-	pm_qos_update_request(&tegra->boost_cpu_freq_req,
+	if (pm_qos_request_active(&tegra->boost_cpu_freq_req))
+		pm_qos_update_request(&tegra->boost_cpu_freq_req,
 			(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
 	tegra->cpu_boost_in_work = false;
 
