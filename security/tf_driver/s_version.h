@@ -63,7 +63,7 @@
 #define S_VERSION_PLATFORM "C"
 #define S_VERSION_MAIN  "02.08"
 #define S_VERSION_ENG 0
-#define S_VERSION_PATCH 3
+#define S_VERSION_PATCH 5
 
 #else
 #define S_VERSION_OS "Z"          /* Unknown platform */
