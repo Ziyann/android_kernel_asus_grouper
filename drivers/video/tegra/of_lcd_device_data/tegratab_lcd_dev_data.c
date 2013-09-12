@@ -176,12 +176,15 @@ static int lgd_wxga_7_0_postpoweron(struct device *dev)
 {
 	int err = 0;
 
-	/*
-	 * MIPI to VLED > 200ms, based on the spec
-	 * init_cmd cares 20ms delay already.
-	 */
-	msleep(180);
 	if (vdd_lcd_bl_en) {
+		/*If rail is already enabled, we don't need delay*/
+		/*
+		 * MIPI to VLED > 200ms, based on the spec
+		 * init_cmd cares 20ms delay already.
+		*/
+		if (!regulator_is_enabled(vdd_lcd_bl_en))
+			msleep(180);
+
 		err = regulator_enable(vdd_lcd_bl_en);
 		if (err < 0) {
 			pr_err("%s: vdd_lcd_bl_en en failed\n", __func__);
