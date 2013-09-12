@@ -445,6 +445,43 @@ static void fb2_copy_or_clear(void)
 		tegra_clear_framebuffer(tegra_fb2_start, tegra_fb2_size);
 }
 
+int tegratab_init_hdmi(struct platform_device *pdev,
+		     struct platform_device *phost1x)
+{
+	int err = 0;
+	struct resource __maybe_unused *res;
+
+#ifdef CONFIG_ANDROID
+	/* In charger mode, don't need to copy or clear fb2 */
+	if (get_androidboot_mode_charger())
+		return 0;
+#endif
+
+	if (!of_have_populated_dt()) {
+		fb2_copy_or_clear();
+		res = platform_get_resource_byname(pdev,
+			IORESOURCE_MEM, "fbmem");
+		res->start = tegra_fb2_start;
+		res->end = tegra_fb2_start + tegra_fb2_size - 1;
+
+		pdev->dev.parent = &phost1x->dev;
+		err = platform_device_register(pdev);
+		if (err) {
+			pr_err("disp2 device registration failed\n");
+			return err;
+		}
+	} else {
+#ifdef CONFIG_OF
+		struct device_node *hdmi_node = NULL;
+
+		hdmi_node = of_find_node_by_path("/host1x/hdmi");
+		if (hdmi_node && of_device_is_available(hdmi_node))
+#endif
+			fb2_copy_or_clear();
+	}
+	return 0;
+}
+
 int __init tegratab_panel_init(void)
 {
 	int err = 0;
@@ -496,34 +533,17 @@ int __init tegratab_panel_init(void)
 			min(tegra_fb_size, tegra_bootloader_fb_size));
 
 	if (!of_have_populated_dt()) {
-		fb2_copy_or_clear();
-		res = platform_get_resource_byname(&tegratab_disp2_device,
-			IORESOURCE_MEM, "fbmem");
-		res->start = tegra_fb2_start;
-		res->end = tegra_fb2_start + tegra_fb2_size - 1;
-
 		tegratab_disp1_device.dev.parent = &phost1x->dev;
 		err = platform_device_register(&tegratab_disp1_device);
 		if (err) {
 			pr_err("disp1 device registration failed\n");
 			return err;
 		}
-
-		tegratab_disp2_device.dev.parent = &phost1x->dev;
-		err = platform_device_register(&tegratab_disp2_device);
-		if (err) {
-			pr_err("disp2 device registration failed\n");
-			return err;
-		}
-	} else {
-#ifdef CONFIG_OF
-		struct device_node *hdmi_node = NULL;
-
-		hdmi_node = of_find_node_by_path("/host1x/hdmi");
-		if (hdmi_node && of_device_is_available(hdmi_node))
-#endif
-			fb2_copy_or_clear();
 	}
+
+	err = tegratab_init_hdmi(&tegratab_disp2_device, phost1x);
+	if (err)
+		return err;
 
 #ifdef CONFIG_TEGRA_NVAVP
 	nvavp_device.dev.parent = &phost1x->dev;
