@@ -293,6 +293,12 @@ static int __init tegratab_wifi_prepower(void)
 	if (!machine_is_tegratab())
 		return 0;
 
+#ifdef CONFIG_ANDROID
+	/* In charger mode, don't power on wifi. */
+	if (get_androidboot_mode_charger())
+		return 0;
+#endif
+
 	tegratab_wifi_power(1);
 
 	return 0;
@@ -338,6 +344,13 @@ int __init tegratab_sdhci_init(void)
 	&& (!(tegra_sdhci_platform_data3.uhs_mask & MMC_UHS_MASK_DDR50)))
 		tegra_sdhci_platform_data3.trim_delay = 0;
 	platform_device_register(&tegra_sdhci_device3);
+
+#ifdef CONFIG_ANDROID
+	/* In charger mode, don't register wifi and external sd. */
+	if (get_androidboot_mode_charger())
+		return 0;
+#endif
+
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
 	tegratab_wifi_init();
