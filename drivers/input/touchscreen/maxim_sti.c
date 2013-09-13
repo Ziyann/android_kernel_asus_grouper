@@ -28,6 +28,10 @@
 #include <linux/maxim_sti.h>
 #include <asm/byteorder.h>  /* MUST include this header to get byte order */
 
+#ifdef CONFIG_PM_WAKELOCKS
+#include <linux/pm_wakeup.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/touchscreen_maxim.h>
 
@@ -100,6 +104,9 @@ struct dev_data {
 	void                         (*service_irq)(struct dev_data *dd);
 #if NV_ENABLE_CPU_BOOST
 	unsigned long                last_irq_jiffies;
+#endif
+#ifdef CONFIG_PM_WAKELOCKS
+	struct wakeup_source         ws;
 #endif
 };
 
@@ -685,7 +692,7 @@ static void start_scan_canned(struct dev_data *dd)
 
 static int regulator_control(struct dev_data *dd, bool on)
 {
-	int ret;
+	int ret = 0;
 
 	if (!dd->reg_avdd || !dd->reg_dvdd)
 		return 0;
@@ -705,13 +712,15 @@ static int regulator_control(struct dev_data *dd, bool on)
 			return ret;
 		}
 	} else {
-		ret = regulator_disable(dd->reg_avdd);
+		if (regulator_is_enabled(dd->reg_avdd))
+			ret = regulator_disable(dd->reg_avdd);
 		if (ret < 0) {
 			ERROR("Failed to disable regulator avdd: %d", ret);
 			return ret;
 		}
 
-		ret = regulator_disable(dd->reg_dvdd);
+		if (regulator_is_enabled(dd->reg_dvdd))
+			ret = regulator_disable(dd->reg_dvdd);
 		if (ret < 0) {
 			ERROR("Failed to disable regulator dvdd: %d", ret);
 			regulator_enable(dd->reg_avdd);
@@ -751,6 +760,8 @@ static int suspend(struct device *dev)
 	struct maxim_sti_pdata *pdata = dev->platform_data;
 	int ret;
 
+	INFO("suspending...");
+
 	if (dd->suspend_in_progress)
 		return 0;
 
@@ -767,6 +778,11 @@ static int suspend(struct device *dev)
 		return ret;
 #endif
 
+#ifdef CONFIG_PM_WAKELOCKS
+	__pm_relax(&dd->ws);
+#endif
+	INFO("suspend...done");
+
 	return 0;
 }
 
@@ -776,8 +792,14 @@ static int resume(struct device *dev)
 	struct maxim_sti_pdata *pdata = dev->platform_data;
 	int ret;
 
+	INFO("resuming...");
+
 	if (!dd->suspend_in_progress)
 		return 0;
+
+#ifdef CONFIG_PM_WAKELOCKS
+	__pm_stay_awake(&dd->ws);
+#endif
 
 #if SUSPEND_POWER_OFF
 	/* power-up and reset-high */
@@ -785,7 +807,6 @@ static int resume(struct device *dev)
 	ret = regulator_control(dd, true);
 	if (ret < 0)
 		return ret;
-
 	usleep_range(300, 400);
 	pdata->reset(pdata, 1);
 #endif
@@ -793,6 +814,9 @@ static int resume(struct device *dev)
 	dd->resume_in_progress = true;
 	wake_up_process(dd->thread);
 	wait_for_completion(&dd->suspend_resume);
+
+	INFO("resume...done");
+
 	return 0;
 }
 
@@ -1594,12 +1618,21 @@ static int processing_thread(void *arg)
 				disable_irq(dd->spi->irq);
 			stop_scan_canned(dd);
 			complete(&dd->suspend_resume);
+
+			INFO("%s: suspended.", __func__);
+
 			dd->input_ignore = true;
-			while (!dd->resume_in_progress) {
+			while (!dd->resume_in_progress &&
+					!kthread_should_stop()) {
 				/* the line below is a MUST */
 				set_current_state(TASK_INTERRUPTIBLE);
 				schedule();
 			}
+			if (kthread_should_stop())
+				break;
+
+			INFO("%s: resuming.", __func__);
+
 #if !SUSPEND_POWER_OFF
 			start_scan_canned(dd);
 #endif
@@ -1633,7 +1666,11 @@ static int processing_thread(void *arg)
 				if (ret2 < 0)
 					ERROR("could not allocate outgoing " \
 					      "skb (%d)", ret2);
-			} while (ret != 0);
+			} while (ret != 0 && !kthread_should_stop());
+			if (kthread_should_stop())
+				break;
+			if (ret == 0)
+				INFO("%s: resumed.", __func__);
 		}
 
 		/* priority 4: service interrupt */
@@ -1777,6 +1814,10 @@ static int probe(struct spi_device *spi)
 	dd->last_irq_jiffies = jiffies;
 #endif
 
+#ifdef CONFIG_PM_WAKELOCKS
+	wakeup_source_init(&dd->ws, "touch_fusion");
+	__pm_stay_awake(&dd->ws);
+#endif
 	/* start up Touch Fusion */
 	dd->start_fusion = true;
 	wake_up_process(dd->thread);
@@ -1807,6 +1848,9 @@ static int remove(struct spi_device *spi)
 	if (dd->irq_registered)
 		disable_irq(dd->spi->irq);
 
+	dd->nl_enabled = false;
+	(void)kthread_stop(dd->thread);
+
 	if (dd->fusion_process != (pid_t)0)
 		(void)kill_pid(find_get_pid(dd->fusion_process), SIGKILL, 1);
 
@@ -1819,8 +1863,6 @@ static int remove(struct spi_device *spi)
 	/* 4) above step (3) insures that all Netlink senders are           */
 	/*    definitely gone and it is safe to free up outgoing skb buffer */
 	/*    and incoming skb queue                                        */
-	dd->nl_enabled = false;
-	(void)kthread_stop(dd->thread);
 	genl_unregister_family(&dd->nl_family);
 	kfree_skb(dd->outgoing_skb);
 	skb_queue_purge(&dd->incoming_skb_queue);
@@ -1859,11 +1901,11 @@ static void shutdown(struct spi_device *spi)
 	if (dd->irq_registered)
 		disable_irq(dd->spi->irq);
 
-	if (dd->fusion_process != (pid_t)0)
-		(void)kill_pid(find_get_pid(dd->fusion_process), SIGKILL, 1);
-
 	dd->nl_enabled = false;
 	(void)kthread_stop(dd->thread);
+
+	if (dd->fusion_process != (pid_t)0)
+		(void)kill_pid(find_get_pid(dd->fusion_process), SIGKILL, 1);
 
 	stop_scan_canned(dd);
 
