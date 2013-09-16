@@ -865,7 +865,7 @@ static struct imx135_reg mode_2616x1472_HDR[] = {
 	{IMX135_TABLE_END, 0x00}
 };
 
-static struct imx135_reg mode_3896x2192_HDR[] = {
+static struct imx135_reg mode_3840x2160_HDR[] = {
 	/* software reset */
 	{0x0103, 0x01},
 	/* global settings */
@@ -954,9 +954,9 @@ static struct imx135_reg mode_3896x2192_HDR[] = {
 	{0x034A, 0x0A},
 	{0x034B, 0x5F},
 	{0x034C, 0x0F},
-	{0x034D, 0x38},
+	{0x034D, 0x00},
 	{0x034E, 0x08},
-	{0x034F, 0x90},
+	{0x034F, 0x70},
 	{0x0350, 0x00},
 	{0x0351, 0x00},
 	{0x0352, 0x00},
@@ -2230,7 +2230,7 @@ enum {
 	IMX135_MODE_1920X1080_HDR,
 	IMX135_MODE_2104X1560_HDR,
 	IMX135_MODE_2616X1472_HDR,
-	IMX135_MODE_3896X2192_HDR,
+	IMX135_MODE_3840X2160_HDR,
 	IMX135_MODE_4208X3120,
 	IMX135_MODE_2104X1560,
 	IMX135_MODE_1920X1080,
@@ -2245,7 +2245,7 @@ static struct imx135_reg *mode_table[] = {
 	[IMX135_MODE_2104X1560_HDR] = mode_2104x1560_HDR,
 	[IMX135_MODE_1920X1080_HDR] = mode_1920x1080_HDR,
 	[IMX135_MODE_2616X1472_HDR] = mode_2616x1472_HDR,
-	[IMX135_MODE_3896X2192_HDR] = mode_3896x2192_HDR,
+	[IMX135_MODE_3840X2160_HDR] = mode_3840x2160_HDR,
 	[IMX135_MODE_4208X3120] = mode_4208x3120,
 	[IMX135_MODE_2104X1560] = mode_2104x1560,
 	[IMX135_MODE_1920X1080] = mode_1920x1080,
