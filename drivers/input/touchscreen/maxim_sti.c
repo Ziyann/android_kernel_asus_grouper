@@ -70,7 +70,6 @@ struct dev_data {
 	u32                          nl_seq;
 	u8                           nl_mc_group_count;
 	bool                         nl_enabled;
-	bool                         start_fusion;
 	bool                         suspend_in_progress;
 	bool                         resume_in_progress;
 	bool                         input_ignore;
@@ -1562,9 +1561,6 @@ static int processing_thread(void *arg)
 	struct dev_data         *dd = arg;
 	struct maxim_sti_pdata  *pdata = dd->spi->dev.platform_data;
 	struct sk_buff          *skb;
-	char                    *argv[] = { pdata->touch_fusion, "daemon",
-					    pdata->nl_family,
-					    pdata->config_file, NULL };
 	int                     ret, ret2;
 
 	sched_setscheduler(current, SCHED_FIFO, &dd->thread_sched);
@@ -1584,20 +1580,10 @@ static int processing_thread(void *arg)
 					find_get_pid(dd->fusion_process),
 					PIDTYPE_PID) == NULL) {
 			stop_scan_canned(dd);
-			dd->start_fusion = true;
 			dd->fusion_process = (pid_t)0;
 #if INPUT_ENABLE_DISABLE
 			dd->input_no_deconfig = true;
 #endif
-		}
-		if (dd->start_fusion) {
-			do {
-				ret = call_usermodehelper(argv[0], argv, NULL,
-							  UMH_WAIT_EXEC);
-				if (ret != 0)
-					msleep(100);
-			} while (ret != 0 && !kthread_should_stop());
-			dd->start_fusion = false;
 		}
 		if (kthread_should_stop())
 			break;
@@ -1819,7 +1805,6 @@ static int probe(struct spi_device *spi)
 	__pm_stay_awake(&dd->ws);
 #endif
 	/* start up Touch Fusion */
-	dd->start_fusion = true;
 	wake_up_process(dd->thread);
 	INFO("driver loaded; version %s; release date %s", DRIVER_VERSION,
 	     DRIVER_RELEASE);
