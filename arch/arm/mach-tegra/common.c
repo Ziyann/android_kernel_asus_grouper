@@ -147,6 +147,7 @@ static int board_panel_type;
 static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 static int pwr_i2c_clk = 400;
 static u8 power_config;
+static bool pike_supported;
 
 atomic_t __maybe_unused sd_brightness = ATOMIC_INIT(255);
 EXPORT_SYMBOL(sd_brightness);
@@ -968,6 +969,21 @@ static int __init tegra_pmu_core_edp(char *options)
 	return 0;
 }
 early_param("core_edp_mv", tegra_pmu_core_edp);
+
+bool is_pike_supported(void)
+{
+	return pike_supported;
+}
+static int __init tegra_pike_support(char *options)
+{
+	char *p = options;
+	int pike_val = memparse(p, &p);
+
+	if (pike_val == 1)
+		pike_supported = true;
+	return 0;
+}
+early_param("pike", tegra_pike_support);
 
 int get_maximum_cpu_current_supported(void)
 {

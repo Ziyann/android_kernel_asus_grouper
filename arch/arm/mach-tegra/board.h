@@ -198,6 +198,7 @@ void tegra_get_leftspeaker_board_info(struct board_info *bi);
 int tegra_get_board_panel_id(void);
 
 int get_core_edp(void);
+bool is_pike_supported(void);
 enum panel_type get_panel_type(void);
 int tegra_get_usb_port_owner_info(void);
 int tegra_get_modem_id(void);
