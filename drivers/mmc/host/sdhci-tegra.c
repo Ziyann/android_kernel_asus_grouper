@@ -341,6 +341,7 @@ struct sdhci_tegra {
 	unsigned int tap_cmd;
 	/* Tuning status */
 	unsigned int tuning_status;
+	bool force_retune;
 #define TUNING_STATUS_DONE	1
 #define TUNING_STATUS_RETUNE	2
 	/* Freq tuning information for each sampling clock freq */
@@ -962,6 +963,7 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 		 * a card is inserted.
 		 */
 		tegra_host->tuning_status = TUNING_STATUS_RETUNE;
+		tegra_host->force_retune = true;
 	}
 
 	tasklet_schedule(&sdhost->card_tasklet);
@@ -2245,6 +2247,11 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 			force_retuning = true;
 		else
 			goto out;
+	}
+
+	if (tegra_host->force_retune == true) {
+		force_retuning = true;
+		tegra_host->force_retune = false;
 	}
 
 	tegra_host->tuning_status = 0;
