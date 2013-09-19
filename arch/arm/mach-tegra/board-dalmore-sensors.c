@@ -1033,6 +1033,52 @@ static struct i2c_board_info dalmore_i2c_board_info_as3648 = {
 	.platform_data = &dalmore_as3648_pdata,
 };
 
+static int dalmore_pike_init(void)
+{
+	int ret;
+	unsigned pike_irq_gpio = PIKE_IRQ_GPIO;
+	char *pike_name = PIKE_NAME;
+
+	ret = gpio_request(CAM_RSTN, "pike_reset");
+
+	if (ret < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, ret);
+		return ret;
+	}
+
+	/* Pike reset Active Low */
+	ret = gpio_direction_output(CAM_RSTN, 1);
+	if (ret < 0) {
+		pr_err("%s: gpio_direction_input failed %d\n", __func__, ret);
+		gpio_free(CAM_RSTN);
+		return ret;
+	}
+
+	/* Pike reset Active Low */
+	gpio_set_value(CAM_RSTN, 1);
+	gpio_export(CAM_RSTN, true);
+
+	/* Setup IRQ */
+	ret = gpio_request(pike_irq_gpio, pike_name);
+
+	if (ret < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, ret);
+		return ret;
+	}
+
+	ret = gpio_direction_input(pike_irq_gpio);
+	if (ret < 0) {
+		pr_err("%s: gpio_direction_input failed %d\n", __func__, ret);
+		gpio_free(pike_irq_gpio);
+		return ret;
+	}
+
+	/* Pike Interrupt */
+	gpio_export(pike_irq_gpio, false);
+
+	return 0;
+}
+
 static int dalmore_camera_init(void)
 {
 	tegra_pinmux_config_table(&mclk_disable, 1);
@@ -1317,8 +1363,12 @@ int __init dalmore_sensors_init(void)
 	if (err)
 		return err;
 
-	dalmore_camera_init();
-	mpuirq_init();
+	if (is_pike_supported())
+		dalmore_pike_init();
+	else {
+		dalmore_camera_init();
+		mpuirq_init();
+	}
 
 	i2c_register_board_info(0, dalmore_i2c_board_info_cm3218,
 		ARRAY_SIZE(dalmore_i2c_board_info_cm3218));

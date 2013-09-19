@@ -86,6 +86,10 @@
 #define CAM_GPIO1			TEGRA_GPIO_PCC1
 #define CAM_GPIO2			TEGRA_GPIO_PCC2
 
+/* Pike related GPIOs */
+#define PIKE_NAME			"pikeSi9620"
+#define PIKE_IRQ_GPIO			TEGRA_GPIO_PR3
+
 /* Touchscreen definitions */
 #define TOUCH_GPIO_IRQ_RAYDIUM_SPI      TEGRA_GPIO_PK2
 #define TOUCH_GPIO_RST_RAYDIUM_SPI      TEGRA_GPIO_PK4
