@@ -288,7 +288,7 @@ PALMAS_REGS_PDATA(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1, 0,
 PALMAS_REGS_PDATA(ldoln, 2700, 2700, NULL, 0, 0, 1, 0,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(ldousb, 3300,  3300, NULL, 0, 0, 1, 0,
-		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(regen1, 4300,  4300, NULL, 0, 0, 0, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(regen2, 4300,  4300, palmas_rails(smps8), 0, 0, 0, 0,
