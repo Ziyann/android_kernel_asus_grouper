@@ -72,7 +72,7 @@ struct dev_data {
 	bool                         nl_enabled;
 	bool                         suspend_in_progress;
 	bool                         resume_in_progress;
-	bool                         input_ignore;
+	bool                         expect_resume_ack;
 	bool                         eraser_active;
 #if (INPUT_DEVICES > 1)
 	bool                         last_finger_active;
@@ -181,10 +181,11 @@ static inline int
 spi_write_123(struct dev_data *dd, u16 address, u8 *buf, u16 len,
 	      bool add_len)
 {
-	u16  *tx_buf = (u16 *)dd->tx_buf;
-	u16  words = len / sizeof(u16), header_len = 1;
+	struct maxim_sti_pdata  *pdata = dd->spi->dev.platform_data;
+	u16                     *tx_buf = (u16 *)dd->tx_buf;
+	u16                     words = len / sizeof(u16), header_len = 1;
 #ifdef __LITTLE_ENDIAN
-	u16  i;
+	u16                     i;
 #endif
 	int  ret;
 
@@ -207,7 +208,7 @@ spi_write_123(struct dev_data *dd, u16 address, u8 *buf, u16 len,
 				len + header_len * sizeof(u16));
 	} while (ret == -EAGAIN);
 
-	memset(dd->tx_buf, 0xFF, sizeof(dd->tx_buf));
+	memset(dd->tx_buf, 0xFF, pdata->tx_buf_size);
 	return ret;
 }
 
@@ -885,6 +886,10 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 	u8                            i, inp;
 	int                           ret;
 
+	if (dd->expect_resume_ack && msg_id != DR_DECONFIG &&
+	    msg_id != DR_RESUME_ACK)
+		return false;
+
 	switch (msg_id) {
 	case DR_ADD_MC_GROUP:
 		add_mc_group_msg = msg;
@@ -1075,15 +1080,13 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		dd->last_finger_active = false;
 		dd->last_stylus_active = false;
 #endif
-		dd->input_ignore = false;
+		dd->expect_resume_ack = false;
 		dd->eraser_active = false;
 		dd->legacy_acceleration = false;
 		dd->service_irq = service_irq;
 		dd->fusion_process = (pid_t)0;
 		return false;
 	case DR_INPUT:
-		if (dd->input_ignore)
-			return false;
 		input_msg = msg;
 		if (input_msg->events == 0) {
 			if (dd->eraser_active) {
@@ -1192,7 +1195,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		}
 		return false;
 	case DR_RESUME_ACK:
-		dd->input_ignore = false;
+		dd->expect_resume_ack = false;
 		if (dd->irq_registered)
 			enable_irq(dd->spi->irq);
 		return false;
@@ -1607,7 +1610,7 @@ static int processing_thread(void *arg)
 
 			INFO("%s: suspended.", __func__);
 
-			dd->input_ignore = true;
+			dd->expect_resume_ack = true;
 			while (!dd->resume_in_progress &&
 					!kthread_should_stop()) {
 				/* the line below is a MUST */
@@ -1660,9 +1663,11 @@ static int processing_thread(void *arg)
 		}
 
 		/* priority 4: service interrupt */
-		if (dd->irq_registered && pdata->irq(pdata) == 0)
+		if (dd->irq_registered && !dd->expect_resume_ack &&
+		    pdata->irq(pdata) == 0)
 			dd->service_irq(dd);
-		if (dd->irq_registered && pdata->irq(pdata) == 0)
+		if (dd->irq_registered && !dd->expect_resume_ack &&
+		    pdata->irq(pdata) == 0)
 			continue;
 
 		/* nothing more to do; sleep */
@@ -1722,7 +1727,7 @@ static int probe(struct spi_device *spi)
 	dd->spi = spi;
 	dd->nl_seq = 1;
 	init_completion(&dd->suspend_resume);
-	memset(dd->tx_buf, 0xFF, sizeof(dd->tx_buf));
+	memset(dd->tx_buf, 0xFF, pdata->tx_buf_size);
 	(void)set_chip_access_method(dd, pdata->chip_access_method);
 
 	/* initialize regulators */
@@ -1739,6 +1744,9 @@ static int probe(struct spi_device *spi)
 		goto platform_failure;
 	usleep_range(300, 400);
 	pdata->reset(pdata, 1);
+
+	/* Netlink: initialize incoming skb queue */
+	skb_queue_head_init(&dd->incoming_skb_queue);
 
 	/* start processing thread */
 	dd->thread_sched.sched_priority = MAX_USER_RT_PRIO / 2;
@@ -1784,9 +1792,6 @@ static int probe(struct spi_device *spi)
 	ret = nl_msg_new(dd, MC_FUSION);
 	if (ret < 0)
 		goto nl_failure;
-
-	/* Netlink: initialize incoming skb queue */
-	skb_queue_head_init(&dd->incoming_skb_queue);
 
 	/* Netlink: ready to start processing incoming messages */
 	dd->nl_enabled = true;
