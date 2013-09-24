@@ -74,11 +74,15 @@ obj-y                                   += mc.o
 obj-$(CONFIG_TEGRA_STAT_MON)            += tegra2_statmon.o
 obj-$(CONFIG_USB_SUPPORT)               += xusb.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
-obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
-obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pad_ctrl.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra3_usb_phy.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra2_usb_phy.o
+ifneq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
+ifneq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
+obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pad_ctrl.o
+obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra11x_usb_phy.o
+endif
+endif
 obj-$(CONFIG_FIQ)                       += fiq.o
 obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
 obj-$(CONFIG_TEGRA_PTM)                 += tegra_ptm.o

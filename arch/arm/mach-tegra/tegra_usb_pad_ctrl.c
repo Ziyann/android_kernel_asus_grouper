@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -19,6 +19,7 @@
 #include <mach/tegra_usb_pad_ctrl.h>
 
 static DEFINE_SPINLOCK(utmip_pad_lock);
+static DEFINE_SPINLOCK(xusb_padctl_lock);
 static int utmip_pad_count;
 static struct clk *utmi_pad_clk;
 
@@ -62,7 +63,8 @@ int utmi_phy_pad_enable(void)
 	val |= UTMIP_HSSQUELCH_LEVEL(0x1) | UTMIP_HSDISCON_LEVEL(0x1) |
 		UTMIP_HSDISCON_LEVEL_MSB;
 	writel(val, pad_base + UTMIP_BIAS_CFG0);
-
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+		PD_MASK, 0);
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 
 	clk_disable(utmi_pad_clk);
@@ -92,6 +94,8 @@ int utmi_phy_pad_disable(void)
 		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
 			UTMIP_HSDISCON_LEVEL_MSB);
 		writel(val, pad_base + UTMIP_BIAS_CFG0);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+			PD_MASK, 1);
 	}
 out:
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
@@ -100,3 +104,44 @@ out:
 	return 0;
 }
 EXPORT_SYMBOL_GPL(utmi_phy_pad_disable);
+
+void tegra_usb_pad_reg_update(u32 reg_offset, u32 mask, u32 val)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	unsigned long flags;
+	u32 reg;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+	reg = readl(pad_base + reg_offset);
+	reg &= ~mask;
+	reg |= val;
+	writel(reg, pad_base + reg_offset);
+
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_update);
+
+u32 tegra_usb_pad_reg_read(u32 reg_offset)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	unsigned long flags;
+	u32 reg;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	reg = readl(pad_base + reg_offset);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+
+	return reg;
+}
+EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_read);
+
+void tegra_usb_pad_reg_write(u32 reg_offset, u32 val)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	unsigned long flags;
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	writel(val, pad_base + reg_offset);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_write);
