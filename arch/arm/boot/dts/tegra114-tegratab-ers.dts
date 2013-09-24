@@ -269,7 +269,7 @@
 		nvidia,panel-pwm-bl = <&panelpwmbl>;
 		nvidia,pwm-id = <1>;
 		nvidia,max-brightness = <255>;
-		nvidia,dft-brightness = <224>;
+		nvidia,dft-brightness = <153>;
 		nvidia,dft-charge-brightness = <60>;
 		nvidia,pwm-period-ns = <1000000>;
 		nvidia,disable-edp-throttle = <1>;
