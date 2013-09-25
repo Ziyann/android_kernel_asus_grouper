@@ -176,8 +176,11 @@ static int lgd_wxga_7_0_postpoweron(struct device *dev)
 {
 	int err = 0;
 
-	msleep(200); /*MIPI to VLED > 200ms, based on the spec*/
-
+	/*
+	 * MIPI to VLED > 200ms, based on the spec
+	 * init_cmd cares 20ms delay already.
+	 */
+	msleep(180);
 	if (vdd_lcd_bl_en) {
 		err = regulator_enable(vdd_lcd_bl_en);
 		if (err < 0) {
@@ -217,7 +220,11 @@ static int lgd_wxga_7_0_prepoweroff(void)
 	if (vdd_lcd_bl_en)
 		regulator_disable(vdd_lcd_bl_en);
 
-	msleep(200); /*VLED off to MIPI off > 200ms per spec*/
+	/*
+	 * VLED off to MIPI off > 200ms per spec
+	 * suspend_cmd cares 160ms delay already.
+	 */
+	msleep(40);
 	return 0;
 }
 
