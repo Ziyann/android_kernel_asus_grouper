@@ -887,7 +887,8 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 	int                           ret;
 
 	if (dd->expect_resume_ack && msg_id != DR_DECONFIG &&
-	    msg_id != DR_RESUME_ACK)
+	    msg_id != DR_RESUME_ACK && msg_id != DR_CONFIG_WATCHDOG &&
+		msg_id != DR_ADD_MC_GROUP && msg_id != DR_ECHO_REQUEST)
 		return false;
 
 	switch (msg_id) {
@@ -1061,6 +1062,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 	case DR_CONFIG_WATCHDOG:
 		config_watchdog_msg = msg;
 		dd->fusion_process = (pid_t)config_watchdog_msg->pid;
+		dd->expect_resume_ack = false;
 		return false;
 	case DR_DECONFIG:
 		if (dd->irq_registered) {
