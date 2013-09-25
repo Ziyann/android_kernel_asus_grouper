@@ -133,6 +133,7 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_THERMAL_THROTTLE_EXACT_FREQ
 	select ARM_ERRATA_799270
 	select ARM_ERRATA_798181
+	select TEGRA_WDT_FIQ_WAR if !TRUSTED_FOUNDATIONS && TEGRA_FIQ_DEBUGGER
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
@@ -422,6 +423,16 @@ config TEGRA_FIQ_DEBUGGER
 	select FIQ_DEBUGGER
 	help
 	  Enables the FIQ serial debugger on Tegra
+
+config TEGRA_WDT_FIQ_WAR
+	bool "Enable FIQ WAR on Tegra"
+	depends on TEGRA_FIQ_DEBUGGER
+	help
+	  Tegra chip T114 and T124 don't have FIQ connected to GIC. This
+	  option configure GIC group0 generating FIQ only, and let GIC
+	  group1 handle normal IRQs. Note this option can be only enabled
+	  for system running no secure OS, because secure OS use group0
+	  specifically as monitor trap.
 
 config TEGRA_PTM
 	bool "Enable PTM debugger on Tegra"
