@@ -1065,4 +1065,4 @@ static int __init therm_est_driver_init(void)
 {
 	return platform_driver_register(&therm_est_driver);
 }
-module_init(therm_est_driver_init);
+late_initcall_sync(therm_est_driver_init);
