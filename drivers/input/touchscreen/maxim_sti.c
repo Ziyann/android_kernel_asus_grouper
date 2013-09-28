@@ -1567,6 +1567,7 @@ static int processing_thread(void *arg)
 	struct maxim_sti_pdata  *pdata = dd->spi->dev.platform_data;
 	struct sk_buff          *skb;
 	int                     ret, ret2;
+	bool                    fusion_dead;
 
 	sched_setscheduler(current, SCHED_FIFO, &dd->thread_sched);
 
@@ -1631,7 +1632,15 @@ static int processing_thread(void *arg)
 			dd->suspend_in_progress = false;
 			complete(&dd->suspend_resume);
 
+			fusion_dead = false;
 			do {
+				if (dd->fusion_process != (pid_t)0 &&
+				    get_pid_task(find_get_pid(
+							dd->fusion_process),
+						 PIDTYPE_PID) == NULL) {
+					fusion_dead = true;
+					break;
+				}
 				ret = nl_add_attr(dd->outgoing_skb->data,
 						  FU_RESUME, NULL, 0);
 				if (ret < 0) {
@@ -1662,6 +1671,8 @@ static int processing_thread(void *arg)
 				break;
 			if (ret == 0)
 				INFO("%s: resumed.", __func__);
+			if (fusion_dead)
+				continue;
 		}
 
 		/* priority 4: service interrupt */
