@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-cec/tegra_cec.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -378,12 +378,8 @@ static int tegra_cec_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tegra_cec *cec = platform_get_drvdata(pdev);
 
-	/* defer suspend if init is still in progress */
-	if (cec->init_done == 0) {
-		dev_err(&pdev->dev,
-				"Init still in progress. Aborting suspend\n");
-		return -EBUSY;
-	}
+	/* cancel the work queue */
+	cancel_work_sync(&cec->work);
 
 	clk_disable(cec->clk);
 
