@@ -1393,6 +1393,74 @@ static int core_override_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(core_override_fops,
 			core_override_get, core_override_set, "%llu\n");
 
+static int dvfs_table_show(struct seq_file *s, void *data)
+{
+	int i;
+	struct dvfs *d;
+	struct dvfs_rail *rail;
+	const int *v_pll, *last_v_pll = NULL;
+	const int *v_dfll, *last_v_dfll = NULL;
+
+	seq_printf(s, "DVFS tables: units mV/MHz\n");
+
+	mutex_lock(&dvfs_lock);
+
+	list_for_each_entry(rail, &dvfs_rail_list, node) {
+		list_for_each_entry(d, &rail->dvfs, reg_node) {
+			bool mv_done = false;
+			v_pll = d->millivolts;
+			v_dfll = d->dfll_millivolts;
+
+			if (v_pll && (last_v_pll != v_pll)) {
+				if (!mv_done) {
+					seq_printf(s, "\n");
+					mv_done = true;
+				}
+				last_v_pll = v_pll;
+				seq_printf(s, "%-16s", rail->reg_id);
+				for (i = 0; i < d->num_freqs; i++)
+					seq_printf(s, "%7d", v_pll[i]);
+				seq_printf(s, "\n");
+			}
+
+			if (v_dfll && (last_v_dfll != v_dfll)) {
+				if (!mv_done) {
+					seq_printf(s, "\n");
+					mv_done = true;
+				}
+				last_v_dfll = v_dfll;
+				seq_printf(s, "%-8s (dfll) ", rail->reg_id);
+				for (i = 0; i < d->num_freqs; i++)
+					seq_printf(s, "%7d", v_dfll[i]);
+				seq_printf(s, "\n");
+			}
+
+			seq_printf(s, "%-16s", d->clk_name);
+			for (i = 0; i < d->num_freqs; i++) {
+				unsigned int f = d->freqs[i]/100000;
+				seq_printf(s, " %4u.%u", f/10, f%10);
+			}
+			seq_printf(s, "\n");
+		}
+	}
+
+	mutex_unlock(&dvfs_lock);
+
+	return 0;
+}
+
+static int dvfs_table_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dvfs_table_show, inode->i_private);
+}
+
+static const struct file_operations dvfs_table_fops = {
+	.open		= dvfs_table_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 {
 	struct dentry *d;
@@ -1419,6 +1487,11 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("vdd_core_override", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &core_override_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("dvfs_table", S_IRUGO, clk_debugfs_root, NULL,
+		&dvfs_table_fops);
 	if (!d)
 		return -ENOMEM;
 
