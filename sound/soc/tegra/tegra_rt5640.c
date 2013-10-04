@@ -451,6 +451,7 @@ static void tegra_speaker_edp_set_volume(struct snd_soc_codec *codec,
 					 int l_vol,
 					 int r_vol)
 {
+	tegra_asoc_enable_clocks();
 	snd_soc_update_bits(codec,
 			    RT5640_SPK_VOL,
 			    RT5640_L_VOL_MASK,
@@ -459,6 +460,7 @@ static void tegra_speaker_edp_set_volume(struct snd_soc_codec *codec,
 			    RT5640_SPK_VOL,
 			    RT5640_R_VOL_MASK,
 			    r_vol << RT5640_R_VOL_SFT);
+	tegra_asoc_disable_clocks();
 }
 
 static void tegra_speaker_throttle(unsigned int new_state,  void *priv_data)
