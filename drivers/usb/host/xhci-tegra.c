@@ -1581,8 +1581,14 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 		USB2_OTG_PD | USB2_OTG_PD2 | USB2_OTG_PD_ZI);
 	reg |= tegra->pdata->hs_slew;
 	reg |= port ? 0 : tegra->pdata->ls_rslew;
-	reg |= port ? tegra->pdata->hs_curr_level_pad1 :
-			tegra->pdata->hs_curr_level_pad0;
+
+	reg &= ~HS_CURR_LEVEL(~0);
+	if (tegra->bdata->utmi[port].hs_curr_level_override)
+		reg |= HS_CURR_LEVEL(tegra->bdata->utmi[port].hs_curr_level);
+	else {
+		reg |= port ? tegra->pdata->hs_curr_level_pad1 :
+				tegra->pdata->hs_curr_level_pad0;
+	}
 	writel(reg, tegra->padctl_base + ctl0_offset);
 
 	reg = readl(tegra->padctl_base + ctl1_offset);

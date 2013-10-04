@@ -30,8 +30,10 @@
 #define TEGRA_XUSB_SS_P0	(1 << 0)
 #define TEGRA_XUSB_SS_P1	(1 << 1)
 #define XUSB_SS_PORT_COUNT	(2)
-#define TEGRA_XUSB_USB2_P0	(1 << 8)
-#define TEGRA_XUSB_USB2_P1	(1 << 9)
+#define XUSB_UTMI_COUNT	(2)
+#define XUSB_UTMI_INDEX	(8)
+#define TEGRA_XUSB_USB2_P0	BIT(XUSB_UTMI_INDEX)
+#define TEGRA_XUSB_USB2_P1	BIT(XUSB_UTMI_INDEX + 1)
 #define TEGRA_XUSB_HSIC_P0	(1 << 16)
 #define TEGRA_XUSB_HSIC_P1	(1 << 17)
 #define TEGRA_XUSB_ULPI_P0	(1 << 24)
@@ -42,6 +44,11 @@
 #define TEGRA_XUSB_ULPI_PORT_CAP_MASTER	(0x0)
 #define TEGRA_XUSB_ULPI_PORT_CAP_PHY	(0x1)
 
+struct tegra_xusb_utmi_config {
+	u8 hs_curr_level;
+	bool hs_curr_level_override; /* override value from usb_calib0 fuse */
+};
+
 struct tegra_xusb_board_data {
 	u32	portmap;
 	/*
@@ -51,6 +58,7 @@ struct tegra_xusb_board_data {
 	u8	ss_portmap;
 	u8	ulpicap;
 	void (*set_vbus_en1_tristate)(bool on);
+	struct tegra_xusb_utmi_config utmi[XUSB_UTMI_COUNT];
 };
 
 struct tegra_xusb_platform_data {
