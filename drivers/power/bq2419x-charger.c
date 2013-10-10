@@ -42,6 +42,13 @@
 #include <linux/alarmtimer.h>
 #include <generated/mach-types.h>
 
+enum bq2419x_version {
+	BQ24190_IC = 0,
+	BQ24192_IC,
+	BQ24193_IC,
+	BQ24192i_IC,
+};
+
 /* input current limit */
 static const unsigned int iinlim[] = {
 	100, 150, 500, 900, 1200, 1500, 2000, 3000,
@@ -89,6 +96,7 @@ struct bq2419x_chip {
 	int				chg_restart_timeout;
 	int				chg_restart_time;
 	int				chg_enable;
+	int				chip_version;
 };
 
 static int current_to_reg(const unsigned int *tbl,
@@ -253,6 +261,27 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 		if (ret < 0) {
 			dev_err(bq2419x->dev,
 			"CHRG_CTRL_REG write failed %d\n", ret);
+			return ret;
+		}
+	}
+
+	if (bq2419x->chip_version == BQ24193_IC) {
+		/* JEITA_ISET=20%*/
+		ret = regmap_update_bits(bq2419x->regmap,
+			BQ2419X_TIME_CTRL_REG, BQ2419X_JEITA_ISET_MASK,
+			BQ2419X_JEITA_ISET_20);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+			"TIME_CTRL_REG update failed %d\n", ret);
+			return ret;
+		}
+		/* JEITA_VSET=4.2V*/
+		ret = regmap_update_bits(bq2419x->regmap,
+			BQ2419X_MISC_OPER_REG, BQ2419X_JEITA_VSET_MASK,
+			BQ2419X_JEITA_VSET_4_20V);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+			"MISC_OPER_REG update failed %d\n", ret);
 			return ret;
 		}
 	}
@@ -749,12 +778,21 @@ static int bq2419x_show_chip_version(struct bq2419x_chip *bq2419x)
 		return ret;
 	}
 
-	if ((val & BQ24190_IC_VER) == BQ24190_IC_VER)
+	val &= BQ2419X_IC_VER_MASK;
+
+	if (val == BQ24190_IC_VER) {
+		bq2419x->chip_version = BQ24190_IC;
 		dev_info(bq2419x->dev, "chip type BQ24190 detected\n");
-	else if ((val & BQ24192_IC_VER) == BQ24192_IC_VER)
-		dev_info(bq2419x->dev, "chip type BQ2419X/3 detected\n");
-	else if ((val & BQ24192i_IC_VER) == BQ24192i_IC_VER)
+	} else if (val == BQ24192_IC_VER) {
+		bq2419x->chip_version = BQ24192_IC;
+		dev_info(bq2419x->dev, "chip type BQ24192 detected\n");
+	} else if (val == BQ24193_IC_VER) {
+		bq2419x->chip_version = BQ24193_IC;
+		dev_info(bq2419x->dev, "chip type BQ24193 detected\n");
+	} else if (val == BQ24192i_IC_VER) {
+		bq2419x->chip_version = BQ24192i_IC;
 		dev_info(bq2419x->dev, "chip type BQ2419Xi detected\n");
+	}
 	return 0;
 }
 
