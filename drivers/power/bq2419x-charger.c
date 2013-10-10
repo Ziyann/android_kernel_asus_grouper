@@ -950,12 +950,47 @@ static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x, int time_sec)
 	return 0;
 }
 
+static s32 show_chg_complete_soc(struct device *dev,
+				  struct device_attribute *attr,
+				  char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	return sprintf(buf, "%d\n", bq2419x->chg_complete_soc);
+}
+
+static s32 store_chg_complete_soc(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	int soc;
+
+	if ((sscanf(buf, "%d", &soc) != 1) || soc < 60 || soc > 100)
+		return -EINVAL;
+
+	mutex_lock(&bq2419x->mutex);
+	/* forced check re-charging*/
+	chg_complete_check = 1;
+	bq2419x->chg_complete_soc = soc;
+	mutex_unlock(&bq2419x->mutex);
+
+	return count;
+}
+
+static struct device_attribute bq2419x_attrs[] = {
+	__ATTR(chg_complete_soc, 0644,
+		show_chg_complete_soc, store_chg_complete_soc),
+};
+
 static int __devinit bq2419x_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	struct bq2419x_chip *bq2419x;
 	struct bq2419x_platform_data *pdata;
 	int ret = 0;
+	int i;
 
 	pdata = client->dev.platform_data;
 	if (!pdata) {
@@ -1070,7 +1105,17 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	if (ret < 0)
 		goto scrub_irq;
 
+	/* create sysfs node */
+	for (i = 0; i < ARRAY_SIZE(bq2419x_attrs); i++) {
+		ret = device_create_file(&client->dev, &bq2419x_attrs[i]);
+		if (ret)
+			goto scrub_file;
+	}
+
 	return 0;
+scrub_file:
+	for (i = 0; i < ARRAY_SIZE(bq2419x_attrs); i++)
+		device_remove_file(&client->dev, &bq2419x_attrs[i]);
 scrub_irq:
 	free_irq(bq2419x->irq, bq2419x);
 scrub_kthread:
@@ -1088,6 +1133,7 @@ scrub_chg_reg:
 static int __devexit bq2419x_remove(struct i2c_client *client)
 {
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	int i;
 
 	free_irq(bq2419x->irq, bq2419x);
 	bq2419x->stop_thread = true;
@@ -1095,6 +1141,8 @@ static int __devexit bq2419x_remove(struct i2c_client *client)
 	kthread_stop(bq2419x->bq_kworker_task);
 	regulator_unregister(bq2419x->vbus_rdev);
 	regulator_unregister(bq2419x->chg_rdev);
+	for (i = 0; i < ARRAY_SIZE(bq2419x_attrs); i++)
+		device_remove_file(&client->dev, &bq2419x_attrs[i]);
 	mutex_destroy(&bq2419x->mutex);
 	return 0;
 }
