@@ -1284,6 +1284,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	BUG_ON(IS_ERR(tegra_pclk));
 	tegra_clk_m = clk_get_sys(NULL, "clk_m");
 
+	BUG_ON(IS_ERR(tegra_clk_m));
 	pdata = plat;
 	(void)reg;
 	(void)mode;

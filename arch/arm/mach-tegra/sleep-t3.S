@@ -440,9 +440,9 @@ tegra3_iram_start:
 
 ENTRY(tegra3_lp1_reset)
 	/* the CPU and system bus are running from CLKM and executing from
-	* IRAM when this code is executed
-	* switch all SCLK/CCLK clocks to CLKM and set non STDBY clock source
-	* enable PLLP, PLLM, PLLC, and PLLX. */
+	 * IRAM when this code is executed
+	 * switch all SCLK/CCLK clocks to CLKM and set non STDBY clock source
+	 * enable PLLP, PLLM, PLLC, and PLLX. */
 	mov32	r0, TEGRA_CLK_RESET_BASE
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
 	/* secure code handles 32KHz to CLKM/OSC clock switch */
@@ -779,7 +779,7 @@ tegra3_tear_down_core:
  * tegra3_cpu_clk32k
  *
  * In LP0 and LP1 all plls will be turned off.  Switch the system clock
- * to the 32khz clock (clks) and CPU to clkm.
+ * to the 32khz clock (clks)
  * r4 = TEGRA_PMC_BASE
  * r5 = TEGRA_CLK_RESET_BASE
  * r6 = TEGRA_FLOW_CTRL_BASE
@@ -889,8 +889,12 @@ powerdown_pll_cx:
 	str	r0, [r5, #CLK_RESET_SCLK_BURST]
 	mov	pc, lr
 
-	/* switch to CLKS */
-	mov	r0, #0	/* burst policy = 32KHz */
+	/*
+	 * Switch to STDBY clock (CLKS), bits 28:31 == 0
+	 * Enable burst on CPU IRQ (bit 24)
+	 * Set clock sources to CLKM (clock source 0)
+	 */
+	mov	r0, #(1 << 24)
 	str	r0, [r5, #CLK_RESET_SCLK_BURST]
 	mov	pc, lr
 
