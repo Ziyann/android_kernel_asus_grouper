@@ -452,6 +452,7 @@ static void max17048_work(struct work_struct *work)
 				__func__, chip->temperature / 1000);
 		chip->lasttime_temperature = chip->temperature;
 		max17048_update_rcomp(chip, chip->temperature);
+		power_supply_changed(&chip->battery);
 	}
 
 	max17048_get_vcell(chip->client);
@@ -463,10 +464,12 @@ static void max17048_work(struct work_struct *work)
 		chip->health = POWER_SUPPLY_HEALTH_OVERHEAT;
 		dev_info(&chip->client->dev, "%s: BATTERY HOT, Temp %ldC\n",
 				__func__, chip->temperature / 1000);
+		power_supply_changed(&chip->battery);
 	} else if (chip->temperature < MAX17048_BATTERY_COLD) {
 		dev_info(&chip->client->dev, "%s: BATTERY COLD, Temp %ldC\n",
 				__func__, chip->temperature / 1000);
 		chip->health = POWER_SUPPLY_HEALTH_COLD;
+		power_supply_changed(&chip->battery);
 	}
 
 	if (chip->soc != chip->lasttime_soc ||
