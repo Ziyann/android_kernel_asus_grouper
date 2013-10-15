@@ -121,6 +121,7 @@ struct max17048_battery_model tegratab_max17048_mdata = {
 
 struct max17048_platform_data tegratab_max17048_pdata = {
 	.model_data = &tegratab_max17048_mdata,
+	.read_batt_id = 1;
 	.set_current_threshold = ina230_set_current_threshold,
 	.current_normal = TEGRATAB_BATTERY_MAX_CURRENT,
 	.current_threshold_num = 2,
@@ -411,12 +412,14 @@ static struct palmas_pmic_platform_data pmic_platform = {
 	}
 
 static struct iio_map palmas_adc_iio_maps[] = {
+	PALMAS_GPADC_IIO_MAP("IN0", "0-0036", "batt_id"),
 	PALMAS_GPADC_IIO_MAP("IN1", "generic-adc-thermal.0", "thermistor"),
 	PALMAS_GPADC_IIO_MAP("IN3", "generic-adc-thermal.1", "tdiode"),
 	PALMAS_GPADC_IIO_MAP(NULL, NULL, NULL),
 };
 
 static struct palmas_gpadc_platform_data palmas_adc_pdata = {
+	.ch0_current_uA = 5,
 	/* If ch3_dual_current is true, it will measure ch3 input signal with
 	 * ch3_current and the next current of ch3_current.
 	 * So this system will use 400uA and 800uA for ch3 measurement. */
