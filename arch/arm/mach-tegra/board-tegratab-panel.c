@@ -452,7 +452,9 @@ int tegratab_init_hdmi(struct platform_device *pdev,
 	struct resource __maybe_unused *res;
 
 #ifdef CONFIG_ANDROID
-	/* In charger mode, don't need to copy or clear fb2 */
+	/* In charger mode, will not register display controller 1
+	 * No need to copy or clear fb2, either.
+	 */
 	if (get_androidboot_mode_charger())
 		return 0;
 #endif

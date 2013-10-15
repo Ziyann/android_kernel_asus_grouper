@@ -783,6 +783,45 @@ struct of_dev_auxdata tegratab_auxdata_lookup[] __initdata = {
 		&tegratab_i2c5_platform_data),
 	{},
 };
+struct of_dev_auxdata tegratab_auxdata_lookup_charger[] __initdata = {
+	OF_DEV_AUXDATA("nvidia,tegra114-host1x", TEGRA_HOST1X_BASE, "host1x",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-gr3d", TEGRA_GR3D_BASE, "gr3d",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-gr2d", TEGRA_GR2D_BASE, "gr2d",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-msenc", TEGRA_MSENC_BASE, "msenc",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-vi", TEGRA_VI_BASE, "vi",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-isp", TEGRA_ISP_BASE, "isp",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwfm", TEGRA_PWFM0_BASE, "tegra_pwm.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwfm", TEGRA_PWFM1_BASE, "tegra_pwm.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwfm", TEGRA_PWFM2_BASE, "tegra_pwm.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwfm", TEGRA_PWFM3_BASE, "tegra_pwm.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
+		&tegratab_dc0_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwm-bl", 0x0, "pwm-backlight",
+		&tegratab_pwm_bl_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c000, "tegra11-i2c.0",
+		&tegratab_i2c1_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c400, "tegra11-i2c.1",
+		&tegratab_i2c2_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c500, "tegra11-i2c.2",
+		&tegratab_i2c3_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c700, "tegra11-i2c.3",
+		&tegratab_i2c4_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000d000, "tegra11-i2c.4",
+		&tegratab_i2c5_platform_data),
+	{},
+};
 #endif
 
 static void __init tegra_tegratab_late_init(void)
@@ -850,8 +889,12 @@ static void __init tegra_tegratab_dt_init(void)
 		(get_androidboot_mode_charger()) ?
 		true : false;
 
-	of_platform_populate(NULL, of_default_bus_match_table,
-		tegratab_auxdata_lookup, &platform_bus);
+	if (get_androidboot_mode_charger())
+		of_platform_populate(NULL, of_default_bus_match_table,
+			tegratab_auxdata_lookup_charger, &platform_bus);
+	else
+		of_platform_populate(NULL, of_default_bus_match_table,
+			tegratab_auxdata_lookup, &platform_bus);
 #endif
 
 	tegra_tegratab_late_init();
