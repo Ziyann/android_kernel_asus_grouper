@@ -844,6 +844,10 @@ static void __init tegra_tegratab_dt_init(void)
 	tegratab_dc0_platform_data.of_data.fb_start = tegra_fb_start;
 	tegratab_dc1_platform_data.of_data.fb_start = tegra_fb2_start;
 
+	tegratab_pwm_bl_data.is_charged =
+		(get_androidboot_mode_charger()) ?
+		true : false;
+
 	of_platform_populate(NULL, of_default_bus_match_table,
 		tegratab_auxdata_lookup, &platform_bus);
 #endif
