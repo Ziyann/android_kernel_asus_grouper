@@ -25,6 +25,8 @@
 #include <linux/max17048_battery.h>
 #include <linux/jiffies.h>
 #include <linux/thermal.h>
+#include <linux/iio/consumer.h>
+#include <linux/iio/types.h>
 #include <linux/platform_data/ina230.h>
 #include <linux/platform_data/tegra_edp.h>
 #include <generated/mach-types.h>
@@ -925,6 +927,12 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 	for (i = 0; i < MAX17048_DATA_SIZE; i++)
 		model_data->data_tbl[i] = val_array[i];
 
+	ret = of_property_read_u32(np, "read_batt_id", &val);
+	if (ret < 0)
+		pdata->read_batt_id = 0;
+	else
+		pdata->read_batt_id = val;
+
 	if ((!of_property_read_string(np, "set_current_threshold", &str)) &&
 		(!strncmp(str, "ina230", strlen(str)))) {
 		pdata->set_current_threshold = ina230_set_current_threshold;
@@ -1009,6 +1017,63 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 }
 #endif /* CONFIG_OF */
 
+static s32 show_battery_capacity(struct device *dev,
+				  struct device_attribute *attr,
+				  char *buf)
+{
+	struct iio_channel *channel;
+	int val, val2 = 0;
+	int ret;
+	struct i2c_client *client;
+	int capacity = 0;
+
+	if (!max17048_data)
+		return 0;
+
+	client = max17048_data->client;
+
+	channel = iio_st_channel_get(dev_name(&client->dev),
+				"batt_id");
+	if (IS_ERR(channel)) {
+		dev_err(&client->dev,
+			"%s: Failed to get channel batt_id, %ld\n",
+			__func__, PTR_ERR(channel));
+		return 0;
+	}
+
+	ret = iio_st_read_channel_raw(channel, &val, &val2);
+	if (ret < 0) {
+		dev_err(&client->dev,
+			"%s: Failed to read channel, %d\n",
+			__func__, ret);
+		return 0;
+	}
+
+	if (val > 3300) { /* over 200Kohm*/
+		dev_info(&client->dev, "adc: %d, No battery\n", val);
+		capacity = 0;
+	} else if (val > 819) { /* over 50Kohm*/
+		dev_info(&client->dev, "adc: %d, 3200mA Battery\n", val);
+		capacity = 3200;
+	} else {
+		dev_info(&client->dev, "adc: %d, 4100mA Battery\n", val);
+		capacity = 4100;
+	}
+	return sprintf(buf, "%d\n", capacity);
+}
+
+static s32 store_battery_capacity(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	return 0;
+}
+
+static struct device_attribute max17048_attrs[] = {
+	__ATTR(battery_capacity, 0644,
+		show_battery_capacity, store_battery_capacity),
+};
+
 static int __devinit max17048_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -1016,6 +1081,7 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	int ret;
 	uint16_t version;
 	u16 val;
+	int i;
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
@@ -1097,7 +1163,24 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	}
 	device_set_wakeup_capable(&client->dev, 1);
 
+	if (chip->pdata->read_batt_id) {
+		/* create sysfs node */
+		for (i = 0; i < ARRAY_SIZE(max17048_attrs); i++) {
+			ret = device_create_file(&client->dev,
+							&max17048_attrs[i]);
+			if (ret) {
+				dev_err(&client->dev,
+				"%s: device_create_file failed(%d)\n",
+				__func__, ret);
+				goto file_error;
+			}
+		}
+	}
+
 	return 0;
+file_error:
+	for (i = 0; i < ARRAY_SIZE(max17048_attrs); i++)
+		device_remove_file(&client->dev, &max17048_attrs[i]);
 irq_clear_error:
 	free_irq(client->irq, chip);
 irq_reg_error:
@@ -1112,11 +1195,14 @@ error2:
 static int __devexit max17048_remove(struct i2c_client *client)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
+	int i;
 
 	if (client->irq)
 		free_irq(client->irq, chip);
 	power_supply_unregister(&chip->battery);
 	cancel_delayed_work_sync(&chip->work);
+	for (i = 0; i < ARRAY_SIZE(max17048_attrs); i++)
+		device_remove_file(&client->dev, &max17048_attrs[i]);
 	mutex_destroy(&chip->mutex);
 
 	return 0;

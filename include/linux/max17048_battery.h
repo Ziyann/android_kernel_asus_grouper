@@ -36,6 +36,8 @@ struct max17048_battery_model {
 struct max17048_platform_data {
 	struct max17048_battery_model *model_data;
 
+	u32 read_batt_id;
+
 	s32 (*set_current_threshold)(s32 current_threshold, int min_cpu);
 	int current_normal;
 	int current_threshold_num;
