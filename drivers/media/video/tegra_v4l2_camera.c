@@ -235,6 +235,7 @@
 #define TEGRA_CSI_PIXEL_STREAM_A_EXPECTED_FRAME		0x08c8
 #define TEGRA_CSI_PIXEL_STREAM_B_EXPECTED_FRAME		0x08cc
 #define TEGRA_CSI_DSI_MIPI_CAL_CONFIG			0x08d0
+#define TEGRA_CSI_MIPIBIAS_PAD_CONFIG0			0x08d4
 
 #define TC_VI_REG_RD(DEV, REG) readl(DEV->vi_base + REG)
 #define TC_VI_REG_WT(DEV, REG, VAL) writel(VAL, DEV->vi_base + REG)
@@ -303,6 +304,9 @@ struct tegra_camera_dev {
 	/* Debug */
 	int num_frames;
 	int enable_refcnt;
+
+	/* CSI pad calibration flag */
+	int cal_done;
 };
 
 static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
@@ -974,7 +978,7 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev, int port)
 
 static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 {
-		nvhost_module_busy_ext(pcdev->ndev);
+	nvhost_module_busy_ext(pcdev->ndev);
 
 	/* Enable external power */
 	regulator_enable(pcdev->reg);
@@ -1017,6 +1021,8 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *pcdev)
 	regulator_disable(pcdev->reg);
 
 	nvhost_module_idle_ext(pcdev->ndev);
+
+	pcdev->cal_done = 0;
 }
 
 static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
@@ -1104,6 +1110,83 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 	return err;
 }
 
+static int tegra_camera_csi_pad_calibration(struct tegra_camera_dev *pcdev)
+{
+	struct vb2_buffer *vb = pcdev->active;
+	struct tegra_buffer *buf = to_tegra_vb(vb);
+	struct soc_camera_device *icd = buf->icd;
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
+	int port = pdata->port;
+	int retry = 500;
+	u32 data;
+	int err = -EINVAL;
+
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_DSI_MIPI_CAL_CONFIG, 0x40300);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_MIPIBIAS_PAD_CONFIG0, 0x50700);
+
+	if (port == TEGRA_CAMERA_PORT_CSI_B || pdata->lanes == 4)
+		TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_MIPI_CAL_CONFIG, 0x200004);
+
+	data = 0x2a000004;
+	if (port == TEGRA_CAMERA_PORT_CSI_A)
+		data |= 0x200000; /* MIPI_CAL_SELA */
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILA_MIPI_CAL_CONFIG, data);
+
+	/* Start calibration */
+	data |= 0x80000000;
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILA_MIPI_CAL_CONFIG, data);
+
+	while (retry--) {
+		data = TC_VI_REG_RD(pcdev, TEGRA_CSI_CSI_CIL_STATUS);
+		if ((data & 0x8000) == 0x8000)
+			break;
+		udelay(20);
+	}
+	if (!retry) {
+		dev_warn(&pcdev->ndev->dev, "MIPI calibration timeout!\n");
+		goto cal_out;
+	}
+
+	/* Clear status */
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CSI_CIL_STATUS, data);
+	retry = 500;
+	while (retry--) {
+		data = TC_VI_REG_RD(pcdev, TEGRA_CSI_CSI_CIL_STATUS);
+		if ((data & 0x8000) == 0x0)
+			break;
+		udelay(20);
+	}
+
+	if (!retry) {
+		dev_warn(&pcdev->ndev->dev,
+			 "Clear MIPI calibration status timeout!\n");
+		goto cal_out;
+	}
+
+	data = TC_VI_REG_RD(pcdev, TEGRA_CSI_CSI_PIXEL_PARSER_STATUS);
+	err = TC_VI_REG_RD(pcdev, TEGRA_CSI_CSI_CIL_STATUS);
+	if (data | err) {
+		dev_warn(&pcdev->ndev->dev,
+			 "Calibration status not be cleared!\n");
+		err = -EINVAL;
+		goto cal_out;
+	}
+
+	/* Calibration succeed */
+	err = 0;
+
+cal_out:
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CSI_CIL_STATUS, data);
+
+	/* un-select to avoid interference with DSI */
+	if (port == TEGRA_CAMERA_PORT_CSI_B || pdata->lanes == 4)
+		TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_MIPI_CAL_CONFIG, 0x4);
+
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILA_MIPI_CAL_CONFIG, 0x2a000004);
+
+	return err;
+}
+
 static void tegra_camera_work(struct work_struct *work)
 {
 	struct tegra_camera_dev *pcdev =
@@ -1127,6 +1210,10 @@ static void tegra_camera_work(struct work_struct *work)
 		spin_unlock_irq(&pcdev->videobuf_queue_lock);
 
 		tegra_camera_capture_setup(pcdev);
+		if (!pcdev->cal_done) {
+			tegra_camera_csi_pad_calibration(pcdev);
+			pcdev->cal_done = 1;
+		}
 		tegra_camera_capture_frame(pcdev);
 
 		mutex_unlock(&pcdev->work_mutex);
