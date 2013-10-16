@@ -288,7 +288,7 @@ static struct ov5640_reg mode_2592x1944[] = {
 	{OV5640_TABLE_END, 0x0000}
 };
 
-static struct ov5640_reg mode_1920x1080[] = {
+static struct ov5640_reg mode_1920x1088[] = {
 	/* PLL Control MIPI bit rate/lane = 672MHz, 16-bit mode.
 	 * Output size: 1936x1096 (336, 426) - (2287, 1529),
 	 * Line Length = 2500, Frame Length = 1120.
@@ -1097,7 +1097,7 @@ static struct ov5640_reg mode_640x480[] = {
 enum {
 	OV5640_MODE_640x480,
 	OV5640_MODE_1296x972,
-	OV5640_MODE_1920x1080,
+	OV5640_MODE_1920x1088,
 	OV5640_MODE_2592x1944,
 	OV5640_SIZE_LAST,
 };
@@ -1105,7 +1105,7 @@ enum {
 static struct ov5640_reg *mode_table[] = {
 	[OV5640_MODE_640x480] = mode_640x480,
 	[OV5640_MODE_1296x972] = mode_1296x972,
-	[OV5640_MODE_1920x1080] = mode_1920x1080,
+	[OV5640_MODE_1920x1088] = mode_1920x1088,
 	[OV5640_MODE_2592x1944] = mode_2592x1944,
 };
 
@@ -1144,7 +1144,7 @@ static enum v4l2_mbus_pixelcode ov5640_codes[] = {
 static const struct v4l2_frmsize_discrete ov5640_frmsizes[OV5640_SIZE_LAST] = {
 	{640, 480},
 	{1296, 972},
-	{1920, 1080},
+	{1920, 1088},
 	{2592, 1944},
 };
 
