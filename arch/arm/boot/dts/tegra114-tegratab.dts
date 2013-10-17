@@ -219,7 +219,6 @@
 		/* tegradc.1 */
 		dc@54240000 {
 			status = "okay";
-			nvidia,dc_flags = "dc_flag_en";
 			nvidia,emc_clk_rate = <300000000>;
 			nvidia,cmu-enable = <1>;
 			dc-default-out {
