@@ -475,7 +475,12 @@ static inline void tegra_hdmi_hotplug_enable(struct tegra_dc_hdmi_data *hdmi)
 void tegra_hdmi_enable_clk(void)
 {
 	struct tegra_dc_hdmi_data *hdmi = dc_hdmi;
-	struct tegra_dc *dc = hdmi->dc;
+	struct tegra_dc *dc;
+
+	if (!hdmi)
+		return;
+
+	dc = hdmi->dc;
 
 	mutex_lock(&dc->lock);
 	clk_prepare_enable(hdmi->disp1_clk);
@@ -489,7 +494,12 @@ EXPORT_SYMBOL(tegra_hdmi_enable_clk);
 void tegra_hdmi_disable_clk(void)
 {
 	struct tegra_dc_hdmi_data *hdmi = dc_hdmi;
-	struct tegra_dc *dc = hdmi->dc;
+	struct tegra_dc *dc;
+
+	if (!hdmi)
+		return;
+
+	dc = hdmi->dc;
 
 	atomic_set(&tf_hdmi_enable, 0);
 	mutex_lock(&dc->lock);
