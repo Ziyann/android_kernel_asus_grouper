@@ -238,6 +238,7 @@ struct inv_chip_config_s {
 	long long gyro_start_delay_ns;
 	unsigned int bypass_timeout_ms;
 	unsigned char is_asleep;
+	unsigned int load_cal;
 };
 
 /**

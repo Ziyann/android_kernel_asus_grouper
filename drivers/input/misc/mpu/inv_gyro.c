@@ -3134,6 +3134,32 @@ static ssize_t inv_key_show(struct device *dev, struct device_attribute *attr,
 		key[13], key[14], key[15]);
 }
 
+static ssize_t inv_loadcal_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	struct inv_gyro_state_s *inf;
+	unsigned int load_cal;
+	int err;
+
+	inf = dev_get_drvdata(dev);
+	err = kstrtouint(buf, 10, &load_cal);
+	if (err)
+		return -EINVAL;
+
+	inf->chip_config.load_cal = load_cal;
+
+	return count;
+}
+
+static ssize_t inv_loadcal_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct inv_gyro_state_s *inf = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%u\n", inf->chip_config.load_cal);
+}
+
 /**
  *  OBSOLETE
  */
@@ -3931,6 +3957,8 @@ static DEVICE_ATTR(power_state, S_IRUGO | S_IWUSR | S_IWGRP,
 		   inv_power_state_show, inv_power_state_store);
 static DEVICE_ATTR(key, S_IRUGO | S_IWUSR | S_IWGRP,
 		   inv_key_show, inv_key_store);
+static DEVICE_ATTR(loadcal, S_IRUGO | S_IWUSR | S_IWGRP,
+		   inv_loadcal_show, inv_loadcal_store);
 
 static struct device_attribute *inv_attributes[] = {
 	&dev_attr_accl_enable,
@@ -3953,6 +3981,7 @@ static struct device_attribute *inv_attributes[] = {
 	&dev_attr_enable,
 	&dev_attr_power_state,
 	&dev_attr_key,
+	&dev_attr_loadcal,
 #if DEBUG_SYSFS_INTERFACE
 	&dev_attr_dbg_reg,
 	&dev_attr_dbg_dat,
