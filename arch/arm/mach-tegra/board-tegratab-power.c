@@ -126,6 +126,10 @@ struct max17048_platform_data tegratab_max17048_pdata = {
 	.current_threshold_num = 2,
 	.current_threshold_soc = {4, 8},
 	.current_threshold = {1800, 2500},
+	.sysedp_throttle = sysedp_lite_throttle,
+	.sysedp_throttle_num = 2,
+	.sysedp_throttle_soc = {4, 8},
+	.sysedp_throttle_power = {10000, 10500},
 };
 
 static struct i2c_board_info __initdata tegratab_max17048_boardinfo[] = {
