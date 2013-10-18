@@ -32,6 +32,7 @@
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
+#include <linux/platform_data/tegra_edp.h>
 #include <linux/platform_data/ina230.h>
 
 #include <asm/mach-types.h>
@@ -984,4 +985,45 @@ int __init tegratab_soctherm_init(void)
 	}
 
 	return tegra11_soctherm_init(&tegratab_soctherm_data);
+}
+
+#define NO_CAP	(ULONG_MAX)
+static struct tegra_sysedp_corecap tegratab_sysedp_lite_corecap[] = {
+	{   9100, {   3943,    240,    624 }, {   2706,    420,    792 } },
+	{  10000, {   4565,    240,    792 }, {   3398,    528,    792 } },
+	{  10500, {   5065,    240,    792 }, {   3898,    528,    792 } },
+	{  11000, {   5565,    240,    792 }, {   4398,    528,    792 } },
+	{  12000, {   6565,    240,    792 }, {   4277,    600,    792 } },
+	{  13000, {   7565,    240,    792 }, {   5277,    600,    792 } },
+	{  14000, {   8565,    240,    792 }, {   6277,    600,    792 } },
+	{  15000, {   9565,    384,    792 }, {   7277,    600,    792 } },
+	{  16000, {  10565,    468,    792 }, {   8277,    600,    792 } },
+	{ NO_CAP, { NO_CAP, NO_CAP, NO_CAP }, { NO_CAP, NO_CAP, NO_CAP } },
+};
+
+static struct tegra_sysedp_platform_data tegratab_sysedp_lite_platdata = {
+	.corecap = tegratab_sysedp_lite_corecap,
+	.corecap_size = ARRAY_SIZE(tegratab_sysedp_lite_corecap),
+};
+
+static struct platform_device tegratab_sysedp_lite_device = {
+	.name = "tegra_sysedp_lite",
+	.id = -1,
+	.dev = { .platform_data = &tegratab_sysedp_lite_platdata }
+};
+
+void __init tegratab_sysedp_core_init(void)
+{
+	int r;
+
+	tegratab_sysedp_lite_platdata.cpufreq_lim =
+		tegra_get_system_edp_entries(
+			&tegratab_sysedp_lite_platdata.cpufreq_lim_size);
+	if (!tegratab_sysedp_lite_platdata.cpufreq_lim) {
+		WARN_ON(1);
+		return;
+	}
+
+	r = platform_device_register(&tegratab_sysedp_lite_device);
+	WARN_ON(r);
 }

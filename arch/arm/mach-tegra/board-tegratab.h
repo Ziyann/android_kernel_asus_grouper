@@ -113,6 +113,7 @@ int roth_panel_init(void);
 int tegratab_kbc_init(void);
 int tegratab_pmon_init(void);
 int tegratab_soctherm_init(void);
+void tegratab_sysedp_core_init(void);
 
 /* UART port which is used by bluetooth*/
 #define BLUETOOTH_UART_DEV_NAME "/dev/ttyHS2"

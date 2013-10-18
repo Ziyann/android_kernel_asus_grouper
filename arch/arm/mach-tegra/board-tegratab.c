@@ -822,6 +822,8 @@ static void __init tegra_tegratab_late_init(void)
 	tegratab_sensors_init();
 	tegratab_soctherm_init();
 	tegra_register_fuse();
+
+	tegratab_sysedp_core_init();
 }
 
 static void __init tegratab_ramconsole_reserve(unsigned long size)
