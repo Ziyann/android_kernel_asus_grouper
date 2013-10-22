@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/nvhdcp.c
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1078,7 +1078,7 @@ static int tegra_nvhdcp_off(struct tegra_nvhdcp *nvhdcp)
 	nvhdcp->state = STATE_OFF;
 	mutex_unlock(&nvhdcp->lock);
 	wake_up_interruptible(&wq_worker);
-	flush_workqueue(nvhdcp->downstream_wq);
+	cancel_delayed_work_sync(&nvhdcp->work);
 	return 0;
 }
 
