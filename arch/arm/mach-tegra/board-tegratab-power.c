@@ -49,6 +49,7 @@
 #include "tegra-board-id.h"
 #include "board-pmu-defines.h"
 #include "board.h"
+#include "fuse.h"
 #include "gpio-names.h"
 #include "board-common.h"
 #include "board-tegratab.h"
@@ -302,7 +303,7 @@ PALMAS_REGS_PDATA(smps45, 900,  1400, NULL, 0, 0, 0, 0,
 	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(smps6, 3160,  3160, NULL, 0, 0, 1, NORMAL,
 	0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(smps7, 1380,  1380, NULL, 0, 0, 1, NORMAL,
+PALMAS_REGS_PDATA(smps7, 1350,  1350, NULL, 0, 0, 1, NORMAL,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps8, 1800,  1800, NULL, 1, 1, 1, NORMAL,
 	0, 0, 0, 0, 0);
@@ -636,6 +637,22 @@ int __init tegratab_palmas_regulator_init(void)
 	}
 
 	tegra_get_board_info(&board_info);
+
+	if (board_info.board_id == BOARD_P1640 &&
+			((board_info.fab < BOARD_FAB_A04) ||
+			(board_info.fab >= BOARD_FAB_A04 &&
+			tegra_bct_strapping != 1))) {
+		/* Boot strapping 0, 2, 3 indicate Micron 1GB MT41K128M16-125
+		 * and it requires VDDIO_DDR 1.38V for stability.
+		 * Boot strapping 1 indicates Hynix 1GB H5TC2G63FFR-PBA and
+		 * it requires VDDIO_DDR 1.35V.
+		 */
+		tegratab_reg_data[PALMAS_REG_SMPS7]->constraints.min_uV =
+									1380000;
+		tegratab_reg_data[PALMAS_REG_SMPS7]->constraints.max_uV =
+									1380000;
+	}
+
 	if (board_info.board_id == BOARD_P1640 &&
 				board_info.fab >= BOARD_FAB_A01) {
 		palmas_pdata.clk32k_init_data = tegratab_palmas_clk32k_idata;
