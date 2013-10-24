@@ -142,8 +142,14 @@ int hci_tty_open(struct inode *inod, struct file *file)
 	pr_info("inside %s (%p, %p)\n", __func__, inod, file);
 
 	hst = kzalloc(sizeof(*hst), GFP_KERNEL);
+
+	if (!hst)
+		return -ENOMEM;
+
 	file->private_data = hst;
-	hst = file->private_data;
+
+	skb_queue_head_init(&hst->rx_list);
+	init_waitqueue_head(&hst->data_q);
 
 	for (i = 0; i < MAX_BT_CHNL_IDS; i++) {
 		ti_st_proto[i].priv_data = hst;
@@ -161,12 +167,23 @@ int hci_tty_open(struct inode *inod, struct file *file)
 		hst->reg_status = -EINPROGRESS;
 
 		err = st_register(&ti_st_proto[i]);
-		if (!err)
-			goto done;
+
+		if (!err) {
+			hst->st_write = ti_st_proto[i].write;
+			if (!hst->st_write) {
+				pr_err("undefined ST write function");
+				err = -EIO;
+				goto error;
+			}
+			continue;
+		}
 
 		if (err != -EINPROGRESS) {
 			pr_err("st_register failed %d", err);
-			return err;
+			/* this channel is not registered - don't unregister */
+			--i;
+			/*return err;*/
+			goto error;
 		}
 
 		/* ST is busy with either protocol
@@ -192,26 +209,18 @@ int hci_tty_open(struct inode *inod, struct file *file)
 			return -EAGAIN;
 		}
 
-done:
-		hst->st_write = ti_st_proto[i].write;
-		if (!hst->st_write) {
-			pr_err("undefined ST write function");
-			for (i = 0; i < MAX_BT_CHNL_IDS; i++) {
-				/* Undo registration with ST */
-				err = st_unregister(&ti_st_proto[i]);
-				if (err)
-					pr_err("st_unregister() failed with "
-							"error %d", err);
-				hst->st_write = NULL;
-			}
-			return -EIO;
-		}
 	}
 
-	skb_queue_head_init(&hst->rx_list);
-	init_waitqueue_head(&hst->data_q);
-
 	return 0;
+
+error:
+	while (i-- >=  0)
+		if (st_unregister(&ti_st_proto[i]))
+			pr_err("st_unregister() failed with ");
+
+	kfree(hst);
+
+	return err;
 }
 
 /** hci_tty_release Function
