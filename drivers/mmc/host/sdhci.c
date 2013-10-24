@@ -47,6 +47,14 @@
 
 #define MAX_TUNING_LOOP 40
 
+#define DELAYED_CLK_GATING_TICK_TMOUT (HZ / 50)
+
+#define IS_DELAYED_CLK_GATE(host) \
+		((host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE) && \
+		(host->mmc->card && ( \
+		(host->mmc->card->type == MMC_TYPE_MMC) /* EMMC */ \
+		)))
+
 static unsigned int debug_quirks = 0;
 static unsigned int debug_quirks2;
 
@@ -2040,6 +2048,11 @@ int sdhci_enable(struct mmc_host *mmc)
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
 
+	if (IS_DELAYED_CLK_GATE(host)) {
+		/* cancel delayed clk gate work */
+		cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
+	}
+
 	if (mmc->ios.clock) {
 		if (host->ops->set_clock)
 			host->ops->set_clock(host, mmc->ios.clock);
@@ -2056,14 +2069,11 @@ int sdhci_enable(struct mmc_host *mmc)
 	return 0;
 }
 
-int sdhci_disable(struct mmc_host *mmc)
+static void mmc_host_clk_gate(struct sdhci_host *host)
 {
-	struct sdhci_host *host = mmc_priv(mmc);
 	int ret;
 	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
-
-	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
-		return 0;
+	struct mmc_host *mmc = host->mmc;
 
 	sdhci_set_clock(host, 0);
 	if (host->ops->set_clock)
@@ -2075,6 +2085,37 @@ int sdhci_disable(struct mmc_host *mmc)
 		if (ret)
 			dev_err(&pdev->dev, "Unable to set SD_EDP_LOW state\n");
 	}
+	return;
+}
+
+void delayed_clk_gate_cb(struct work_struct *work)
+{
+	struct sdhci_host *host = container_of(work, struct sdhci_host,
+					      delayed_clk_gate_wrk.work);
+	/* power off check */
+	if (host->mmc->ios.power_mode == MMC_POWER_OFF)
+		goto end;
+
+	mmc_host_clk_gate(host);
+end:
+	return;
+}
+EXPORT_SYMBOL_GPL(delayed_clk_gate_cb);
+
+int sdhci_disable(struct mmc_host *mmc)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
+		return 0;
+
+	if (IS_DELAYED_CLK_GATE(host)) {
+		schedule_delayed_work(&host->delayed_clk_gate_wrk,
+			DELAYED_CLK_GATING_TICK_TMOUT);
+		return 0;
+	}
+
+	mmc_host_clk_gate(host);
 
 	return 0;
 }

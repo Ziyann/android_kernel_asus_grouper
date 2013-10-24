@@ -1172,6 +1172,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		pm_runtime_put_sync(&pdev->dev);
 		tegra_host->clk_enabled = false;
 	}
+	sdhci->is_clk_on = tegra_host->clk_enabled;
 }
 static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
 {
@@ -2809,6 +2810,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	}
 
 	host = sdhci_pltfm_init(pdev, soc_data->pdata);
+
 	if (IS_ERR(host))
 		return PTR_ERR(host);
 
@@ -3031,6 +3033,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 
 	pltfm_host->priv = tegra_host;
 	tegra_host->clk_enabled = true;
+	host->is_clk_on = tegra_host->clk_enabled;
 	tegra_host->max_clk_limit = plat->max_clk_limit;
 	tegra_host->ddr_clk_limit = plat->ddr_clk_limit;
 	tegra_host->sd_detect_in_suspend = plat->sd_detect_in_suspend;
@@ -3098,6 +3101,9 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	rc = sdhci_add_host(host);
 
 	device_create_file(&pdev->dev, &dev_attr_cmd_state);
+
+	INIT_DELAYED_WORK(&host->delayed_clk_gate_wrk, delayed_clk_gate_cb);
+
 	sdhci_tegra_error_stats_debugfs(host);
 	if (rc)
 		goto err_add_host;

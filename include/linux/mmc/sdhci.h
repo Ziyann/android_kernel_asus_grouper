@@ -102,6 +102,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO		(1<<4)
 /* Controller needs a dummy write after INT_CLK_EN for clock to be stable */
 #define SDHCI_QUIRK2_INT_CLK_STABLE_REQ_DUMMY_REG_WRITE	(1<<5)
+/* sdio delayed clock gate */
+#define SDHCI_QUIRK2_DELAYED_CLK_GATE			(1<<6)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
@@ -187,7 +189,14 @@ struct sdhci_host {
 	unsigned int edp_states[SD_EDP_NUM_STATES];
 	bool edp_support;
 
+	struct delayed_work	delayed_clk_gate_wrk;
+	bool			is_clk_on;
+
 	unsigned long private[0] ____cacheline_aligned;
 
 };
+
+/* callback is registered during init */
+void delayed_clk_gate_cb(struct work_struct *work);
+
 #endif /* LINUX_MMC_SDHCI_H */
