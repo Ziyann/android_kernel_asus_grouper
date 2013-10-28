@@ -778,7 +778,7 @@ tegra3_tear_down_core:
 /*
  * tegra3_cpu_clk32k
  *
- * In LP0 and LP1 all plls will be turned off. Switch the system clock
+ * In LP0 and LP1 all plls will be turned off.  Switch the system clock
  * to the 32khz clock (clks) and CPU to clkm.
  * r4 = TEGRA_PMC_BASE
  * r5 = TEGRA_CLK_RESET_BASE
