@@ -1443,6 +1443,14 @@ static void utmip_biaspd_workaround(struct tegra_xhci_hcd *tegra)
 	}
 }
 
+static void tegra_xusb_set_bw(struct tegra_xhci_hcd *tegra, unsigned int bw)
+{
+	unsigned int freq_khz;
+
+	freq_khz = tegra_emc_bw_to_freq_req(bw);
+	clk_set_rate(tegra->emc_clk, freq_khz * 1000);
+}
+
 static void tegra_xhci_save_dfe_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
@@ -2055,6 +2063,9 @@ static int tegra_xhci_ss_elpg_entry(struct tegra_xhci_hcd *tegra)
 
 	must_have_sync_lock(tegra);
 
+	/* update maximum BW requirement to 0 */
+	tegra_xusb_set_bw(tegra, 0);
+
 	/* This is SS partition ELPG entry
 	 * STEP 0: firmware will set WOC WOD bits in PVTPORTSC2 regs.
 	 */
@@ -2583,7 +2594,6 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	struct tegra_xhci_hcd *tegra = container_of(work, struct tegra_xhci_hcd,
 					mbox_work);
 	struct xhci_hcd *xhci = tegra->xhci;
-	unsigned int freq_khz;
 
 	mutex_lock(&tegra->mbox_lock);
 
@@ -2633,8 +2643,9 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 		goto send_sw_response;
 	case MBOX_CMD_SET_BW:
 		/* fw sends BW request in MByte/sec */
-		freq_khz = tegra_emc_bw_to_freq_req(tegra->cmd_data << 10);
-		clk_set_rate(tegra->emc_clk, freq_khz * 1000);
+		mutex_lock(&tegra->sync_lock);
+		tegra_xusb_set_bw(tegra, tegra->cmd_data << 10);
+		mutex_unlock(&tegra->sync_lock);
 
 		/* clear MBOX_SMI_INT_EN bit */
 		cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
