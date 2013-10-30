@@ -82,6 +82,8 @@ static void *vb2_dma_nvmap_alloc(void *alloc_ctx, unsigned long size)
 	buf->handler.put = vb2_dma_nvmap_put;
 	buf->handler.arg = buf;
 
+	*((unsigned long *)buf->vaddr) = (unsigned long)buf->nvmap_ref->handle;
+
 	atomic_inc(&buf->refcount);
 
 	return buf;
