@@ -90,7 +90,7 @@ int tegra_powergate_set(int id, bool new_state)
 		udelay(1);
 		reg = pmc_read(PWRGATE_TOGGLE);
 		contention_timeout--;
-	} while ((contention_timeout > 0) && (status & PWRGATE_TOGGLE_START));
+	} while ((contention_timeout > 0) && (reg & PWRGATE_TOGGLE_START));
 
 	if (contention_timeout <= 0)
 		pr_err(" Timed out waiting for PMC to submit \
@@ -107,7 +107,7 @@ int tegra_powergate_set(int id, bool new_state)
 		udelay(1);
 		reg = pmc_read(PWRGATE_TOGGLE);
 		contention_timeout--;
-	} while ((contention_timeout > 0) && (status & PWRGATE_TOGGLE_START));
+	} while ((contention_timeout > 0) && (reg & PWRGATE_TOGGLE_START));
 
 	if (contention_timeout <= 0)
 		pr_err(" Timed out waiting for PMC to accept \
