@@ -132,6 +132,11 @@ static int lgd_wxga_7_0_enable(struct device *dev)
 	 *    then, we don't need 1S delay. If 1v8 is turned
 	 *    off in panel on request time, we don't need
 	 *    1S delay, either.
+
+	 * In device power on, we don't need to obey this
+	 * precondition, since there's no power rail off.
+	 * This can be accomplished by setting touch_dvdd_on
+	 * initial state to true.
 	 */
 
 	if ((!atomic_read(&touch_dvdd_on)) &&
