@@ -44,6 +44,7 @@
 #define OV5693_LENS_VIEW_ANGLE_H	60000	/* _INT2FLOAT_DIVISOR */
 #define OV5693_LENS_VIEW_ANGLE_V	60000	/* _INT2FLOAT_DIVISOR */
 #define OV5693_OTP_BUF_SIZE		16
+#define	OV5693_FUSE_ID_SIZE		5
 
 static struct nvc_gpio_init ov5693_gpio[] = {
 	{ OV5693_GPIO_TYPE_PWRDN, GPIOF_OUT_INIT_LOW, "pwrdn", false, true, },
@@ -65,7 +66,7 @@ struct ov5693_info {
 	unsigned test_pattern;
 	struct nvc_imager_static_nvc sdata;
 	u8 bin_en;
-	struct ov5693_fuseid fuseid;
+	struct nvc_fuseid fuseid;
 	struct regmap *regmap;
 	struct regulator *ext_vcm_vdd;
 	struct ov5693_cal_data cal;
@@ -3119,11 +3120,16 @@ ov5693_mode_wr_err:
 
 static int ov5693_get_fuse_id(struct ov5693_info *info)
 {
-	ov5693_i2c_rd8(info, 0x300A, &info->fuseid.id[0]);
-	ov5693_i2c_rd8(info, 0x300B, &info->fuseid.id[1]);
-	info->fuseid.size = 2;
-	dev_dbg(&info->i2c_client->dev, "ov5693 fuse_id: %x,%x\n",
-		info->fuseid.id[0], info->fuseid.id[1]);
+	int i;
+	regmap_write(info->regmap, 0x3D84, 0xC0);
+	regmap_write(info->regmap, 0x3D81, 0x40);
+	for (i = 0; i < OV5693_FUSE_ID_SIZE; i++) {
+		ov5693_i2c_rd8(info, 0x3D00 + i, &info->fuseid.data[i]);
+		dev_dbg(&info->i2c_client->dev, "ov5693 fuse_id byte %d:\t0x%0x\n",
+				i, info->fuseid.data[i]);
+	}
+	info->fuseid.size = OV5693_FUSE_ID_SIZE;
+
 	return 0;
 }
 
