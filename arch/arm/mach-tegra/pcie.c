@@ -825,7 +825,7 @@ static void tegra_pcie_enable_controller(void)
 	afi_writel(val, AFI_PCIE_CONFIG);
 
 	/* Disable Gen 2 capability of PCIE */
-	val = afi_readl(AFI_FUSE) & ~AFI_FUSE_PCIE_T0_GEN2_DIS;
+	val = afi_readl(AFI_FUSE) | AFI_FUSE_PCIE_T0_GEN2_DIS;
 	afi_writel(val, AFI_FUSE);
 
 	/* Initialze internal PHY, enable up to 16 PCIE lanes */
