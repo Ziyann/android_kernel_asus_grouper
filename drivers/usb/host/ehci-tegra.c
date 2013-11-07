@@ -789,6 +789,7 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	device_remove_file(hcd->self.controller, &dev_attr_boost_enable);
 #endif
 	usb_put_hcd(hcd);
+	mutex_destroy(&tegra->sync_lock);
 
 	return 0;
 }
