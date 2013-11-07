@@ -3,7 +3,7 @@
  *
  * Tegra MSENC Module Support
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -380,6 +380,7 @@ void nvhost_msenc_deinit(struct platform_device *dev)
 		m->mem_r = NULL;
 	}
 	m->valid = false;
+	kfree(m);
 }
 
 void nvhost_msenc_finalize_poweron(struct platform_device *dev)
