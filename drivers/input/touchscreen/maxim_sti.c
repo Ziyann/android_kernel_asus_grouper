@@ -1587,8 +1587,7 @@ static int processing_thread(void *arg)
 		/* priority 1: start up fusion process */
 		if (dd->fusion_process != (pid_t)0 && get_pid_task(
 					find_get_pid(dd->fusion_process),
-					PIDTYPE_PID) == NULL &&
-					!dd->suspend_in_progress) {
+					PIDTYPE_PID) == NULL) {
 			stop_scan_canned(dd);
 			dd->start_fusion = true;
 			dd->fusion_process = (pid_t)0;
