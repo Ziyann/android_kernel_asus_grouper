@@ -28,6 +28,10 @@
 #include <linux/maxim_sti.h>
 #include <asm/byteorder.h>  /* MUST include this header to get byte order */
 
+#ifdef CONFIG_PM_WAKELOCKS
+#include <linux/pm_wakeup.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/touchscreen_maxim.h>
 
@@ -99,6 +103,9 @@ struct dev_data {
 	void                         (*service_irq)(struct dev_data *dd);
 #if NV_ENABLE_CPU_BOOST
 	unsigned long                last_irq_jiffies;
+#endif
+#ifdef CONFIG_PM_WAKELOCKS
+	struct wakeup_source         ws;
 #endif
 };
 
@@ -784,6 +791,9 @@ static int suspend(struct device *dev)
 		return ret;
 #endif
 
+#ifdef CONFIG_PM_WAKELOCKS
+	__pm_relax(&dd->ws);
+#endif
 	INFO("suspend...done");
 
 	return 0;
@@ -799,6 +809,10 @@ static int resume(struct device *dev)
 
 	if (!dd->suspend_in_progress)
 		return 0;
+
+#ifdef CONFIG_PM_WAKELOCKS
+	__pm_stay_awake(&dd->ws);
+#endif
 
 #if SUSPEND_POWER_OFF
 	/* power-up and reset-high */
@@ -1611,11 +1625,16 @@ static int processing_thread(void *arg)
 			complete(&dd->suspend_resume);
 
 			INFO("%s: suspended.", __func__);
-			while (!dd->resume_in_progress) {
+
+			dd->expect_resume_ack = true;
+			while (!dd->resume_in_progress &&
+					!kthread_should_stop()) {
 				/* the line below is a MUST */
 				set_current_state(TASK_INTERRUPTIBLE);
 				schedule();
 			}
+			if (kthread_should_stop())
+				break;
 
 			INFO("%s: resuming.", __func__);
 
@@ -1660,11 +1679,13 @@ static int processing_thread(void *arg)
 				if (ret2 < 0)
 					ERROR("could not allocate outgoing " \
 					      "skb (%d)", ret2);
-			} while (ret != 0);
-			if (fusion_dead)
-				continue;
+			} while (ret != 0 && !kthread_should_stop());
+			if (kthread_should_stop())
+				break;
 			if (ret == 0)
 				INFO("%s: resumed.", __func__);
+			if (fusion_dead)
+				continue;
 		}
 
 		/* priority 4: service interrupt */
@@ -1810,6 +1831,10 @@ static int probe(struct spi_device *spi)
 	dd->last_irq_jiffies = jiffies;
 #endif
 
+#ifdef CONFIG_PM_WAKELOCKS
+	wakeup_source_init(&dd->ws, "touch_fusion");
+	__pm_stay_awake(&dd->ws);
+#endif
 	/* start up Touch Fusion */
 	wake_up_process(dd->thread);
 	INFO("driver loaded; version %s; release date %s", DRIVER_VERSION,
@@ -1854,8 +1879,6 @@ static int remove(struct spi_device *spi)
 	/* 4) above step (3) insures that all Netlink senders are           */
 	/*    definitely gone and it is safe to free up outgoing skb buffer */
 	/*    and incoming skb queue                                        */
-	dd->nl_enabled = false;
-	(void)kthread_stop(dd->thread);
 	genl_unregister_family(&dd->nl_family);
 	kfree_skb(dd->outgoing_skb);
 	skb_queue_purge(&dd->incoming_skb_queue);
