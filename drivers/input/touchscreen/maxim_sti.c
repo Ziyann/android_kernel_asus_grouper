@@ -1877,12 +1877,6 @@ static int remove(struct spi_device *spi)
 
 	INFO("removing...\n");
 
-	if (dd->irq_registered)
-		disable_irq(dd->spi->irq);
-
-	dd->nl_enabled = false;
-	(void)kthread_stop(dd->thread);
-
 	if (dd->fusion_process != (pid_t)0)
 		(void)kill_pid(find_get_pid(dd->fusion_process), SIGKILL, 1);
 
@@ -1929,17 +1923,6 @@ static void shutdown(struct spi_device *spi)
 	struct dev_data         *dd = spi_get_drvdata(spi);
 
 	INFO("doing shutdown...\n");
-
-	if (dd->irq_registered)
-		disable_irq(dd->spi->irq);
-
-	dd->nl_enabled = false;
-	(void)kthread_stop(dd->thread);
-
-	if (dd->fusion_process != (pid_t)0)
-		(void)kill_pid(find_get_pid(dd->fusion_process), SIGKILL, 1);
-
-	stop_scan_canned(dd);
 
 	pdata->reset(pdata, 0);
 	usleep_range(100, 120);
