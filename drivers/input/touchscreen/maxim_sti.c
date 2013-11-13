@@ -103,7 +103,7 @@ struct dev_data {
 #endif
 };
 
-atomic_t touch_dvdd_on = ATOMIC_INIT(1);
+atomic_t touch_dvdd_on = ATOMIC_INIT(0);
 static int prev_dvdd_rail_state;
 
 static struct list_head  dev_list;
@@ -1626,6 +1626,8 @@ static int processing_thread(void *arg)
 			complete(&dd->suspend_resume);
 
 			INFO("%s: suspended.", __func__);
+
+			dd->expect_resume_ack = true;
 			while (!dd->resume_in_progress) {
 				/* the line below is a MUST */
 				set_current_state(TASK_INTERRUPTIBLE);
