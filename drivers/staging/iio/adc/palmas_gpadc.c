@@ -315,11 +315,15 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 			goto out_mask_interrupt;
 		}
 
+#if !defined(CONFIG_MACH_TEGRATAB)
 		if (mask == IIO_CHAN_INFO_CALIBSCALE)
 			*val = palmas_gpadc_get_calibrated_code(adc, adc_chan,
 								ret);
 		else
 			*val = ret;
+#else
+		*val = palmas_gpadc_get_calibrated_code(adc, adc_chan, ret);
+#endif
 
 		if ((adc_chan == PALMAS_ADC_CH_IN3) && adc->ch3_dual_current
 				&& val2) {
@@ -337,11 +341,16 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 				goto out_mask_interrupt;
 			}
 
+#if !defined(CONFIG_MACH_TEGRATAB)
 			if (mask == IIO_CHAN_INFO_CALIBSCALE)
 				*val2 = palmas_gpadc_get_calibrated_code(adc,
 								adc_chan, ret);
 			else
 				*val2 = ret;
+#else
+			*val2 = palmas_gpadc_get_calibrated_code(adc,
+								adc_chan, ret);
+#endif
 		}
 
 		ret = IIO_VAL_INT;
