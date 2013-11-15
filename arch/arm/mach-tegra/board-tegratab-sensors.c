@@ -577,21 +577,21 @@ static struct therm_est_subdevice skin_devs_a02[] = {
 	{
 		.dev_data = "Tdiode",
 		.coeffs = {
-			-1, -2, -4, -5,
-			-5, -4, -3, -3,
-			-2, -2, -2, -2,
-			-2, -2, -3, -4,
-			-5, -5, -7, -10
+			0, -1, -5, -6,
+			-6, -5, -5, -4,
+			-4, -4, -4, -4,
+			-4, -4, -5, -5,
+			-6, -6, -7, -8
 		},
 	},
 	{
 		.dev_data = "Tboard",
 		.coeffs = {
-			144, 30, -11, -21,
-			-24, -10, 0, 10,
-			9, -3, -1, 14,
-			23, 22, 35, 33,
-			23, -17, -53, -40
+			117, 31, -1, -12,
+			-16, 4, 1, 5,
+			-1, 12, 15, 14,
+			9, 9, 7, 20,
+			-2, -23, -42, 34
 		},
 	},
 };
@@ -653,7 +653,7 @@ static int __init tegratab_skin_init(void)
 			skin_data.devs = skin_devs;
 		} else {
 			/* Use this after P1640 A02. */
-			skin_data.toffset = -1727;
+			skin_data.toffset = 799;
 			skin_data.ndevs = ARRAY_SIZE(skin_devs_a02);
 			skin_data.devs = skin_devs_a02;
 		}
