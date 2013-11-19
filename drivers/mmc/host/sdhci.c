@@ -2110,8 +2110,9 @@ int sdhci_disable(struct mmc_host *mmc)
 		return 0;
 
 	if (IS_DELAYED_CLK_GATE(host)) {
-		schedule_delayed_work(&host->delayed_clk_gate_wrk,
-			DELAYED_CLK_GATING_TICK_TMOUT);
+		if (host->is_clk_on)
+			schedule_delayed_work(&host->delayed_clk_gate_wrk,
+				DELAYED_CLK_GATING_TICK_TMOUT);
 		return 0;
 	}
 
@@ -2679,6 +2680,9 @@ int sdhci_suspend_host(struct sdhci_host *host)
 			SDHCI_INT_CARD_INT;
 
 	sdhci_mask_irqs(host, SDHCI_INT_ALL_MASK);
+
+	/* cancel sdio clk gate work */
+	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
 
 	if (host->irq)
 		disable_irq(host->irq);
