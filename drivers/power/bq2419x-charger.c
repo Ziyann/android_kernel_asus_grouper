@@ -241,8 +241,8 @@ static int bq2419x_init(struct bq2419x_chip *bq2419x)
 	val = current_to_reg(iinlim, ARRAY_SIZE(iinlim),
 				bq2419x->in_current_limit);
 
-	/* Start from 500mA and then step to val */
-	floor = current_to_reg(iinlim, ARRAY_SIZE(iinlim), 500);
+	/* Start from 100mA and then step to val */
+	floor = current_to_reg(iinlim, ARRAY_SIZE(iinlim), 100);
 	if (val < 0 || floor < 0)
 		return 0;
 
