@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -306,6 +306,8 @@ struct sdhci_tegra {
 	const struct tegra_sdhci_platform_data *plat;
 	struct sdhci_tegra_soc_data *soc_data;
 	bool	clk_enabled;
+	/* ensure atomic set clock calls */
+	struct mutex set_clock_mutex;
 	struct regulator *vdd_io_reg;
 	struct regulator *vdd_slot_reg;
 	struct regulator *vcore_reg;
@@ -1131,6 +1133,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
 	u8 ctrl;
 
+	mutex_lock(&tegra_host->set_clock_mutex);
 	pr_debug("%s %s %u enabled=%u\n", __func__,
 		mmc_hostname(sdhci->mmc), clock, tegra_host->clk_enabled);
 
@@ -1175,6 +1178,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		pm_runtime_put_sync(&pdev->dev);
 	}
 	sdhci->is_clk_on = tegra_host->clk_enabled;
+	mutex_unlock(&tegra_host->set_clock_mutex);
 }
 static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
 {
@@ -3052,6 +3056,8 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	pltfm_host->priv = tegra_host;
 	tegra_host->clk_enabled = true;
 	host->is_clk_on = tegra_host->clk_enabled;
+	mutex_init(&tegra_host->set_clock_mutex);
+
 	tegra_host->max_clk_limit = plat->max_clk_limit;
 	tegra_host->ddr_clk_limit = plat->ddr_clk_limit;
 	tegra_host->sd_detect_in_suspend = plat->sd_detect_in_suspend;
