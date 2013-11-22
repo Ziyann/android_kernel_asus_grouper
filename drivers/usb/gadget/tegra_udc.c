@@ -1382,7 +1382,7 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 		break;
 	case CONNECT_TYPE_DCP:
 		dev_info(dev, "connected to DCP(wall charger)\n");
-		max_ua = USB_CHARGING_DCP_CURRENT_LIMIT_UA;
+		max_ua = udc->dcp_current_limit;
 		break;
 	case CONNECT_TYPE_CDP:
 		dev_info(dev, "connected to CDP(1.5A)\n");
@@ -2835,6 +2835,13 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 			udc->fence_read = false;
 		else
 			udc->fence_read = true;
+
+		if (pdata->u_data.dev.dcp_current_limit_ma)
+			udc->dcp_current_limit =
+				pdata->u_data.dev.dcp_current_limit_ma * 1000;
+		else
+			udc->dcp_current_limit =
+				USB_CHARGING_DCP_CURRENT_LIMIT_UA;
 	} else
 		dev_err(&pdev->dev, "failed to get platform_data\n");
 
