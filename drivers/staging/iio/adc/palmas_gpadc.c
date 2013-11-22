@@ -539,7 +539,7 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 			goto out_mask_interrupt;
 		}
 
-#if !defined(CONFIG_MACH_TEGRATAB)
+#if !defined(CONFIG_MACH_TEGRATAB) && !defined(CONFIG_MACH_TEGRANOTE7C)
 		if (mask == IIO_CHAN_INFO_CALIBSCALE)
 			*val = palmas_gpadc_get_calibrated_code(adc, adc_chan,
 								ret);
@@ -565,7 +565,7 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 				goto out_mask_interrupt;
 			}
 
-#if !defined(CONFIG_MACH_TEGRATAB)
+#if !defined(CONFIG_MACH_TEGRATAB) && !defined(CONFIG_MACH_TEGRANOTE7C)
 			if (mask == IIO_CHAN_INFO_CALIBSCALE)
 				*val2 = palmas_gpadc_get_calibrated_code(adc,
 								adc_chan, ret);
