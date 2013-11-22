@@ -141,7 +141,8 @@ static int tegratab_pwm_bl_devdata_gen_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 
-	if (of_find_compatible_node(NULL, NULL, "lgd-pwm-bl,tegratab")) {
+	if (of_find_compatible_node(NULL, NULL, "lgd-pwm-bl,tegratab")||
+		of_find_compatible_node(NULL, NULL, "lgd-pwm-bl,tegranote7c")) {
 		tegratab_lgd_pwm_bl_devdata(&tegratab_lgd_pwm_bl);
 		memcpy(pwm_bl_devdata, &tegratab_lgd_pwm_bl,
 				sizeof(struct of_tegra_pwm_bl_devdata));
@@ -159,6 +160,7 @@ static int tegratab_pwm_bl_devdata_gen_remove(struct platform_device *pdev)
 
 static struct of_device_id tegratab_pwm_bl_of_match[] = {
 	{ .compatible = "lgd-pwm-bl,tegratab", },
+	{ .compatible = "lgd-pwm-bl,tegranote7c", },
 	{ },
 };
 

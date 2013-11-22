@@ -296,7 +296,8 @@ static int tegratab_lcd_devdata_gen_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 
-	if (of_find_compatible_node(NULL, NULL, "lgd,tegratab")) {
+	if (of_find_compatible_node(NULL, NULL, "lgd,tegratab") ||
+		of_find_compatible_node(NULL, NULL, "lgd,tegranote7c")) {
 		tegratab_lgd_lcd_devdata(&tegratab_lgd_lcd);
 		memcpy(lcd_devdata, &tegratab_lgd_lcd,
 				sizeof(struct of_tegra_lcd_devdata));
@@ -314,6 +315,7 @@ static int tegratab_lcd_devdata_gen_remove(struct platform_device *pdev)
 
 static struct of_device_id tegratab_lcd_of_match[] = {
 	{ .compatible = "lgd,tegratab", },
+	{ .compatible = "lgd,tegranote7c", },
 	{ },
 };
 
