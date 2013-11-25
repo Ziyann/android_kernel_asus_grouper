@@ -316,6 +316,17 @@ obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-kbc.o
 obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-sensors.o
 obj-${CONFIG_MACH_TEGRATAB}            += panel-lgd-wxga-7-0.o
 
+obj-${CONFIG_MACH_TEGRANOTE7C}            += board-tegranote7c.o
+obj-${CONFIG_MACH_TEGRANOTE7C}            += board-tegranote7c-memory.o
+obj-${CONFIG_MACH_TEGRANOTE7C}            += board-tegranote7c-pinmux.o
+obj-${CONFIG_MACH_TEGRANOTE7C}            += board-tegranote7c-power.o
+obj-${CONFIG_MACH_TEGRANOTE7C}            += board-tegranote7c-powermon.o
+obj-${CONFIG_MACH_TEGRANOTE7C}            += board-tegranote7c-sdhci.o
+obj-${CONFIG_MACH_TEGRANOTE7C}            += board-tegranote7c-panel.o
+obj-${CONFIG_MACH_TEGRANOTE7C}            += board-tegranote7c-kbc.o
+obj-${CONFIG_MACH_TEGRANOTE7C}            += board-tegranote7c-sensors.o
+obj-${CONFIG_MACH_TEGRANOTE7C}            += panel-lgd-wxga-7-0.o
+
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-memory.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-pinmux.o
