@@ -230,7 +230,8 @@ static int bq2419x_init(struct bq2419x_chip *bq2419x)
 	}
 
 	/* Set input current limit to 2A in case of DCP */
-	if (machine_is_tegratab() && (bq2419x->in_current_limit >= 1800))
+	if ((machine_is_tegratab() || machine_is_tegranote7c()) &&
+			(bq2419x->in_current_limit >= 1800))
 		bq2419x->in_current_limit = 2000;
 
 	dev_info(bq2419x->dev,
@@ -261,7 +262,7 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 {
 	int ret;
 
-	if (machine_is_tegratab()) {
+	if (machine_is_tegratab() || machine_is_tegranote7c()) {
 		/* InCharge Limit=3.136A, Battery Spec is 3.2A */
 		ret = regmap_write(bq2419x->regmap,
 				BQ2419X_CHRG_CTRL_REG, 0xA4);
