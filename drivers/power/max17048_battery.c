@@ -442,7 +442,7 @@ static void max17048_work(struct work_struct *work)
 
 	chip = container_of(work, struct max17048_chip, work.work);
 
-	if (machine_is_tegratab()) {
+	if (machine_is_tegratab() || machine_is_tegranote7c()) {
 		/* Use Tskin as Battery Temp */
 		max17048_thz_get_temp("therm_est", &temp);
 
