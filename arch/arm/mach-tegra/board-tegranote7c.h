@@ -98,7 +98,7 @@
 /* Modem related GPIOs */
 #define MODEM_EN		TEGRA_GPIO_PP2
 #define MDM_RST			TEGRA_GPIO_PP0
-#define MDM_COLDBOOT		TEGRA_GPIO_PO5
+#define MDM_COLDBOOT		TEGRA_GPIO_PI5
 
 int tegranote7c_regulator_init(void);
 int tegranote7c_power_off_init(void);

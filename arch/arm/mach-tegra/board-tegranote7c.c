@@ -528,7 +528,7 @@ static int baseband_init(void)
 	}
 
 	/* enable pull-down for MDM_COLD_BOOT */
-	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_ULPI_DATA4,
+	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_GMI_IORDY,
 				    TEGRA_PUPD_PULL_DOWN);
 
 	/* export GPIO for user space access through sysfs */
