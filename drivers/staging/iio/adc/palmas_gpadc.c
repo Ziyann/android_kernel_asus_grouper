@@ -374,7 +374,7 @@ scrub:
 static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 					int enable)
 {
-	unsigned int val, mask;
+	unsigned int val = 0, mask = 0;
 	int ret;
 
 	if (enable) {
@@ -420,9 +420,16 @@ static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 			return ret;
 		}
 
+		/* Restore CH3 current source if CH3 is dual current mode. */
+		if ((adc_chan == PALMAS_ADC_CH_IN3) && adc->ch3_dual_current) {
+			mask |= PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK;
+			val = (adc->ch3_current
+				<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+		}
+
+		mask |= PALMAS_GPADC_CTRL1_GPADC_FORCE;
 		ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_CTRL1,
-				PALMAS_GPADC_CTRL1_GPADC_FORCE, 0);
+					 PALMAS_GPADC_CTRL1, mask, val);
 		if (ret < 0) {
 			dev_err(adc->dev, "CTRL1 update failed: %d\n", ret);
 			return ret;
