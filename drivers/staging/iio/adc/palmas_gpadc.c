@@ -25,11 +25,13 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/uaccess.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/pm.h>
 #include <linux/mfd/palmas.h>
 #include <linux/completion.h>
+#include <linux/debugfs.h>
 
 #include "../iio.h"
 #include "../driver.h"
@@ -97,6 +99,8 @@ struct palmas_gpadc {
 	bool				auto_conv0_enable;
 	bool				auto_conv1_enable;
 	int				auto_conversion_period;
+
+	struct dentry			*dentry;
 };
 
 /*
@@ -181,6 +185,9 @@ static int palmas_gpadc_auto_conv_configure(struct palmas_gpadc *adc)
 	int ch0 = 0, ch1 = 0;
 	int thres;
 	int ret;
+
+	if (!adc->auto_conv0_enable && !adc->auto_conv1_enable)
+		return 0;
 
 	adc_period = adc->auto_conversion_period;
 	for (i = 0; i < 16; ++i) {
@@ -291,6 +298,9 @@ static int palmas_gpadc_auto_conv_reset(struct palmas_gpadc *adc)
 {
 	int ret;
 
+	if (!adc->auto_conv0_enable && !adc->auto_conv1_enable)
+		return 0;
+
 	ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
 			PALMAS_GPADC_AUTO_SELECT, 0);
 	if (ret < 0) {
@@ -302,16 +312,6 @@ static int palmas_gpadc_auto_conv_reset(struct palmas_gpadc *adc)
 	if (ret < 0) {
 		dev_err(adc->dev, "Disable auto conversion failed: %d\n", ret);
 		return ret;
-	}
-
-	if (adc->auto_conv0_data.adc_shutdown ||
-			adc->auto_conv1_data.adc_shutdown) {
-		ret = palmas_gpadc_auto_conv_configure(adc);
-		if (ret < 0) {
-			dev_err(adc->dev,
-				"auto conversion configure failed: %d\n", ret);
-			return ret;
-		}
 	}
 
 	return 0;
@@ -427,7 +427,16 @@ static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 				<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
 		}
 
+		mask = val = 0;
 		mask |= PALMAS_GPADC_CTRL1_GPADC_FORCE;
+
+		/* Restore CH3 current source if CH3 is dual current mode. */
+		if ((adc_chan == PALMAS_ADC_CH_IN3) && adc->ch3_dual_current) {
+			mask |= PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK;
+			val |= (adc->ch3_current
+				<< PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+		}
+
 		ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
 					 PALMAS_GPADC_CTRL1, mask, val);
 		if (ret < 0) {
@@ -591,6 +600,171 @@ out_unlock:
 	mutex_unlock(&indio_dev->mlock);
 	return ret;
 }
+
+#ifdef CONFIG_DEBUG_FS
+static int auto_conv_period_get(void *data, u64 *val)
+{
+	struct palmas_gpadc *adc = (struct palmas_gpadc *)data;
+
+	*val = adc->auto_conversion_period;
+	return 0;
+}
+
+static int auto_conv_period_set(void *data, u64 val)
+{
+	struct palmas_gpadc *adc = (struct palmas_gpadc *)data;
+	struct iio_dev *iodev = dev_get_drvdata(adc->dev);
+
+	adc->auto_conversion_period = val;
+
+	mutex_lock(&iodev->mlock);
+	palmas_gpadc_auto_conv_reset(adc);
+	palmas_gpadc_auto_conv_configure(adc);
+	mutex_unlock(&iodev->mlock);
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(auto_conv_period_fops, auto_conv_period_get,
+			auto_conv_period_set, "%llu\n");
+
+static ssize_t auto_conv_data_read(struct file *file,
+			char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct palmas_gpadc *adc = file->private_data;
+	unsigned char *d_iname;
+	char buf[64] = { 0, };
+	ssize_t ret = 0;
+
+	d_iname = file->f_path.dentry->d_iname;
+
+	if (!strcmp("auto_conv0_channel", d_iname)) {
+		ret = snprintf(buf, sizeof(buf), "%d\n",
+				adc->auto_conv0_data.adc_channel_number);
+	} else if (!strcmp("auto_conv1_channel", d_iname)) {
+		ret = snprintf(buf, sizeof(buf), "%d\n",
+				adc->auto_conv1_data.adc_channel_number);
+	} else if (!strcmp("auto_conv0_high_threshold", d_iname)) {
+		ret = snprintf(buf, sizeof(buf), "%d\n",
+				adc->auto_conv0_data.adc_high_threshold);
+	} else if  (!strcmp("auto_conv1_high_threshold", d_iname)) {
+		ret = snprintf(buf, sizeof(buf), "%d\n",
+				adc->auto_conv1_data.adc_high_threshold);
+	} else if (!strcmp("auto_conv0_low_threshold", d_iname)) {
+		ret = snprintf(buf, sizeof(buf), "%d\n",
+				adc->auto_conv0_data.adc_low_threshold);
+	} else if (!strcmp("auto_conv1_low_threshold", d_iname)) {
+		ret = snprintf(buf, sizeof(buf), "%d\n",
+				adc->auto_conv1_data.adc_low_threshold);
+	} else if (!strcmp("auto_conv0_shutdown", d_iname)) {
+		ret = snprintf(buf, sizeof(buf), "%d\n",
+				adc->auto_conv0_data.adc_shutdown);
+	} else if (!strcmp("auto_conv1_shutdown", d_iname)) {
+		ret = snprintf(buf, sizeof(buf), "%d\n",
+				adc->auto_conv1_data.adc_shutdown);
+	}
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+}
+
+static ssize_t auto_conv_data_write(struct file *file,
+			const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct palmas_gpadc *adc = file->private_data;
+	struct iio_dev *iodev = dev_get_drvdata(adc->dev);
+	unsigned char *d_iname;
+	char buf[64] = { 0, };
+	int val;
+	ssize_t buf_size;
+
+	buf_size = min(count, (sizeof(buf)-1));
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+
+	if (!sscanf(buf, "%d\n", &val))
+		return -EINVAL;
+
+	d_iname = file->f_path.dentry->d_iname;
+
+	if (!strcmp("auto_conv0_channel", d_iname)) {
+		adc->auto_conv0_data.adc_channel_number = val;
+	} else if (!strcmp("auto_conv1_channel", d_iname)) {
+		adc->auto_conv1_data.adc_channel_number = val;
+	} else if (!strcmp("auto_conv0_high_threshold", d_iname)) {
+		adc->auto_conv0_data.adc_high_threshold = val;
+		if (val > 0)
+			adc->auto_conv0_data.adc_low_threshold = 0;
+	} else if  (!strcmp("auto_conv1_high_threshold", d_iname)) {
+		adc->auto_conv1_data.adc_high_threshold = val;
+		if (val > 0)
+			adc->auto_conv1_data.adc_low_threshold = 0;
+	} else if (!strcmp("auto_conv0_low_threshold", d_iname)) {
+		adc->auto_conv0_data.adc_low_threshold = val;
+		if (val > 0)
+			adc->auto_conv0_data.adc_high_threshold = 0;
+	} else if (!strcmp("auto_conv1_low_threshold", d_iname)) {
+		adc->auto_conv1_data.adc_low_threshold = val;
+		if (val > 0)
+			adc->auto_conv1_data.adc_high_threshold = 0;
+	} else if (!strcmp("auto_conv0_shutdown", d_iname)) {
+		adc->auto_conv0_data.adc_shutdown = val;
+	} else if (!strcmp("auto_conv1_shutdown", d_iname)) {
+		adc->auto_conv1_data.adc_shutdown = val;
+	}
+
+	mutex_lock(&iodev->mlock);
+	palmas_gpadc_auto_conv_reset(adc);
+	palmas_gpadc_auto_conv_configure(adc);
+	mutex_unlock(&iodev->mlock);
+	return buf_size;
+}
+
+static const struct file_operations auto_conv_data_fops = {
+	.open		= simple_open,
+	.write		= auto_conv_data_write,
+	.read		= auto_conv_data_read,
+};
+
+static void palmas_gpadc_debugfs_init(struct palmas_gpadc *adc)
+{
+	adc->dentry = debugfs_create_dir(dev_name(adc->dev), NULL);
+	if (!adc->dentry) {
+		dev_err(adc->dev, "%s: failed to create debugfs dir\n",
+			__func__);
+		return;
+	}
+
+	if (adc->auto_conv0_enable || adc->auto_conv1_enable)
+		debugfs_create_file("auto_conv_period", 0644,
+				    adc->dentry, adc,
+				    &auto_conv_period_fops);
+
+	if (adc->auto_conv0_enable) {
+		debugfs_create_file("auto_conv0_channel", 0644,
+				    adc->dentry, adc, &auto_conv_data_fops);
+		debugfs_create_file("auto_conv0_high_threshold", 0644,
+				    adc->dentry, adc, &auto_conv_data_fops);
+		debugfs_create_file("auto_conv0_low_threshold", 0644,
+				    adc->dentry, adc, &auto_conv_data_fops);
+		debugfs_create_file("auto_conv0_shutdown", 0644,
+				    adc->dentry, adc, &auto_conv_data_fops);
+	}
+
+	if (adc->auto_conv1_enable) {
+		debugfs_create_file("auto_conv1_channel", 0644,
+				    adc->dentry, adc, &auto_conv_data_fops);
+		debugfs_create_file("auto_conv1_high_threshold", 0644,
+				    adc->dentry, adc, &auto_conv_data_fops);
+		debugfs_create_file("auto_conv1_low_threshold", 0644,
+				    adc->dentry, adc, &auto_conv_data_fops);
+		debugfs_create_file("auto_conv1_shutdown", 0644,
+				    adc->dentry, adc, &auto_conv_data_fops);
+	}
+}
+#else
+static void palmas_gpadc_debugfs_init(struct palmas_gpadc *adc)
+{
+}
+#endif /*  CONFIG_DEBUG_FS */
 
 static const struct iio_info palmas_gpadc_iio_info = {
 	.read_raw = &palmas_gpadc_read_raw,
@@ -758,16 +932,13 @@ static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
 	if (adc->auto_conv0_enable || adc->auto_conv1_enable)
 		device_wakeup_enable(&pdev->dev);
 
-	if (adc->auto_conv0_data.adc_shutdown ||
-			adc->auto_conv1_data.adc_shutdown) {
-		ret = palmas_gpadc_auto_conv_configure(adc);
-		if (ret < 0) {
-			dev_err(adc->dev,
-				"auto conversion configure failed: %d\n", ret);
-			goto out_irq_auto1_free;
-		}
+	ret = palmas_gpadc_auto_conv_configure(adc);
+	if (ret < 0) {
+		dev_err(adc->dev, "auto_conv_configure() failed: %d\n", ret);
+		goto out_irq_auto1_free;
 	}
 
+	palmas_gpadc_debugfs_init(adc);
 	return 0;
 
 out_irq_auto1_free:
@@ -792,6 +963,7 @@ static int __devexit palmas_gpadc_remove(struct platform_device *pdev)
 	struct palmas_gpadc *adc = iio_priv(iodev);
 	struct palmas_platform_data *pdata = dev_get_platdata(pdev->dev.parent);
 
+	debugfs_remove_recursive(adc->dentry);
 	if (pdata->adc_pdata->iio_maps)
 		iio_map_array_unregister(iodev, pdata->adc_pdata->iio_maps);
 	iio_device_unregister(iodev);
@@ -810,14 +982,9 @@ static int palmas_gpadc_suspend(struct device *dev)
 	struct iio_dev *iodev = dev_get_drvdata(dev);
 	struct palmas_gpadc *adc = iio_priv(iodev);
 	int wakeup = adc->auto_conv0_enable || adc->auto_conv1_enable;
-	int ret;
 
 	if (!device_may_wakeup(dev) || !wakeup)
 		return 0;
-
-	ret = palmas_gpadc_auto_conv_configure(adc);
-	if (ret < 0)
-		return ret;
 
 	if (adc->auto_conv0_enable)
 		enable_irq_wake(adc->irq_auto_0);
@@ -833,14 +1000,9 @@ static int palmas_gpadc_resume(struct device *dev)
 	struct iio_dev *iodev = dev_get_drvdata(dev);
 	struct palmas_gpadc *adc = iio_priv(iodev);
 	int wakeup = adc->auto_conv0_enable || adc->auto_conv1_enable;
-	int ret;
 
 	if (!device_may_wakeup(dev) || !wakeup)
 		return 0;
-
-	ret = palmas_gpadc_auto_conv_reset(adc);
-	if (ret < 0)
-		return ret;
 
 	if (adc->auto_conv0_enable)
 		disable_irq_wake(adc->irq_auto_0);
