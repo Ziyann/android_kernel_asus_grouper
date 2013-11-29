@@ -419,6 +419,13 @@ static struct iio_map palmas_adc_iio_maps[] = {
 	PALMAS_GPADC_IIO_MAP(NULL, NULL, NULL),
 };
 
+struct palmas_adc_auto_conv_property palmas_adc_auto_conv1_data = {
+	.adc_channel_number = PALMAS_ADC_CH_IN1, /* NTC thermistor(Tboard) */
+	/* Shutdown if ADC auto conversion is below 168(>95C). */
+	.adc_low_threshold = 168, /* 95C */
+	.adc_shutdown = true,
+};
+
 static struct palmas_gpadc_platform_data palmas_adc_pdata = {
 	.ch0_current_uA = 5,
 	/* If ch3_dual_current is true, it will measure ch3 input signal with
@@ -428,6 +435,9 @@ static struct palmas_gpadc_platform_data palmas_adc_pdata = {
 	.ch3_dual_current = true,
 	.extended_delay = true,
 	.iio_maps = palmas_adc_iio_maps,
+
+	.auto_conversion_period_ms = 1000,
+	.adc_auto_conv1_data = &palmas_adc_auto_conv1_data,
 };
 
 static struct palmas_pinctrl_config palmas_pincfg[] = {
