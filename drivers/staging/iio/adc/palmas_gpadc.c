@@ -174,6 +174,149 @@ static irqreturn_t palmas_gpadc_irq_auto(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static int palmas_gpadc_auto_conv_configure(struct palmas_gpadc *adc)
+{
+	int adc_period, conv;
+	int i;
+	int ch0 = 0, ch1 = 0;
+	int thres;
+	int ret;
+
+	adc_period = adc->auto_conversion_period;
+	for (i = 0; i < 16; ++i) {
+		if (((1000 * (1 << i))/32) > adc_period)
+			break;
+	}
+	if (i > 0)
+		i--;
+	adc_period = i;
+	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+			PALMAS_GPADC_AUTO_CTRL,
+			PALMAS_GPADC_AUTO_CTRL_COUNTER_CONV_MASK,
+			adc_period);
+	if (ret < 0) {
+		dev_err(adc->dev, "AUTO_CTRL write failed: %d\n", ret);
+		return ret;
+	}
+
+	conv = 0;
+	if (adc->auto_conv1_enable) {
+		int is_high;
+
+		ch0 = adc->auto_conv1_data.adc_channel_number;
+		conv |= PALMAS_GPADC_AUTO_CTRL_AUTO_CONV0_EN;
+		conv |= (adc->auto_conv1_data.adc_shutdown ?
+			PALMAS_GPADC_AUTO_CTRL_SHUTDOWN_CONV0 : 0);
+		if (adc->auto_conv1_data.adc_high_threshold > 0) {
+			thres = adc->auto_conv1_data.adc_high_threshold;
+			is_high = 0;
+		} else {
+			thres = adc->auto_conv1_data.adc_low_threshold;
+			is_high = BIT(7);
+		}
+
+		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_THRES_CONV0_LSB, thres & 0xFF);
+		if (ret < 0) {
+			dev_err(adc->dev,
+				"THRES_CONV0_LSB write failed: %d\n", ret);
+			return ret;
+		}
+
+		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_THRES_CONV0_MSB,
+				((thres >> 8) & 0xF) | is_high);
+		if (ret < 0) {
+			dev_err(adc->dev,
+				"THRES_CONV0_MSB write failed: %d\n", ret);
+			return ret;
+		}
+	}
+
+	if (adc->auto_conv2_enable) {
+		int is_high;
+
+		ch1 = adc->auto_conv2_data.adc_channel_number;
+		conv |= PALMAS_GPADC_AUTO_CTRL_AUTO_CONV1_EN;
+		conv |= (adc->auto_conv2_data.adc_shutdown ?
+			PALMAS_GPADC_AUTO_CTRL_SHUTDOWN_CONV1 : 0);
+		if (adc->auto_conv2_data.adc_high_threshold > 0) {
+			thres = adc->auto_conv2_data.adc_high_threshold;
+			is_high = 0;
+		} else {
+			thres = adc->auto_conv2_data.adc_low_threshold;
+			is_high = BIT(7);
+		}
+
+		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_THRES_CONV1_LSB, thres & 0xFF);
+		if (ret < 0) {
+			dev_err(adc->dev,
+				"THRES_CONV1_LSB write failed: %d\n", ret);
+			return ret;
+		}
+
+		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
+				PALMAS_GPADC_THRES_CONV1_MSB,
+				((thres >> 8) & 0xF) | is_high);
+		if (ret < 0) {
+			dev_err(adc->dev,
+				"THRES_CONV1_MSB write failed: %d\n", ret);
+			return ret;
+		}
+	}
+
+	ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
+			PALMAS_GPADC_AUTO_SELECT, (ch1 << 4) | ch0);
+	if (ret < 0) {
+		dev_err(adc->dev, "AUTO_SELECT write failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+			PALMAS_GPADC_AUTO_CTRL,
+			PALMAS_GPADC_AUTO_CTRL_SHUTDOWN_CONV1 |
+			PALMAS_GPADC_AUTO_CTRL_SHUTDOWN_CONV0 |
+			PALMAS_GPADC_AUTO_CTRL_AUTO_CONV1_EN |
+			PALMAS_GPADC_AUTO_CTRL_AUTO_CONV0_EN, conv);
+	if (ret < 0) {
+		dev_err(adc->dev, "AUTO_CTRL write failed: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int palmas_gpadc_auto_conv_reset(struct palmas_gpadc *adc)
+{
+	int ret;
+
+	ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
+			PALMAS_GPADC_AUTO_SELECT, 0);
+	if (ret < 0) {
+		dev_err(adc->dev, "AUTO_SELECT write failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = palmas_disable_auto_conversion(adc);
+	if (ret < 0) {
+		dev_err(adc->dev, "Disable auto conversion failed: %d\n", ret);
+		return ret;
+	}
+
+	if (adc->auto_conv1_data.adc_shutdown ||
+			adc->auto_conv2_data.adc_shutdown) {
+		ret = palmas_gpadc_auto_conv_configure(adc);
+		if (ret < 0) {
+			dev_err(adc->dev,
+				"auto conversion configure failed: %d\n", ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 static int palmas_gpadc_start_mask_interrupt(struct palmas_gpadc *adc, int mask)
 {
 	int ret;
@@ -608,6 +751,16 @@ static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
 	if (adc->auto_conv1_enable || adc->auto_conv2_enable)
 		device_wakeup_enable(&pdev->dev);
 
+	if (adc->auto_conv1_data.adc_shutdown ||
+			adc->auto_conv2_data.adc_shutdown) {
+		ret = palmas_gpadc_auto_conv_configure(adc);
+		if (ret < 0) {
+			dev_err(adc->dev,
+				"auto conversion configure failed: %d\n", ret);
+			goto out_irq_auto1_free;
+		}
+	}
+
 	return 0;
 
 out_irq_auto1_free:
@@ -645,133 +798,6 @@ static int __devexit palmas_gpadc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int palmas_adc_auto_conv_configure(struct palmas_gpadc *adc)
-{
-	int adc_period, conv;
-	int i;
-	int ch0 = 0, ch1 = 0;
-	int thres;
-	int ret;
-
-	adc_period = adc->auto_conversion_period;
-	for (i = 0; i < 16; ++i) {
-		if (((1000 * (1 << i))/32) > adc_period)
-			break;
-	}
-	if (i > 0)
-		i--;
-	adc_period = i;
-	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
-			PALMAS_GPADC_AUTO_CTRL,
-			PALMAS_GPADC_AUTO_CTRL_COUNTER_CONV_MASK,
-			adc_period);
-	if (ret < 0) {
-		dev_err(adc->dev, "AUTO_CTRL write failed: %d\n", ret);
-		return ret;
-	}
-
-	conv = 0;
-	if (adc->auto_conv1_enable) {
-		int is_high;
-
-		ch0 = adc->auto_conv1_data.adc_channel_number;
-		conv |= PALMAS_GPADC_AUTO_CTRL_AUTO_CONV0_EN;
-		if (adc->auto_conv1_data.adc_high_threshold > 0) {
-			thres = adc->auto_conv1_data.adc_high_threshold;
-			is_high = 0;
-		} else {
-			thres = adc->auto_conv1_data.adc_low_threshold;
-			is_high = BIT(7);
-		}
-
-		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_THRES_CONV0_LSB, thres & 0xFF);
-		if (ret < 0) {
-			dev_err(adc->dev,
-				"THRES_CONV0_LSB write failed: %d\n", ret);
-			return ret;
-		}
-
-		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_THRES_CONV0_MSB,
-				((thres >> 8) & 0xF) | is_high);
-		if (ret < 0) {
-			dev_err(adc->dev,
-				"THRES_CONV0_MSB write failed: %d\n", ret);
-			return ret;
-		}
-	}
-
-	if (adc->auto_conv2_enable) {
-		int is_high;
-
-		ch1 = adc->auto_conv2_data.adc_channel_number;
-		conv |= PALMAS_GPADC_AUTO_CTRL_AUTO_CONV1_EN;
-		if (adc->auto_conv2_data.adc_high_threshold > 0) {
-			thres = adc->auto_conv2_data.adc_high_threshold;
-			is_high = 0;
-		} else {
-			thres = adc->auto_conv2_data.adc_low_threshold;
-			is_high = BIT(7);
-		}
-
-		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_THRES_CONV1_LSB, thres & 0xFF);
-		if (ret < 0) {
-			dev_err(adc->dev,
-				"THRES_CONV1_LSB write failed: %d\n", ret);
-			return ret;
-		}
-
-		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_THRES_CONV1_MSB,
-				((thres >> 8) & 0xF) | is_high);
-		if (ret < 0) {
-			dev_err(adc->dev,
-				"THRES_CONV1_MSB write failed: %d\n", ret);
-			return ret;
-		}
-	}
-
-	ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-			PALMAS_GPADC_AUTO_SELECT, (ch1 << 4) | ch0);
-	if (ret < 0) {
-		dev_err(adc->dev, "AUTO_SELECT write failed: %d\n", ret);
-		return ret;
-	}
-
-	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
-			PALMAS_GPADC_AUTO_CTRL,
-			PALMAS_GPADC_AUTO_CTRL_AUTO_CONV1_EN |
-			PALMAS_GPADC_AUTO_CTRL_AUTO_CONV0_EN, conv);
-	if (ret < 0) {
-		dev_err(adc->dev, "AUTO_CTRL write failed: %d\n", ret);
-		return ret;
-	}
-
-	return 0;
-}
-
-static int palmas_adc_auto_conv_reset(struct palmas_gpadc *adc)
-{
-	int ret;
-
-	ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-			PALMAS_GPADC_AUTO_SELECT, 0);
-	if (ret < 0) {
-		dev_err(adc->dev, "AUTO_SELECT write failed: %d\n", ret);
-		return ret;
-	}
-
-	ret = palmas_disable_auto_conversion(adc);
-	if (ret < 0) {
-		dev_err(adc->dev, "Disable auto conversion failed: %d\n", ret);
-		return ret;
-	}
-
-	return 0;
-}
-
 static int palmas_gpadc_suspend(struct device *dev)
 {
 	struct iio_dev *iodev = dev_get_drvdata(dev);
@@ -782,7 +808,7 @@ static int palmas_gpadc_suspend(struct device *dev)
 	if (!device_may_wakeup(dev) || !wakeup)
 		return 0;
 
-	ret = palmas_adc_auto_conv_configure(adc);
+	ret = palmas_gpadc_auto_conv_configure(adc);
 	if (ret < 0)
 		return ret;
 
@@ -805,7 +831,7 @@ static int palmas_gpadc_resume(struct device *dev)
 	if (!device_may_wakeup(dev) || !wakeup)
 		return 0;
 
-	ret = palmas_adc_auto_conv_reset(adc);
+	ret = palmas_gpadc_auto_conv_reset(adc);
 	if (ret < 0)
 		return ret;
 
