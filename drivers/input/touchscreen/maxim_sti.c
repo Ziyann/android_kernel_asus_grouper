@@ -103,7 +103,7 @@ struct dev_data {
 #endif
 };
 
-atomic_t touch_dvdd_on = ATOMIC_INIT(0);
+atomic_t touch_dvdd_on = ATOMIC_INIT(1);
 static int prev_dvdd_rail_state;
 
 static struct list_head  dev_list;
