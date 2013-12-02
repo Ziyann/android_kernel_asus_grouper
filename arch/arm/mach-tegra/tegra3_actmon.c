@@ -594,7 +594,7 @@ static struct actmon_dev actmon_dev_cpu_emc = {
 	.boost_freq_step	= 16000,
 	.boost_up_coef		= 800,
 	.boost_down_coef	= 90,
-	.boost_up_threshold	= 27,
+	.boost_up_threshold	= 20,
 	.boost_down_threshold	= 10,
 	.avg_dependency_threshold	= CPU_AVG_ACT_THRESHOLD,
 
