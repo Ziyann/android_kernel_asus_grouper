@@ -435,9 +435,6 @@ static struct palmas_gpadc_platform_data palmas_adc_pdata = {
 	.ch3_dual_current = true,
 	.extended_delay = true,
 	.iio_maps = palmas_adc_iio_maps,
-
-	.auto_conversion_period_ms = 1000,
-	.adc_auto_conv1_data = &palmas_adc_auto_conv1_data,
 };
 
 static struct palmas_pinctrl_config palmas_pincfg[] = {
@@ -668,6 +665,15 @@ int __init tegratab_palmas_regulator_init(void)
 		palmas_pdata.clk32k_init_data = tegratab_palmas_clk32k_idata;
 		palmas_pdata.clk32k_init_data_size =
 				ARRAY_SIZE(tegratab_palmas_clk32k_idata);
+	}
+
+	if (board_info.board_id != BOARD_E1569 &&
+			(board_info.board_id == BOARD_P1640 &&
+			(board_info.fab != BOARD_FAB_A00 &&
+			board_info.fab != BOARD_FAB_A01))) {
+		palmas_adc_pdata.auto_conversion_period_ms = 1000;
+		palmas_adc_pdata.adc_auto_conv1_data =
+				&palmas_adc_auto_conv1_data;
 	}
 
 	if (get_androidboot_mode_charger())
