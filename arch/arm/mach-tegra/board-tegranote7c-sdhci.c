@@ -352,7 +352,10 @@ int __init tegranote7c_sdhci_init(void)
 		return 0;
 #endif
 
-	platform_device_register(&tegra_sdhci_device2);
+	/* sdcard slot is muxed to UART-A */
+	if (get_tegra_uart_debug_port_id() != UART_FROM_SDCARD)
+		platform_device_register(&tegra_sdhci_device2);
+
 	platform_device_register(&tegra_sdhci_device0);
 	tegranote7c_wifi_init();
 	return 0;

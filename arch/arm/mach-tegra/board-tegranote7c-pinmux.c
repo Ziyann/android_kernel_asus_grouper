@@ -56,6 +56,11 @@ static __initdata struct tegra_pingroup_config manual_config_pinmux[] = {
 	DEFAULT_PINMUX(ULPI_DATA7,    ULPI,        NORMAL,    NORMAL,   INPUT),
 };
 
+static __initdata struct tegra_pingroup_config e2542_uart_config_pinmux[] = {
+	DEFAULT_PINMUX(SDMMC3_CMD,    UARTA,       NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(SDMMC3_DAT1,   UARTA,       NORMAL,    NORMAL,   OUTPUT),
+};
+
 static __initdata struct tegra_pingroup_config dvt_a00_manual_config_pinmux[] = {
 	GPIO_PINMUX(KB_COL1, PULL_UP, NORMAL, INPUT, DISABLE), /* hall sensor input */
 };
@@ -125,6 +130,9 @@ int __init tegranote7c_pinmux_init(void)
 
 	tegra_pinmux_config_table(manual_config_pinmux,
 		ARRAY_SIZE(manual_config_pinmux));
+	if (get_tegra_uart_debug_port_id() == UART_FROM_SDCARD)
+		tegra_pinmux_config_table(e2542_uart_config_pinmux,
+			ARRAY_SIZE(e2542_uart_config_pinmux));
 
 	return 0;
 }

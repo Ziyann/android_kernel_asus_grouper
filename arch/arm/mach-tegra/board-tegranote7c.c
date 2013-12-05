@@ -280,6 +280,8 @@ static void __init uart_debug_init(void)
 	if (debug_port_id < 0)
 		return;
 
+	if (debug_port_id == UART_FROM_SDCARD)
+		debug_port_id = 0;
 	tegranote7c_uart_devices[debug_port_id] = uart_console_debug_device;
 }
 

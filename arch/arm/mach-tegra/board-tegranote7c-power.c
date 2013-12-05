@@ -795,7 +795,10 @@ subsys_initcall_sync(tegranote7c_fixed_regulator_init);
 
 int __init tegranote7c_regulator_init(void)
 {
-
+	if (get_tegra_uart_debug_port_id() == UART_FROM_SDCARD) {
+		reg_idata_ldo9.constraints.always_on = 1;
+		reg_idata_ldo9.constraints.boot_on = 1;
+	}
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	tegranote7c_cl_dvfs_init();
 #endif
