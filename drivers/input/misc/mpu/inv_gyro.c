@@ -51,6 +51,7 @@
 static char *nvi_vregs[] = {
 	"vdd",
 	"vlogic",
+	"vlogic_gyro",
 };
 
 static struct inv_reg_map_s chip_reg = {

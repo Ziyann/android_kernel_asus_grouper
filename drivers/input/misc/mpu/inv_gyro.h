@@ -424,7 +424,7 @@ struct inv_gyro_state_s {
 	struct i2c_client *i2c;
 	struct mpu_platform_data plat_data;
 	struct inv_mpu_slave *mpu_slave;
-	struct regulator_bulk_data vreg[2];
+	struct regulator_bulk_data vreg[3];
 	unsigned char i2c_addr;
 	unsigned char sample_divider;
 	unsigned char fifo_divider;
