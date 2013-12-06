@@ -491,6 +491,10 @@ static struct regulator_consumer_supply fixed_reg_vdd_lcd_bl_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
 };
 
+static struct regulator_consumer_supply fixed_reg_vlogic_gyro_supply[] = {
+	REGULATOR_SUPPLY("vlogic_gyro", "0-0069"),
+};
+
 /* EN_1V8_TS From TEGRA_GPIO_PH4 */
 static struct regulator_consumer_supply fixed_reg_dvdd_ts_supply[] = {
 	REGULATOR_SUPPLY("dvdd", "spi0.0"),
@@ -588,12 +592,17 @@ FIXED_REG(7,	en_lcd_1v8,	en_lcd_1v8,
 	palmas_rails(smps8),	0,	1,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	false,	true,	1,	1800);
 
+FIXED_REG(8,	vlogic_gyro,	vlogic_gyro,
+	palmas_rails(smps8),	0,	0,
+	TEGRA_GPIO_PR0,	false,	true,	0,	1800);
+
 /*
  * Creating the fixed regulator device tables
  */
 #define ADD_FIXED_REG(_name)	(&fixed_reg_##_name##_dev)
 
 #define TEGRANOTE7C_COMMON_FIXED_REG		\
+	ADD_FIXED_REG(vlogic_gyro),		\
 	ADD_FIXED_REG(vdd_lcd_bl_en),		\
 	ADD_FIXED_REG(vdd_hdmi_5v0),		\
 	ADD_FIXED_REG(vddio_sd_slot),		\
