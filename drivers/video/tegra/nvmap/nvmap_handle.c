@@ -3,7 +3,7 @@
  *
  * Handle allocation and freeing routines for nvmap
  *
- * Copyright (c) 2009-2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2009-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -988,6 +988,15 @@ struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
 	BUG_ON(!client || client->dev != nvmap_dev);
 	/* on success, the reference count for the handle should be
 	 * incremented, so the success paths will not call nvmap_handle_put */
+
+	/* Allow the handle to be accessed by other (non-owner)
+	 clients only if the owner is "videobuf2-dma-nvmap
+	 which is a V4L2 capture kernel module. This handle can
+	 be accessed by the "user" client for rendering/encoding */
+	if (!strcmp(((struct nvmap_handle *)id)->owner->name,
+				"videobuf2-dma-nvmap"))
+		client = ((struct nvmap_handle *)id)->owner;
+
 	h = nvmap_validate_get(client, id);
 
 	if (!h) {
