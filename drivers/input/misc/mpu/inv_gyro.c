@@ -684,10 +684,10 @@ static int nvi_pwr_mgmt_1_war(struct inv_gyro_state_s *inf)
 
 	for (i = 0; i < POWER_UP_TIME; i++) {
 		err = inv_i2c_single_write(inf, inf->reg->pwr_mgmt_1, 0);
-		if (err > 0) {
+		if (!err) {
 			val = -1;
 			err = inv_i2c_read(inf, inf->reg->pwr_mgmt_1, 1, &val);
-			if (err > 0 && !val)
+			if (!err && !val)
 				break;
 		}
 		mdelay(1);
@@ -815,6 +815,8 @@ static int nvi_vreg_en_all(struct inv_gyro_state_s *inf)
 
 	for (i = 0; i < ARRAY_SIZE(nvi_vregs); i++)
 		err |= nvi_vreg_en(inf, i);
+	if (err == 1)
+		mdelay(8);
 	return err;
 }
 
