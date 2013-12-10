@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1259,7 +1259,8 @@ static bool tegra_dc_hdmi_valid_asp_ratio(const struct tegra_dc *dc,
 	int s_aspratio = 0;
 
 	/* To check the aspect upto two decimal digits, calculate in % */
-	m_aspratio = (mode->xres*100 / mode->yres);
+	if (mode->yres)
+		m_aspratio = (mode->xres*100 / mode->yres);
 
 	if ((m_aspratio < TEGRA_DC_HDMI_MIN_ASPECT_RATIO_PERCENT) ||
 			(m_aspratio > TEGRA_DC_HDMI_MAX_ASPECT_RATIO_PERCENT))
