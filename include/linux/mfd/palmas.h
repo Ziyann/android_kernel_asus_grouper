@@ -2,7 +2,7 @@
  * TI Palmas
  *
  * Copyright 2011 Texas Instruments Inc.
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Graeme Gregory <gg@slimlogic.co.uk>
  *
@@ -208,7 +208,7 @@ struct palmas_rtc_platform_data {
 };
 
 /*
- * ADC auto_conv property: Generate interrupt when threshold crossed.
+ * ADC auto conv property: Generate auto conv interrupt when threshold crossed.
  * @adc_channel_number: ADC channel number for monitoring.
  * @adc_high_threshold: ADC High raw data for upper threshold to generate int.
  * @adc_low_threshold: ADC low raw data for lower threshold to generate int.
@@ -229,8 +229,8 @@ struct palmas_gpadc_platform_data {
 
 	struct iio_map *iio_maps;
 	int auto_conversion_period_ms;
+	struct palmas_adc_auto_conv_property *adc_auto_conv0_data;
 	struct palmas_adc_auto_conv_property *adc_auto_conv1_data;
-	struct palmas_adc_auto_conv_property *adc_auto_conv2_data;
 };
 
 struct palmas_pinctrl_config {
