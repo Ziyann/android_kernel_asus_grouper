@@ -1679,12 +1679,17 @@ static int sdhci_tegra_issue_tuning_cmd(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 	int err = 0;
 	u8 ctrl;
 	u32 mask;
 	unsigned int timeout = 10;
 	int flags;
 	u32 intstatus;
+
+	if (gpio_is_valid(plat->cd_gpio)
+			&& (gpio_get_value(plat->cd_gpio) != 0))
+		return -ENODEV;
 
 	mask = SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT;
 	while (sdhci_readl(sdhci, SDHCI_PRESENT_STATE) & mask) {
@@ -1747,7 +1752,7 @@ static int sdhci_tegra_issue_tuning_cmd(struct sdhci_host *sdhci)
 	} else {
 		tegra_sdhci_reset(sdhci, SDHCI_RESET_CMD);
 		tegra_sdhci_reset(sdhci, SDHCI_RESET_DATA);
-		err = -EIO;
+		err = -EAGAIN;
 	}
 
 	if (sdhci->tuning_done) {
@@ -1757,7 +1762,7 @@ static int sdhci_tegra_issue_tuning_cmd(struct sdhci_host *sdhci)
 			(ctrl & SDHCI_CTRL_TUNED_CLK))
 			err = 0;
 		else
-			err = -EIO;
+			err = -EAGAIN;
 	}
 	mdelay(1);
 out:
@@ -1777,6 +1782,8 @@ static int sdhci_tegra_scan_tap_values(struct sdhci_host *sdhci,
 
 		/* Run frequency tuning */
 		err = sdhci_tegra_issue_tuning_cmd(sdhci);
+		if (err == -ENODEV)
+			return err;
 		if (err && retry) {
 			retry--;
 			continue;
@@ -1813,7 +1820,10 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	/* Get the partial window data */
 	tap_value = 0;
 	tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, false);
-	if (!tap_value) {
+	if (tap_value < 0) {
+		err = -EIO;
+		goto out;
+	} else if (!tap_value) {
 		tap_data->abandon_partial_win = true;
 		tap_data->partial_win = 0;
 	} else if (tap_value > MAX_TAP_VALUES) {
@@ -1838,7 +1848,10 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 		/* Get the full window start */
 		tap_value++;
 		tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, true);
-		if (tap_value > MAX_TAP_VALUES) {
+		if (tap_value < 0) {
+			err = -EIO;
+			goto out;
+		} else if (tap_value > MAX_TAP_VALUES) {
 			/* All tap values exhausted. No full window */
 			tap_data->abandon_full_win = true;
 			goto out;
