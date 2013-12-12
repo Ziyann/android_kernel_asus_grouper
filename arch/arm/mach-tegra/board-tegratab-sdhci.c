@@ -347,7 +347,7 @@ int __init tegratab_sdhci_init(void)
 	platform_device_register(&tegra_sdhci_device3);
 
 #ifdef CONFIG_ANDROID
-	/* In charger mode, don't register wifi and external sd. */
+	/* In charger mode, don't register wifi and external sd to save power*/
 	if (get_androidboot_mode_charger())
 		return 0;
 #endif
