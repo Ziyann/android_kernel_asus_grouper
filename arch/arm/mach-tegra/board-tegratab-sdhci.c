@@ -295,7 +295,7 @@ static int __init tegratab_wifi_prepower(void)
 		return 0;
 
 #ifdef CONFIG_ANDROID
-	/* In charger mode, don't power on wifi. */
+	/* In charger mode, don't power on wifi to lower power consumption */
 	if (get_androidboot_mode_charger())
 		return 0;
 #endif
