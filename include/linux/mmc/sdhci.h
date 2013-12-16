@@ -93,6 +93,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK_NON_STANDARD_TUNING 		(1ULL<<33)
 /* Controller doesn't calculate max_discard_to */
 #define SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO 		(1ULL<<34)
+/* The system physically doesn't support 1.8v, even if the host does */
+#define SDHCI_QUIRK2_NO_1_8_V				(1ULL<<35)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
