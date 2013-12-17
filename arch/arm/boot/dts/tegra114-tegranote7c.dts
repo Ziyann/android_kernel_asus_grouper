@@ -69,7 +69,7 @@
 				nvidia,soft-clipping-enable= <1>;
 				nvidia,soft-clipping-threshold = <128>;
 				nvidia,smooth-k-enable = <1>;
-				nvidia,smooth-k-incr = <128>;
+				nvidia,smooth-k-incr = <4>;
 				nvidia,coeff = <5 9 2>;
 				nvidia,fc = <0 0>;
 				nvidia,blp = <1024 255>;
