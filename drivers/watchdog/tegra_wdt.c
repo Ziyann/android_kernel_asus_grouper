@@ -3,7 +3,8 @@
  *
  * watchdog driver for NVIDIA tegra internal watchdog
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013, Toradex AG
  *
  * based on drivers/watchdog/softdog.c and drivers/watchdog/omap_wdt.c
  *
@@ -42,13 +43,33 @@
 /* minimum and maximum watchdog trigger periods, in seconds */
 #define MIN_WDT_PERIOD	5
 #define MAX_WDT_PERIOD	1000
+
 /* Assign Timer 7 to Timer 10 for WDT0 to WDT3, respectively */
 #define TMR_SRC_START	7
+/*
+ * For spinlock lockup detection to work, the heartbeat should be 2*lockup
+ * for cases where the spinlock disabled irqs.
+ * Must be between MIN_WDT_PERIOD and MAX_WDT_PERIOD
+ */
+#define WDT_DEFAULT_TIME 60
+
+static int heartbeat = WDT_DEFAULT_TIME;
+static bool nowayout = WATCHDOG_NOWAYOUT;
+
+module_param(heartbeat, int, 0);
+MODULE_PARM_DESC(heartbeat, "Watchdog heartbeat period in seconds (default="
+		__MODULE_STRING(WDT_DEFAULT_TIME));
+
+#ifdef CONFIG_WATCHDOG_NOWAYOUT
+module_param(nowayout, bool, 0);
+MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started (default="
+				__MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
+#endif
 
 enum tegra_wdt_status {
 	WDT_DISABLED = 1 << 0,
 	WDT_ENABLED = 1 << 1,
-	WDT_ENABLED_AT_PROBE = 1 << 2,
+	WDT_KERNEL_HEARTBEAT = 1 << 2,
 };
 
 struct tegra_wdt {
@@ -61,17 +82,14 @@ struct tegra_wdt {
 	void __iomem		*wdt_source;
 	void __iomem		*wdt_timer;
 	void __iomem		*int_base;
-	int			irq;
 	int			tmrsrc;
 	int			timeout;
 	int			status;
+	int			way_out_ok;
+	struct tasklet_struct	tasklet;
+	int			irq;
+	int			irq_counter;
 };
-
-/*
- * For spinlock lockup detection to work, the heartbeat should be 2*lockup
- * for cases where the spinlock disabled irqs.
- */
-static int heartbeat = 120; /* must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD */
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 
@@ -107,6 +125,16 @@ static void tegra_wdt_disable(struct tegra_wdt *wdt)
 
 static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
 {
+	/* Reset timer */
+	tegra_wdt_enable(wdt);
+
+	/* Reenable IRQ in case an interrupt already happend */
+	if (wdt->irq_counter) {
+		writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
+		wdt->irq_counter = 0;
+		enable_irq(wdt->irq);
+	}
+
 	return;
 }
 
@@ -114,9 +142,30 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 {
 	struct tegra_wdt *wdt = dev_id;
 
-	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
+	wdt->irq_counter++;
+
+	if (wdt->status & WDT_KERNEL_HEARTBEAT) {
+		tegra_wdt_ping(wdt);
+	} else {
+		/* If not in heartbeat mode, disable IRQs to avoid IRQ storm
+		 * We don't acknowledge the interrupt here since the user
+		 * did not reload the timer in time. Upon next interrupt
+		 * the system will reset...
+		 */
+		tasklet_schedule(&wdt->tasklet);
+		disable_irq_nosync(irq);
+	}
+
 	return IRQ_HANDLED;
 }
+
+static void tegra_wdt_do_tasklet(unsigned long data)
+{
+	struct tegra_wdt *wdt = (struct tegra_wdt *)data;
+	dev_info(wdt->miscdev.parent, "Watchdog interrupt received, system "
+		       "will reset soon if no ping arrives\n");
+}
+
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 
 #define TIMER_PTV			0
@@ -132,6 +181,7 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
  #define WDT_CFG_PMC2CAR_RST_EN		(1 << 15)
 #define WDT_STATUS			(4)
  #define WDT_INTR_STAT			(1 << 1)
+ #define WDT_STATUS_EXPIR_COUNTER	(3 << 12)
 #define WDT_CMD				(8)
  #define WDT_CMD_START_COUNTER		(1 << 0)
  #define WDT_CMD_DISABLE_COUNTER	(1 << 1)
@@ -169,19 +219,21 @@ static void tegra_wdt_enable(struct tegra_wdt *wdt)
 	val |= (TIMER_EN | TIMER_PERIODIC);
 	writel(val, wdt->wdt_timer + TIMER_PTV);
 
-	/* Interrupt handler is not required for user space
-	 * WDT accesses, since the caller is responsible to ping the
-	 * WDT to reset the counter before expiration, through ioctls.
+	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
+
+	/* Interrupt handler is not required for user space since
+	 * a warning in a fourth of time don't make sense. Then
+	 * the interrupt line is also shared, so it can't be disabled
+	 * if one watchdog is about to expire... (interrupt storm)
 	 * SYS_RST_EN doesnt work as there is no external reset
 	 * from Tegra.
 	 */
-	val = wdt->tmrsrc | WDT_CFG_PERIOD | /*WDT_CFG_INT_EN |*/
+	val = wdt->tmrsrc | WDT_CFG_PERIOD | /* WDT_CFG_INT_EN |  */
 		/*WDT_CFG_SYS_RST_EN |*/ WDT_CFG_PMC2CAR_RST_EN;
 #ifdef CONFIG_TEGRA_FIQ_DEBUGGER
 	val |= WDT_CFG_FIQ_INT_EN;
 #endif
 	writel(val, wdt->wdt_source + WDT_CFG);
-	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
 }
 
 static void tegra_wdt_disable(struct tegra_wdt *wdt)
@@ -192,17 +244,29 @@ static void tegra_wdt_disable(struct tegra_wdt *wdt)
 	writel(0, wdt->wdt_timer + TIMER_PTV);
 }
 
+static void tegra_wdt_interrupt_instance(struct tegra_wdt *wdt)
+{
+	WARN_ON_ONCE(!(wdt->status & WDT_KERNEL_HEARTBEAT));
+
+	if (wdt->status & WDT_KERNEL_HEARTBEAT) {
+		tegra_wdt_ping(wdt);
+	}
+}
+
 static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 {
+	struct tegra_wdt *wdt = NULL;
 	unsigned i, status;
 
 	for (i = 0; i < MAX_NR_CPU_WDT; i++) {
-		if (tegra_wdt[i] == NULL)
+		wdt = tegra_wdt[i];
+		if (wdt == NULL)
 			continue;
-		status = readl(tegra_wdt[i]->wdt_source + WDT_STATUS);
-		if ((tegra_wdt[i]->status & WDT_ENABLED) &&
-		    (status & WDT_INTR_STAT))
-			tegra_wdt_ping(tegra_wdt[i]);
+		status = readl(wdt->wdt_source + WDT_STATUS);
+		if ((wdt->status & WDT_ENABLED) &&
+			(status & WDT_INTR_STAT)) {
+			tegra_wdt_interrupt_instance(wdt);
+		}
 	}
 
 	return IRQ_HANDLED;
@@ -228,6 +292,9 @@ static int tegra_wdt_open(struct inode *inode, struct file *file)
 	if (test_and_set_bit(1, &wdt->users))
 		return -EBUSY;
 
+	/* Reset no way out, we need a new magic again */
+	wdt->way_out_ok = 0;
+
 	wdt->status |= WDT_ENABLED;
 	wdt->timeout = heartbeat;
 	tegra_wdt_enable(wdt);
@@ -239,13 +306,19 @@ static int tegra_wdt_release(struct inode *inode, struct file *file)
 {
 	struct tegra_wdt *wdt = file->private_data;
 
-	if (wdt->status == WDT_ENABLED) {
-#ifndef CONFIG_WATCHDOG_NOWAYOUT
-		tegra_wdt_disable(wdt);
-		wdt->status = WDT_DISABLED;
-#endif
+	if (wdt->status & WDT_ENABLED && !nowayout) {
+		if (wdt->way_out_ok) {
+			tegra_wdt_disable(wdt);
+			wdt->status = WDT_DISABLED;
+		} else {
+			dev_info(wdt->miscdev.parent, "No Magic Close "
+					"received, watchdog not disabled!\n");
+		}
+	} else if (nowayout) {
+		dev_info(wdt->miscdev.parent, "No way out is "
+				"enabled, watchdog not disabled!\n");
 	}
-	wdt->users = 0;
+	clear_bit(1, &wdt->users);
 	return 0;
 }
 
@@ -288,11 +361,10 @@ static long tegra_wdt_ioctl(struct file *file, unsigned int cmd,
 		return put_user(wdt->timeout, (int __user *)arg);
 
 	case WDIOC_SETOPTIONS:
-#ifndef CONFIG_WATCHDOG_NOWAYOUT
 		if (get_user(option, (int __user *)arg))
 			return -EFAULT;
 		spin_lock(&lock);
-		if (option & WDIOS_DISABLECARD) {
+		if (option & WDIOS_DISABLECARD && !nowayout) {
 			wdt->status &= ~WDT_ENABLED;
 			wdt->status |= WDT_DISABLED;
 			tegra_wdt_disable(wdt);
@@ -306,9 +378,6 @@ static long tegra_wdt_ioctl(struct file *file, unsigned int cmd,
 		}
 		spin_unlock(&lock);
 		return 0;
-#else
-		return -EINVAL;
-#endif
 	}
 	return -ENOTTY;
 }
@@ -316,6 +385,19 @@ static long tegra_wdt_ioctl(struct file *file, unsigned int cmd,
 static ssize_t tegra_wdt_write(struct file *file, const char __user *data,
 			       size_t len, loff_t *ppos)
 {
+	struct tegra_wdt *wdt = file->private_data;
+
+	/* check if way-out char was written as last data */
+	char c;
+	if (len) {
+		tegra_wdt_ping(wdt);
+
+		if (get_user(c, data + len - 1))
+			return -EFAULT;
+		else
+			wdt->way_out_ok = (('V' == c) ? 1 : 0);
+	}
+
 	return len;
 }
 
@@ -333,8 +415,14 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	struct resource *res_src, *res_wdt, *res_irq;
 	struct resource	*res_int_base = NULL;
 	struct tegra_wdt *wdt;
-	u32 src;
 	int ret = 0;
+#ifdef CONFIG_TEGRA_WATCHDOG_ENABLE_HEARTBEAT
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	int is_heartbeat_wdt = 1;
+#else
+	int is_heartbeat_wdt = !(pdev->id);
+#endif
+#endif
 
 	if (pdev->id < -1 && pdev->id > 3) {
 		dev_err(&pdev->dev, "only IDs 3:0 supported\n");
@@ -369,7 +457,6 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	wdt->irq = -1;
 	wdt->miscdev.parent = &pdev->dev;
 	if (pdev->id == -1) {
 		wdt->miscdev.minor = WATCHDOG_MINOR;
@@ -410,12 +497,17 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
-	src = readl(wdt->wdt_source);
-	if (src & BIT(12))
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	/* Watchdog of Tegra 3 are not at the reset controller regs */
+	if (readl(wdt->wdt_source) & BIT(12))
 		dev_info(&pdev->dev, "last reset due to watchdog timeout\n");
+#endif
 
 	tegra_wdt_disable(wdt);
 	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
+#endif
 
 	if (res_irq != NULL) {
 #ifdef CONFIG_TEGRA_FIQ_DEBUGGER
@@ -436,6 +528,7 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 			goto fail;
 		tegra_wdt_int_priority(wdt);
 #endif
+		wdt->irq = -1;
 		ret = request_irq(res_irq->start, tegra_wdt_interrupt,
 				  IRQF_DISABLED, dev_name(&pdev->dev), wdt);
 		if (ret) {
@@ -464,24 +557,26 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, wdt);
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	tasklet_init(&wdt->tasklet, tegra_wdt_do_tasklet, (unsigned long)wdt);
+#endif
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-#ifdef CONFIG_TEGRA_WATCHDOG_ENABLE_ON_PROBE
-	/* Init and enable watchdog on WDT0 with timer 8 during probe */
-	if (!(pdev->id)) {
-		u32 val = 0;
-		wdt->status = WDT_ENABLED | WDT_ENABLED_AT_PROBE;
+#ifdef CONFIG_TEGRA_WATCHDOG_ENABLE_HEARTBEAT
+	/* Enable first watchdog during probe */
+	if (is_heartbeat_wdt) {
+		wdt->status = WDT_ENABLED | WDT_KERNEL_HEARTBEAT;
 		wdt->timeout = heartbeat;
+		set_bit(1, &wdt->users);
 		tegra_wdt_enable(wdt);
-		val = readl(wdt->wdt_source + WDT_CFG);
-		val |= WDT_CFG_INT_EN;
-		writel(val, wdt->wdt_source + WDT_CFG);
-		pr_info("WDT heartbeat enabled on probe\n");
+		pr_info("WDT kernel heartbeat enabled on probe\n");
 	}
 #endif
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra_wdt[pdev->id] = wdt;
 #endif
-	pr_info("%s done\n", __func__);
+
+	dev_info(&pdev->dev, "%s done\n", __func__);
 	return 0;
 fail:
 	if (wdt->irq != -1)
@@ -543,16 +638,6 @@ static int tegra_wdt_resume(struct platform_device *pdev)
 	if (wdt->status & WDT_ENABLED)
 		tegra_wdt_enable(wdt);
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	/* Enable interrupt for WDT3 heartbeat watchdog */
-	if (wdt->status & WDT_ENABLED_AT_PROBE) {
-		u32 val = 0;
-		val = readl(wdt->wdt_source + WDT_CFG);
-		val |= WDT_CFG_INT_EN;
-		writel(val, wdt->wdt_source + WDT_CFG);
-		pr_info("WDT heartbeat enabled on probe\n");
-	}
-#endif
 	return 0;
 }
 #endif
@@ -585,10 +670,6 @@ module_exit(tegra_wdt_exit);
 
 MODULE_AUTHOR("NVIDIA Corporation");
 MODULE_DESCRIPTION("Tegra Watchdog Driver");
-
-module_param(heartbeat, int, 0);
-MODULE_PARM_DESC(heartbeat,
-		 "Watchdog heartbeat period in seconds");
 
 MODULE_LICENSE("GPL");
 MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

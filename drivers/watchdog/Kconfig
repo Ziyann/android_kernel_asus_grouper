@@ -217,17 +217,20 @@ config TEGRA_WATCHDOG
 	depends on ARCH_TEGRA
 	help
 	  Say Y here to include support for the watchdog timer
-	  embedded in NVIDIA Tegra SoCs.
+	  embedded in NVIDIA Tegra SoCs. The default timeout
+	  is set to 60 seconds.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called tegra_wdt.
 
-config TEGRA_WATCHDOG_ENABLE_ON_PROBE
-	tristate "Turn on Tegra watchdog at system start up"
-	depends on ARCH_TEGRA && TEGRA_WATCHDOG
+config TEGRA_WATCHDOG_ENABLE_HEARTBEAT
+	bool "Use the first Tegra watchdog as kernel heartbeats"
+	depends on TEGRA_WATCHDOG
+	default n
 	help
-	  Say Y here to enable the tegra watchdog at driver
-	  probe time, rather than when the device is opened.
+	  Say Y here to enable the first tegra watchdog at driver
+	  probe time. The kernel will reload the watchdog by
+	  itself in an interrupt handler.
 
 config EP93XX_WATCHDOG
 	tristate "EP93xx Watchdog"
