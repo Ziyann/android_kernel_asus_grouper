@@ -816,7 +816,7 @@ static int nvi_vreg_en_all(struct inv_gyro_state_s *inf)
 	for (i = 0; i < ARRAY_SIZE(nvi_vregs); i++)
 		err |= nvi_vreg_en(inf, i);
 	if (err == 1)
-		mdelay(8);
+		mdelay(9);
 	return err;
 }
 
