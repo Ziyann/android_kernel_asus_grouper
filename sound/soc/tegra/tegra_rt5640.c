@@ -1312,10 +1312,10 @@ static struct snd_soc_dai_link tegra_rt5640_dai[NUM_DAI_LINKS] = {
 	[DAI_LINK_VOICE_CALL] = {
 		.name = "VOICE CALL",
 		.stream_name = "VOICE CALL PCM",
-		.codec_name = "rt5640.0-001c",
+		.codec_name = "rt5639.0-001c",
 		.platform_name = "tegra-pcm-audio",
 		.cpu_dai_name = "dit-hifi",
-		.codec_dai_name = "rt5640-aif1",
+		.codec_dai_name = "rt5639-aif1",
 		.ops = &tegra_voice_call_ops,
 	},
 	[DAI_LINK_BT_VOICE_CALL] = {
