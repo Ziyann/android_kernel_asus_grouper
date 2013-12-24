@@ -39,7 +39,7 @@
 #define TEGRA_GPIO_LDO1_EN		TEGRA_GPIO_PV3
 #define TEGRA_GPIO_CODEC1_EN	TEGRA_GPIO_PP3
 #define TEGRA_GPIO_CODEC2_EN	TEGRA_GPIO_PP1
-#define TEGRA_GPIO_CODEC3_EN	TEGRA_GPIO_PV0
+#define TEGRA_GPIO_CODEC3_EN	-1
 
 #define TEGRA_GPIO_SPKR_EN		-1
 #define TEGRA_GPIO_HP_DET		TEGRA_GPIO_PR7
@@ -99,6 +99,7 @@
 #define MODEM_EN		TEGRA_GPIO_PP2
 #define MDM_RST			TEGRA_GPIO_PP0
 #define MDM_COLDBOOT		TEGRA_GPIO_PI5
+#define MDM_APACK2		TEGRA_GPIO_PV0
 
 int tegranote7c_regulator_init(void);
 int tegranote7c_power_off_init(void);
