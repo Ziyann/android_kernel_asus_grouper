@@ -67,11 +67,12 @@ struct wl12xx_platform_data {
 	int (*set_power)(int power_on);
 	int (*set_carddetect)(int val);
 	/* SDIO only: IRQ number if WLAN_IRQ line is used, 0 for SDIO IRQs */
+	int gpio;
 	int irq;
 	bool use_eeprom;
 	int board_ref_clock;
 	int board_tcxo_clock;
-	unsigned long platform_quirks;
+	u32 platform_quirks;
 	bool pwr_in_suspend;
 
 	struct wl1271_if_operations *ops;

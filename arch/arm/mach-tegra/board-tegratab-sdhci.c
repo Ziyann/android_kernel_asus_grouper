@@ -270,7 +270,7 @@ static int __init tegratab_wifi_init(void)
 	rc = gpio_request(TEGRATAB_WLAN_RST, "wlan_rst");
 	if (rc)
 		pr_err("WLAN_RST gpio request failed:%d\n", rc);
-	rc = gpio_request(TEGRATAB_WLAN_WOW, "bcmsdh_sdmmc");
+	rc = gpio_request(TEGRATAB_WLAN_WOW, "wlan_wow");
 	if (rc)
 		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
 
@@ -284,7 +284,7 @@ static int __init tegratab_wifi_init(void)
 	if (rc)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
 	tegratab_wl12xx_wlan_data.irq = gpio_to_irq(TEGRATAB_WLAN_WOW);
-		wl12xx_set_platform_data(&tegratab_wl12xx_wlan_data);
+	wl12xx_set_platform_data(&tegratab_wl12xx_wlan_data);
 	return 0;
 }
 
