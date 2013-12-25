@@ -7,7 +7,7 @@
  * Based on code copyright/by:
  *
  * Copyright (c) 2009-2013, NVIDIA Corporation.
- * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  * Scott Peterson <speterson@nvidia.com>
  *
  * Copyright (C) 2010 Google, Inc.
@@ -543,7 +543,8 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		/* If the I2S is used for voice also, it is not
 		*  necessary to set its clock if it had been set
 		*  like during voice call.*/
-		if (!(i2s->playback_ref_count - 1)) {
+		if (!(i2s->playback_ref_count - 1) ||
+			!(i2s->capture_ref_count - 1)) {
 			ret = clk_set_parent(i2s->clk_i2s,
 				i2s->clk_pll_a_out0);
 			if (ret) {
