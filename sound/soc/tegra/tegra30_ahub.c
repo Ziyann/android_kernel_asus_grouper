@@ -2,8 +2,8 @@
  * tegra30_ahub.c - Tegra 30 AHUB driver
  *
  * Author: Stephen Warren <swarren@nvidia.com>
- * Copyright (C) 2011 - NVIDIA, Inc.
- * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2011 -2013, NVIDIA, Inc.
+ * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,6 +30,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <mach/dma.h>
+#include <linux/delay.h>
 #include <mach/iomap.h>
 #include <sound/soc.h>
 #include "tegra30_ahub.h"
@@ -464,6 +465,12 @@ int tegra30_ahub_disable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	int reg, val;
 
+	reg = TEGRA30_AHUB_CHANNEL_CLEAR  +
+	      (channel * TEGRA30_AHUB_CHANNEL_CLEAR_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val |= TEGRA30_AHUB_CHANNEL_CLEAR_RX_SOFT_RESET;
+	tegra30_apbif_write(reg, val);
+	udelay(100);
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
