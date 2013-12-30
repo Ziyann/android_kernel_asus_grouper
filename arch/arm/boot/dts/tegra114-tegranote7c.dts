@@ -219,7 +219,7 @@
 		/* tegradc.1 */
 		dc@54240000 {
 			status = "okay";
-			nvidia,emc_clk_rate = <300000000>;
+			nvidia,emc-clk-rate = <300000000>;
 			nvidia,cmu-enable = <1>;
 			dc-default-out {
 				nvidia,out-type = "hdmi";
