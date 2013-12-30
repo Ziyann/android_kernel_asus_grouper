@@ -116,7 +116,7 @@ static noinline void __init tegranote7c_bt_st(void)
 	pr_info("tegranote7c_bt_st");
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640)
+	if (board_info.board_id == BOARD_P1988)
 		tegranote7c_wilink_pdata.nshutdown_gpio = TEGRA_GPIO_PR1;
 
 	platform_device_register(&wl128x_device);
@@ -181,7 +181,7 @@ static __initdata struct tegra_clk_init_table e1569_wifi_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static __initdata struct tegra_clk_init_table P1640_wifi_clk_init_table[] = {
+static __initdata struct tegra_clk_init_table P1988_wifi_clk_init_table[] = {
 	{ "extern3",	"clk_32k",	32768,		true},
 	{ "clk_out_3",	"extern3",	32768,		true},
 	{ NULL,		NULL,		0,		0},
@@ -249,7 +249,7 @@ static void tegranote7c_i2c_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640)
+	if (board_info.board_id == BOARD_P1988)
 		i2c_register_board_info(0, &rt5639_board_info, 1);
 	else
 		i2c_register_board_info(0, &rt5640_board_info, 1);
@@ -584,7 +584,7 @@ static void tegranote7c_audio_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640) {
+	if (board_info.board_id == BOARD_P1988) {
 		tegranote7c_audio_pdata.codec_name = "rt5639.0-001c";
 		tegranote7c_audio_pdata.codec_dai_name = "rt5639-aif1";
 		if (board_info.fab == BOARD_FAB_A00)
@@ -726,9 +726,8 @@ static int __init tegranote7c_touch_init(void)
 
 #if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
 	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
-	if (board_info.board_id == BOARD_P1640) {
+	if (board_info.board_id == BOARD_P1988)
 		(void)touch_init_maxim_sti(&maxim_sti_spi_board);
-	}
 #else
 	tegra_clk_init_from_table(touch_clk_init_table);
 	rm31080ts_tegranote7c_data.platform_id = RM_PLATFORM_D010;
@@ -753,9 +752,9 @@ static void __init tegra_tegranote7c_early_init(void)
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1569)
 		tegra_clk_init_from_table(e1569_wifi_clk_init_table);
-	else if (board_info.board_id == BOARD_P1640 &&
+	else if (board_info.board_id == BOARD_P1988 &&
 			board_info.fab == BOARD_FAB_A00)
-		tegra_clk_init_from_table(P1640_wifi_clk_init_table);
+		tegra_clk_init_from_table(P1988_wifi_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("tegranote7c");
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)

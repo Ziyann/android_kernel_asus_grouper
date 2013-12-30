@@ -114,7 +114,7 @@ int __init tegranote7c_kbc_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640) {
+	if (board_info.board_id == BOARD_P1988) {
 		if (board_info.fab == BOARD_FAB_A00) {
 			tegranote7c_keys_pdata.buttons = tegranote7c_p1640_keys;
 			tegranote7c_keys_pdata.nbuttons =

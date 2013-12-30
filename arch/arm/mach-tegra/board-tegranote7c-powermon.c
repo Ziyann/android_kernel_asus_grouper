@@ -364,7 +364,7 @@ int __init tegranote7c_pmon_init(void)
 		i2c_register_board_info(1, tegranote7c_i2c1_ina219_board_info,
 			ARRAY_SIZE(tegranote7c_i2c1_ina219_board_info));
 
-	/* Both E1569 and P1640 has ina230 for checking power at VDD_CELL */
+	/* Both E1569 and P1988 has ina230 for checking power at VDD_CELL */
 	i2c_register_board_info(1, tegranote7c_i2c1_ina230_board_info,
 		ARRAY_SIZE(tegranote7c_i2c1_ina230_board_info));
 

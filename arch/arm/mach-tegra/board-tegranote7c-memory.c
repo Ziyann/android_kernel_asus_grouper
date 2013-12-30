@@ -4178,7 +4178,7 @@ static struct tegra11_emc_pdata *tegranote7c_get_emc_data(void)
 
 	if (board_info.board_id == BOARD_E1569)
 		return &e1569_mt41k128m16_125_pdata;
-	else if (board_info.board_id == BOARD_P1640)
+	else if (board_info.board_id == BOARD_P1988)
 		return &p1640_mt41k128m16_125_pdata;
 	else
 		return NULL;

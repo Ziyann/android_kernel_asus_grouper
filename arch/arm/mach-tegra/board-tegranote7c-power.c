@@ -603,7 +603,7 @@ FIXED_REG(7,	en_lcd_1v8,	en_lcd_1v8,
 	ADD_FIXED_REG(dvdd_lcd_1v8),		\
 	ADD_FIXED_REG(dvdd_ts),
 
-#define P1640_FIXED_REG				\
+#define P1988_FIXED_REG				\
 	ADD_FIXED_REG(en_lcd_1v8),
 
 /* Gpio switch regulator platform data for TegraNote7C E1569 */
@@ -613,9 +613,9 @@ static struct platform_device *fixed_reg_devs_e1569[] = {
 };
 
 /* Gpio switch regulator platform data for Tegranote7c */
-static struct platform_device *fixed_reg_devs_p1640[] = {
+static struct platform_device *fixed_reg_devs_p1988[] = {
 	TEGRANOTE7C_COMMON_FIXED_REG
-	P1640_FIXED_REG
+	P1988_FIXED_REG
 };
 
 int __init tegranote7c_palmas_regulator_init(void)
@@ -638,7 +638,7 @@ int __init tegranote7c_palmas_regulator_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640 &&
+	if (board_info.board_id == BOARD_P1988 &&
 			((board_info.fab < BOARD_FAB_A04) ||
 			(board_info.fab >= BOARD_FAB_A04 &&
 			tegra_bct_strapping != 1))) {
@@ -653,7 +653,7 @@ int __init tegranote7c_palmas_regulator_init(void)
 									1380000;
 	}
 
-	if (board_info.board_id == BOARD_P1640 &&
+	if (board_info.board_id == BOARD_P1988 &&
 				board_info.fab >= BOARD_FAB_A01) {
 		palmas_pdata.clk32k_init_data = tegranote7c_palmas_clk32k_idata;
 		palmas_pdata.clk32k_init_data_size =
@@ -781,9 +781,9 @@ static int __init tegranote7c_fixed_regulator_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640)
-		ret = platform_add_devices(fixed_reg_devs_p1640,
-					   ARRAY_SIZE(fixed_reg_devs_p1640));
+	if (board_info.board_id == BOARD_P1988)
+		ret = platform_add_devices(fixed_reg_devs_p1988,
+					   ARRAY_SIZE(fixed_reg_devs_p1988));
 	else
 		ret = platform_add_devices(fixed_reg_devs_e1569,
 					   ARRAY_SIZE(fixed_reg_devs_e1569));
@@ -973,7 +973,7 @@ int __init tegranote7c_soctherm_init(void)
 	tegra_get_board_info(&board_info);
 
 	/*
-	 * P1640 has oc4 from ina230. E1569 has oc4 from pmic powergood
+	 * P1988 has oc4 from ina230. E1569 has oc4 from pmic powergood
 	 * Disable oc4 throttle for E1569
 	 */
 	if (board_info.board_id == BOARD_E1569) {
@@ -992,7 +992,7 @@ int __init tegranote7c_soctherm_init(void)
 			&tegranote7c_soctherm_data.therm[THERM_CPU].num_trips);
 
 	if (board_info.board_id != BOARD_E1569 &&
-			(board_info.board_id == BOARD_P1640 &&
+			(board_info.board_id == BOARD_P1988 &&
 			(board_info.fab != BOARD_FAB_A00 &&
 			board_info.fab != BOARD_FAB_A01))) {
 		tegra_add_cdev_trips(

@@ -78,7 +78,7 @@ static void __init tegranote7c_gpio_init_configure(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640) {
+	if (board_info.board_id == BOARD_P1988) {
 		len = ARRAY_SIZE(init_gpio_mode_tegranote7c_ffd_common);
 		pins_info = init_gpio_mode_tegranote7c_ffd_common;
 	} else { /* ERS */
@@ -92,7 +92,7 @@ static void __init tegranote7c_gpio_init_configure(void)
 		pins_info++;
 	}
 
-	if (board_info.board_id == BOARD_P1640) {
+	if (board_info.board_id == BOARD_P1988) {
 		len = ARRAY_SIZE(dvt_a00_manual_gpio_mode);
 		pins_info = dvt_a00_manual_gpio_mode;
 		for (i = 0; i < len; ++i) {
@@ -114,7 +114,7 @@ int __init tegranote7c_pinmux_init(void)
 	tegra_drive_pinmux_config_table(tegranote7c_drive_pinmux,
 					ARRAY_SIZE(tegranote7c_drive_pinmux));
 
-	if (board_info.board_id == BOARD_P1640) {
+	if (board_info.board_id == BOARD_P1988) {
 		tegra_pinmux_config_table(tegranote7c_ffd_pinmux_common,
 					ARRAY_SIZE(tegranote7c_ffd_pinmux_common));
 		tegra_pinmux_config_table(ffd_unused_pins_lowpower,

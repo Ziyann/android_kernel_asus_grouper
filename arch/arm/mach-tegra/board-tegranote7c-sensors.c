@@ -439,7 +439,7 @@ static struct mpu_platform_data mpu6050_gyro_data_p1640_a01 = {
 	.int_config	= 0x10,
 	.level_shifter	= 0,
 	/* Located in board_[platformname].h */
-	.orientation	= MPU_GYRO_ORIENTATION_P1640_A01,
+	.orientation	= MPU_GYRO_ORIENTATION_P1988_A01,
 	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
 			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
@@ -498,7 +498,7 @@ static void mpuirq_init(void)
 	if (board_info.board_id == BOARD_E1569)
 		inv_mpu6050_i2c2_board_info[0].platform_data =
 			&mpu6050_gyro_data_e1569;
-	else if ((board_info.board_id == BOARD_P1640) &&
+	else if ((board_info.board_id == BOARD_P1988) &&
 			(board_info.fab <= BOARD_FAB_A01))
 		inv_mpu6050_i2c2_board_info[0].platform_data =
 			&mpu6050_gyro_data_p1640_a01;
@@ -644,15 +644,15 @@ static int __init tegranote7c_skin_init(void)
 	if (machine_is_tegranote7c()) {
 		tegra_get_board_info(&board_info);
 		if (board_info.board_id == BOARD_E1569 ||
-			(board_info.board_id == BOARD_P1640 &&
+			(board_info.board_id == BOARD_P1988 &&
 			(board_info.fab == BOARD_FAB_A00 ||
 			board_info.fab == BOARD_FAB_A01))) {
-			/* Use this for E1569 and P1640 A00/A01 */
+			/* Use this for E1569 and P1988 A00/A01 */
 			skin_data.toffset = 5588;
 			skin_data.ndevs = ARRAY_SIZE(skin_devs);
 			skin_data.devs = skin_devs;
 		} else {
-			/* Use this after P1640 A02. */
+			/* Use this after P1988 A02. */
 			skin_data.toffset = 799;
 			skin_data.ndevs = ARRAY_SIZE(skin_devs_a02);
 			skin_data.devs = skin_devs_a02;
@@ -816,7 +816,7 @@ int __init tegranote7c_sensors_init(void)
 	tegra_get_board_info(&board_info);
 
 	if (board_info.board_id == BOARD_E1569 ||
-			(board_info.board_id == BOARD_P1640 &&
+			(board_info.board_id == BOARD_P1988 &&
 			(board_info.fab == BOARD_FAB_A00 ||
 			board_info.fab == BOARD_FAB_A01))) {
 		err = tegranote7c_nct1008_init();
