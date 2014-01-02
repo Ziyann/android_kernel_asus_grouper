@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-tegranote7c-sensors.c
  *
- * Copyright (c) 2012-2013 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -36,6 +36,7 @@
 #include <linux/therm_est.h>
 #include <linux/nct1008.h>
 #include <linux/cm3217.h>
+#include <linux/ltr659ps.h>
 #include <mach/edp.h>
 #include <linux/edp.h>
 #include <mach/gpio-tegra.h>
@@ -809,6 +810,20 @@ static struct platform_device *gadc_thermal_devices[] = {
 	&gadc_thermal_tdiode,
 };
 
+static struct ltr659_platform_data tegranote7c_ltr659ps_pdata = {
+	.gpio = TEGRA_GPIO_PX3,
+	.default_ps_lowthreshold = 200,
+	.default_ps_highthreshold = 1000,
+};
+
+static struct i2c_board_info tegratab_i2c1_ltr659ps_board_info[] = {
+	{
+		I2C_BOARD_INFO("ltr659ps", 0x23),
+		.platform_data = &tegranote7c_ltr659ps_pdata,
+		.irq = -1,
+	},
+};
+
 int __init tegranote7c_sensors_init(void)
 {
 	int err;
@@ -832,6 +847,11 @@ int __init tegranote7c_sensors_init(void)
 			return err;
 		}
 	}
+
+	tegratab_i2c1_ltr659ps_board_info[0].irq =
+		gpio_to_irq(tegranote7c_ltr659ps_pdata.gpio);
+	i2c_register_board_info(0, tegratab_i2c1_ltr659ps_board_info,
+		ARRAY_SIZE(tegratab_i2c1_ltr659ps_board_info));
 
 	tegranote7c_camera_init();
 	mpuirq_init();
