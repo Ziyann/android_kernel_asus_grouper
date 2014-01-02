@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-tegranote7c-power.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -265,6 +265,7 @@ static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vdd", "0-0010"),
 	REGULATOR_SUPPLY("vdd", "0-000d"),
 	REGULATOR_SUPPLY("vdd", "0-0078"),
+	REGULATOR_SUPPLY("va_sns_hv", "0-0023"),
 };
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
