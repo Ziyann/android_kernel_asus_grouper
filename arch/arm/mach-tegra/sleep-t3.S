@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/sleep-t3.S
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -454,6 +454,8 @@ ENTRY(tegra3_lp1_reset)
 	str	r1, [r0, #CLK_RESET_CCLK_DIVIDER]
 #endif
 
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
+
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* enable PLLM via PMC */
 	mov32	r2, TEGRA_PMC_BASE
@@ -510,6 +512,16 @@ ENTRY(tegra3_lp1_reset)
 	mov	r4, #(1 << 27)
 	str	r4, [r0, #CLK_RESET_CLK_ENB_W_SET]
 #endif
+#else	/* ifndef CONFIG_TRUSTED_FOUNDATIONS */
+	mov32	r2, TEGRA_PMC_BASE
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 --> saved data
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	add	r5, pc, #tegra11_sdram_pad_save-(.+8)	@ r5 --> saved data
+#endif
+#endif	/* ifndef CONFIG_TRUSTED_FOUNDATIONS */
+
 	/* Restore the Core voltage back to high */
 	set_voltage r1, r4, r3, r0, lp1_register_core_highvolt
 
@@ -549,6 +561,8 @@ powerup_l2_done:
 	mov	r0, #PMC_PWRGATE_PARTID_L2C
 	str	r0, [r2, #PMC_REMOVE_CLAMPING_CMD]
 #endif
+
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
 
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
@@ -671,6 +685,8 @@ zcal_done:
 	addne	r5, r5, #0x20
 	bne	exit_self_refresh
 #endif
+#endif	/* ifndef CONFIG_TRUSTED_FOUNDATIONS */
+
 	mov32	r0, TEGRA_PMC_BASE
 	ldr	r0, [r0, #PMC_SCRATCH41]
 	mov	pc, r0

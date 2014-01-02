@@ -2,7 +2,7 @@
  * Copyright (c) 2011 Trusted Logic S.A.
  * All Rights Reserved.
  *
- * Copyright (C) 2011-2013 NVIDIA Corporation.
+ * Copyright (c) 2011-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -63,7 +63,7 @@
 #define S_VERSION_PLATFORM "C"
 #define S_VERSION_MAIN  "02.08"
 #define S_VERSION_ENG 0
-#define S_VERSION_PATCH 5
+#define S_VERSION_PATCH 6
 
 #else
 #define S_VERSION_OS "Z"          /* Unknown platform */
