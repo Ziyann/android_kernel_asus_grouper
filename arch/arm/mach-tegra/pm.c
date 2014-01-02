@@ -3,7 +3,7 @@
  *
  * CPU complex suspend & resume functions for Tegra SoCs
  *
- * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2009-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1233,14 +1233,16 @@ static int tegra_pm_enter_suspend(void)
 {
 	pr_info("Entering suspend state %s\n", lp_state[current_suspend_mode]);
 	suspend_cpu_dfll_mode();
-	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
+	if ((current_suspend_mode == TEGRA_SUSPEND_LP0) || \
+	   (current_suspend_mode == TEGRA_SUSPEND_LP1))
 		tegra_lp0_cpu_mode(true);
 	return 0;
 }
 
 static void tegra_pm_enter_resume(void)
 {
-	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
+	if ((current_suspend_mode == TEGRA_SUSPEND_LP0) || \
+	    (current_suspend_mode == TEGRA_SUSPEND_LP1))
 		tegra_lp0_cpu_mode(false);
 	resume_cpu_dfll_mode();
 	pr_info("Exited suspend state %s\n", lp_state[current_suspend_mode]);
