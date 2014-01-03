@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/of_dc.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -47,6 +47,8 @@
 #include <mach/mc.h>
 #include <mach/latency_allowance.h>
 #include <mach/iomap.h>
+#include <mach/pinmux.h>
+#include <mach/pinmux-t11.h>
 
 #include "dc_reg.h"
 #include "dc_config.h"
@@ -1093,6 +1095,23 @@ static int dc_hdmi_postsuspend(void)
 	return 0;
 }
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+static void dc_hdmi_hotplug_report(bool state)
+{
+	if (state) {
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SDA,
+						TEGRA_PUPD_PULL_DOWN);
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SCL,
+						TEGRA_PUPD_PULL_DOWN);
+	} else {
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SDA,
+						TEGRA_PUPD_NORMAL);
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SCL,
+						TEGRA_PUPD_NORMAL);
+	}
+}
+#endif
+
 static bool typical_prop_search(struct device_node *np, const char **prop)
 {
 	int iprop;
@@ -1302,11 +1321,27 @@ struct tegra_dc_platform_data
 				lcd_dev_data->pkt_seq;
 		}
 	} else if (pdata->default_out->type == TEGRA_DC_OUT_HDMI) {
+		bool hotplug_report = false;
+		struct device_node *np_hdmi =
+			of_find_node_by_path("/host1x/hdmi");
+
+		if (np_hdmi && of_device_is_available(np_hdmi)) {
+			if (!of_property_read_u32(np_hdmi,
+				"nvidia,hotplug-report", &temp)) {
+				hotplug_report = (bool)temp;
+			}
+		}
+
 		of_pdata->dc_controller = DC_CONTROLLER_1;
 		pdata->default_out->enable = dc_hdmi_out_enable;
 		pdata->default_out->disable = dc_hdmi_out_disable;
 		pdata->default_out->hotplug_init = dc_hdmi_hotplug_init;
 		pdata->default_out->postsuspend = dc_hdmi_postsuspend;
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+		if (hotplug_report)
+			pdata->default_out->hotplug_report =
+				dc_hdmi_hotplug_report;
+#endif
 	}
 
 	/*
