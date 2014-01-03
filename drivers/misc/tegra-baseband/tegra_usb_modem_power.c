@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -391,6 +391,7 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 		modem->system_suspend = 1;
 #ifdef CONFIG_PM
 		if (modem->capability & TEGRA_MODEM_AUTOSUSPEND &&
+		    modem->wake_irq &&
 		    modem->udev &&
 		    modem->udev->state != USB_STATE_NOTATTACHED) {
 			pm_runtime_set_autosuspend_delay(&modem->udev->dev,
