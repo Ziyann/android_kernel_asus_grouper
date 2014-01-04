@@ -1004,7 +1004,7 @@ int tegra30_i2s_resume(struct snd_soc_dai *cpu_dai)
 
 	tegra30_i2s_disable_clocks(i2s);
 
-	if (i2s->dam_ch_refcount)
+	if (i2s->dam_ch_refcount > 1)
 		ret = tegra30_dam_resume(i2s->dam_ifc);
 
 	return ret;
@@ -1787,6 +1787,22 @@ static __devinit int tegra30_i2s_platform_probe(struct platform_device *pdev)
 	i2s = &i2scont[pdev->id];
 	dev_set_drvdata(&pdev->dev, i2s);
 	i2s->id = pdev->id;
+	switch (i2s->id) {
+	case 0:
+		i2s->dam_ifc = 1;
+		break;
+	case 1:
+		i2s->dam_ifc = 0;
+		break;
+	case 2:
+		break;
+	case 3:
+		i2s->dam_ifc = 2;
+		break;
+	default:
+		break;
+	}
+	i2s->dam_ch_refcount++;
 
 	i2s->clk_i2s = clk_get(&pdev->dev, "i2s");
 	if (IS_ERR(i2s->clk_i2s)) {
