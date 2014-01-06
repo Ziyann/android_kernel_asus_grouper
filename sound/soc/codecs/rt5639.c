@@ -4,7 +4,7 @@
  * Copyright (c) 2011-2013 REALTEK SEMICONDUCTOR CORP. All rights reserved.
  * Author: Johnny Hsu <johnnyhsu@realtek.com>
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -2771,7 +2771,10 @@ static ssize_t rt5639_codec_show(struct device *dev,
 	for (i = 0; i <= RT5639_VENDOR_ID2; i++) {
 		if (cnt + RT5639_REG_DISP_LEN >= PAGE_SIZE)
 			break;
-		val = codec->hw_read(codec, i);
+		if (codec->hw_read)
+			val = codec->hw_read(codec, i);
+		else
+			break;
 		if (!val)
 			continue;
 		cnt += snprintf(buf + cnt, RT5639_REG_DISP_LEN,
@@ -2819,9 +2822,12 @@ static ssize_t rt5639_codec_store(struct device *dev,
 	if (addr > RT5639_VENDOR_ID2 || val > 0xffff || val < 0)
 		return count;
 
-	if (i == count)
-		dev_info(codec->dev, "0x%02x = 0x%04x\n", addr,
-			codec->hw_read(codec, addr));
+	if (i == count) {
+		if (codec->hw_read) {
+			dev_info(codec->dev, "0x%02x = 0x%04x\n", addr,
+				codec->hw_read(codec, addr));
+		}
+	}
 	else
 		snd_soc_write(codec, addr, val);
 
