@@ -3,6 +3,7 @@
  *
  * Author: Nikesh Oswal <noswal@nvidia.com>
  * Copyright (C) 2011 - NVIDIA, Inc.
+ * Copyright (C) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -192,6 +193,8 @@ void tegra30_dam_set_biquad_fixed_coef(int ifc);
 void tegra30_dam_enable_coeff_ram(int ifc);
 void tegra30_dam_set_filter_stages(int ifc, int fsin, int fsout);
 void tegra30_dam_enable_stereo_mixing(int ifc);
+void tegra30_dam_ch0_set_datasync(int ifc, int datasync);
+void tegra30_dam_ch1_set_datasync(int ifc, int datasync);
 #endif
 
 #endif

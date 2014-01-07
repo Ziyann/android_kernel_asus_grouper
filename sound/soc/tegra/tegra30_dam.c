@@ -3,7 +3,7 @@
  *
  * Author: Nikesh Oswal <noswal@nvidia.com>
  * Copyright (C) 2011 - NVIDIA, Inc.
- * Copyright (C) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -990,9 +990,11 @@ void tegra30_dam_enable(int ifc, int on, int chid)
 	}
 }
 
-void tegra30_dam_ch0_set_datasync(struct tegra30_dam_context *dam, int datasync)
+void tegra30_dam_ch0_set_datasync(int ifc, int datasync)
 {
 	u32 val;
+	struct tegra30_dam_context *dam;
+	dam =  dams_cont_info[ifc];
 
 	val = tegra30_dam_readl(dam, TEGRA30_DAM_CH0_CTRL);
 	val &= ~TEGRA30_DAM_CH0_CTRL_DATA_SYNC_MASK;
@@ -1000,9 +1002,11 @@ void tegra30_dam_ch0_set_datasync(struct tegra30_dam_context *dam, int datasync)
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
 }
 
-void tegra30_dam_ch1_set_datasync(struct tegra30_dam_context *dam, int datasync)
+void tegra30_dam_ch1_set_datasync(int ifc, int datasync)
 {
 	u32 val;
+	struct tegra30_dam_context *dam;
+	dam =  dams_cont_info[ifc];
 
 	val = tegra30_dam_readl(dam, TEGRA30_DAM_CH1_CTRL);
 	val &= ~TEGRA30_DAM_CH1_CTRL_DATA_SYNC_MASK;
