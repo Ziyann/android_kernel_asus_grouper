@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-tegranote7c.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013 - 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -388,6 +388,9 @@ static struct tegra_asoc_platform_data tegranote7c_audio_pdata = {
 		.audio_port_id	= 3,
 		.is_i2s_master	= 1,
 		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+		.sample_size	= 16,
+		.rate		= 8000,
+		.channels	= 1,
 		.bit_clk	= 512000,
 	},
 	.i2s_param[VOICE_CODEC]	= {
