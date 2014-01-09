@@ -1518,6 +1518,7 @@ static struct snd_soc_dai_link tegra_rt5640_dai[NUM_DAI_LINKS] = {
 		.platform_name = "tegra-pcm-audio",
 		.cpu_dai_name = "tegra30-i2s.3",
 		.codec_dai_name = "dit-hifi",
+		.init = tegra_rt5640_init,
 		.ops = &tegra_rt5640_bt_sco_ops,
 	},
 	[DAI_LINK_VOICE_CALL] = {
