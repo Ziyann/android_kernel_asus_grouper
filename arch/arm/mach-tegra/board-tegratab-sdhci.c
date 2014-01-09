@@ -36,7 +36,9 @@
 #include "board.h"
 #include "board-tegratab.h"
 #include "dvfs.h"
+#include "fuse.h"
 
+#define FUSE_CORE_SPEEDO_0	0x134
 #define TEGRATAB_SD_CD	TEGRA_GPIO_PV2
 #define TEGRATAB_SD_WP	TEGRA_GPIO_PQ4
 #define TEGRATAB_WLAN_PWR	TEGRA_GPIO_PCC5
@@ -176,7 +178,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x5,
-	.trim_delay = 0xA,
+	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
 	.max_clk_limit = 156000000,
 	.mmc_data = {
@@ -314,6 +316,8 @@ int __init tegratab_sdhci_init(void)
 	int min_vcore_override_mv;
 	int boot_vcore_mv;
 	struct board_info board_info;
+	int speedo;
+
 	nominal_core_mv =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
 	if (nominal_core_mv) {
@@ -337,6 +341,11 @@ int __init tegratab_sdhci_init(void)
 		tegra_sdhci_platform_data2.boot_vcore_mv = boot_vcore_mv;
 		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
 	}
+
+	speedo = tegra_fuse_readl(FUSE_CORE_SPEEDO_0);
+	tegra_sdhci_platform_data0.cpu_speedo = speedo;
+	tegra_sdhci_platform_data2.cpu_speedo = speedo;
+	tegra_sdhci_platform_data3.cpu_speedo = speedo;
 
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_P1640 ||
