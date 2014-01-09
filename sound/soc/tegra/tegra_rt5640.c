@@ -2,7 +2,7 @@
  * tegra_rt5640.c - Tegra machine ASoC driver for boards using ALC5640 codec.
  *
  * Author: Johnny Qiu <joqiu@nvidia.com>
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Based on code copyright/by:
  *
@@ -10,7 +10,6 @@
  * Author: Graeme Gregory
  *         graeme.gregory@wolfsonmicro.com or linux@wolfsonmicro.com
  *
- * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -1284,10 +1283,10 @@ static struct snd_soc_dai_link tegra_rt5640_dai[NUM_DAI_LINKS] = {
 	[DAI_LINK_HIFI] = {
 		.name = "RT5640",
 		.stream_name = "RT5640 PCM",
-		.codec_name = "rt5640.4-001c",
+		.codec_name = "rt5639.0-001c",
 		.platform_name = "tegra-pcm-audio",
 		.cpu_dai_name = "tegra30-i2s.1",
-		.codec_dai_name = "rt5640-aif1",
+		.codec_dai_name = "rt5639-aif1",
 		.init = tegra_rt5640_init,
 		.ops = &tegra_rt5640_ops,
 	},
@@ -1456,11 +1455,18 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 			ARRAY_SIZE(tegra_rt5640_no_micbias_audio_map);
 	}
 
-	if (pdata->codec_name)
-		card->dai_link->codec_name = pdata->codec_name;
-
-	if (pdata->codec_dai_name)
-		card->dai_link->codec_dai_name = pdata->codec_dai_name;
+	if (pdata->codec_name) {
+		card->dai_link[DAI_LINK_HIFI].codec_name =
+			pdata->codec_name;
+		card->dai_link[DAI_LINK_VOICE_CALL].codec_name =
+			pdata->codec_name;
+	}
+	if (pdata->codec_dai_name) {
+		card->dai_link[DAI_LINK_HIFI].codec_dai_name =
+			pdata->codec_dai_name;
+		card->dai_link[DAI_LINK_VOICE_CALL].codec_dai_name =
+			pdata->codec_dai_name;
+	}
 
 	machine = kzalloc(sizeof(struct tegra_rt5640), GFP_KERNEL);
 	if (!machine) {
