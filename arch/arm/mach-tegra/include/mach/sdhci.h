@@ -61,6 +61,7 @@ struct tegra_sdhci_platform_data {
 	bool power_off_rail;
 	bool en_freq_scaling;
 	bool en_nominal_vcore_tuning;
+	int cpu_speedo;
 };
 
 #endif
