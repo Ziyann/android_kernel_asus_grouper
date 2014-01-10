@@ -8,7 +8,7 @@
  * Copyright (c) 2004 Oliver Neukum	<oliver@neukum.name>
  * Copyright (c) 2005 David Kubicek	<dave@awk.cz>
  * Copyright (c) 2011 Johan Hovold	<jhovold@gmail.com>
- * Copyright (c) 2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * USB Abstract Control Model driver for USB modems and ISDN adapters
  *
@@ -49,6 +49,7 @@
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
 #include <linux/list.h>
+#include <linux/pm_qos.h>
 
 #include "cdc-acm.h"
 
@@ -61,6 +62,34 @@ static struct tty_driver *acm_tty_driver;
 static struct acm *acm_table[ACM_TTY_MINORS];
 
 static DEFINE_MUTEX(acm_table_lock);
+
+#define CONFIG_ICERA_MDM_LOGGING_BOOST_CPU_FREQ  (696000)
+
+#if defined(CONFIG_ICERA_MDM_LOGGING_BOOST_CPU_FREQ) && \
+	defined(CONFIG_TEGRA_USB_MODEM_POWER)
+#define MODEM_LOG_PORT  3   /* ttyACM3 is for modem logging */
+static struct pm_qos_request boost_cpu_freq_req;
+static u8 boost_cpufreq_work_flag;
+static struct work_struct icera_mdm_log_boost_cpufreq_work;
+static struct delayed_work icera_mdm_log_unboost_cpufreq_work;
+
+static void unboost_cpufreq_func(struct work_struct *ws)
+{
+	pm_qos_update_request(&boost_cpu_freq_req, PM_QOS_DEFAULT_VALUE);
+	boost_cpufreq_work_flag = 0;
+}
+
+static void icera_mdm_log_boost_cpufreq_work_func(struct work_struct *work)
+{
+	cancel_delayed_work_sync(&icera_mdm_log_unboost_cpufreq_work);
+	trace_printk("%s: boost cpu freq to %d for 8 seconds.\n", __func__,
+		     (s32)CONFIG_ICERA_MDM_LOGGING_BOOST_CPU_FREQ);
+	pm_qos_update_request(&boost_cpu_freq_req,
+			      (s32)CONFIG_ICERA_MDM_LOGGING_BOOST_CPU_FREQ);
+	schedule_delayed_work(&icera_mdm_log_unboost_cpufreq_work,
+			   msecs_to_jiffies(8000));
+}
+#endif
 
 /*
  * acm_table accessors
@@ -481,6 +510,15 @@ static void acm_read_bulk_callback(struct urb *urb)
 	dev_vdbg(&acm->data->dev, "%s - urb %d, len %d\n", __func__,
 					rb->index, urb->actual_length);
 
+#if defined(CONFIG_ICERA_MDM_LOGGING_BOOST_CPU_FREQ) &&			\
+	defined(CONFIG_TEGRA_USB_MODEM_POWER)
+	if ((acm->minor == MODEM_LOG_PORT) &&
+	    (boost_cpufreq_work_flag == 0)) {
+		boost_cpufreq_work_flag = 1;
+		schedule_work(&icera_mdm_log_boost_cpufreq_work);
+	}
+#endif
+
 	if (!acm->dev) {
 		dev_dbg(&acm->data->dev, "%s - disconnected\n", __func__);
 		set_bit(rb->index, &acm->read_urbs_free);
@@ -705,6 +743,18 @@ static void acm_tty_close(struct tty_struct *tty, struct file *filp)
 {
 	struct acm *acm = tty->driver_data;
 	dev_dbg(&acm->control->dev, "%s\n", __func__);
+
+#if defined(CONFIG_ICERA_MDM_LOGGING_BOOST_CPU_FREQ) && \
+	defined(CONFIG_TEGRA_USB_MODEM_POWER)
+	if (acm->minor == MODEM_LOG_PORT) {
+		cancel_delayed_work_sync(&icera_mdm_log_unboost_cpufreq_work);
+		cancel_work_sync(&icera_mdm_log_boost_cpufreq_work);
+		pm_qos_update_request(&boost_cpu_freq_req,
+				      PM_QOS_DEFAULT_VALUE);
+		boost_cpufreq_work_flag = 0;
+	}
+#endif
+
 	tty_port_close(&acm->port, tty, filp);
 }
 
@@ -1425,6 +1475,18 @@ skip_countries:
 
 	dev_info(&intf->dev, "ttyACM%d: USB ACM device\n", minor);
 
+#if defined(CONFIG_ICERA_MDM_LOGGING_BOOST_CPU_FREQ) &&	\
+	defined(CONFIG_TEGRA_USB_MODEM_POWER)
+	if (minor == MODEM_LOG_PORT) {
+		pm_qos_add_request(&boost_cpu_freq_req,
+				   PM_QOS_CPU_FREQ_MIN, PM_QOS_DEFAULT_VALUE);
+		boost_cpufreq_work_flag = 0;
+		INIT_WORK(&icera_mdm_log_boost_cpufreq_work,
+			  icera_mdm_log_boost_cpufreq_work_func);
+		INIT_DELAYED_WORK(&icera_mdm_log_unboost_cpufreq_work,
+				  unboost_cpufreq_func);
+	}
+#endif
 	acm_set_control(acm, acm->ctrlout);
 
 	acm->line.dwDTERate = cpu_to_le32(9600);
@@ -1543,6 +1605,15 @@ static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 		pr_err("%s: !acm\n", __func__);
 		return -ENODEV;
 	}
+
+#if defined(CONFIG_ICERA_MDM_LOGGING_BOOST_CPU_FREQ) &&	\
+	defined(CONFIG_TEGRA_USB_MODEM_POWER)
+	if (acm->minor == MODEM_LOG_PORT) {
+		cancel_delayed_work_sync(&icera_mdm_log_unboost_cpufreq_work);
+		cancel_work_sync(&icera_mdm_log_boost_cpufreq_work);
+		boost_cpufreq_work_flag = 0;
+	}
+#endif
 
 	if (PMSG_IS_AUTO(message)) {
 		int b;
