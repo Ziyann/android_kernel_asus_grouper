@@ -1,7 +1,7 @@
 /*
  * xhci-tegra.c - Nvidia xHCI host controller driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -2527,7 +2527,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	}
 
 	pmc_init(tegra);
-	pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data);
+	pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data, 0);
 
 	tegra->hc_in_elpg = false;
 	ret = xhci_resume(tegra->xhci, 0);
@@ -3620,7 +3620,7 @@ static void tegra_xhci_shutdown(struct platform_device *pdev)
 		return;
 
 	if (tegra->hc_in_elpg) {
-		pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data);
+		pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data, 0);
 	} else {
 		xhci = tegra->xhci;
 		hcd = xhci_to_hcd(xhci);
