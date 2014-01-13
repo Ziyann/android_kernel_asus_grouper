@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Description:
  * High-speed USB device controller driver.
@@ -438,6 +438,7 @@ struct tegra_udc {
 	struct work_struct current_work;
 	/* work for boosting cpu frequency */
 	struct work_struct boost_cpufreq_work;
+	struct workqueue_struct *boost_cpufreq_wq;
 	/* irq work for controlling the usb power */
 	struct work_struct irq_work;
 	enum tegra_connect_type connect_type;
