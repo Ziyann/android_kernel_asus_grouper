@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -54,21 +54,7 @@
 		.debounce_interval = 0,             \
 	}
 
-static struct gpio_keys_button tegranote7c_e1569_keys[] = {
-	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
-	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
-	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
-};
-
-static struct gpio_keys_button tegranote7c_p1640_keys[] = {
-	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
-	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
-	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ2, 0),
-	[3] = GPIO_SW(SW_LID, PC7, 1, 1),
-	[4] = GPIO_SW(SW_TABLET_MODE, PQ1, 0, 0),
-};
-
-static struct gpio_keys_button tegranote7c_p1640_a01_keys[] = {
+static struct gpio_keys_button tegranote7c_p1988_keys[] = {
 	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
 	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ2, 0),
@@ -95,8 +81,8 @@ static int tegranote7c_wakeup_key(void)
 }
 
 static struct gpio_keys_platform_data tegranote7c_keys_pdata = {
-	.buttons	= tegranote7c_e1569_keys,
-	.nbuttons	= ARRAY_SIZE(tegranote7c_e1569_keys),
+	.buttons	= tegranote7c_p1988_keys,
+	.nbuttons	= ARRAY_SIZE(tegranote7c_p1988_keys),
 	.wakeup_key	= tegranote7c_wakeup_key,
 };
 
@@ -110,24 +96,7 @@ static struct platform_device tegranote7c_keys_device = {
 
 int __init tegranote7c_kbc_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
-	if (board_info.board_id == BOARD_P1988) {
-		if (board_info.fab == BOARD_FAB_A00) {
-			tegranote7c_keys_pdata.buttons = tegranote7c_p1640_keys;
-			tegranote7c_keys_pdata.nbuttons =
-			   ARRAY_SIZE(tegranote7c_p1640_keys);
-		} else {
-			tegranote7c_keys_pdata.buttons = tegranote7c_p1640_a01_keys;
-			tegranote7c_keys_pdata.nbuttons =
-			   ARRAY_SIZE(tegranote7c_p1640_a01_keys);
-		}
-	}
-
 	platform_device_register(&tegranote7c_keys_device);
-
 	return 0;
 }
 

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-tegranote7c.h
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -85,14 +85,11 @@
 #define MPU_GYRO_IRQ_GPIO             TEGRA_GPIO_PR3
 #define MPU_GYRO_ADDR                 0x69
 #define MPU_GYRO_BUS_NUM              0
-#define MPU_GYRO_ORIENTATION_E1569    MTMAT_TOP_CCW_180
-#define MPU_GYRO_ORIENTATION_P1988_A01 MTMAT_TOP_CCW_0
 #define MPU_GYRO_ORIENTATION          MTMAT_TOP_CCW_90
 #define MPU_COMPASS_NAME              "ak8975"
 #define MPU_COMPASS_IRQ_GPIO          0
 #define MPU_COMPASS_ADDR              0x0D
 #define MPU_COMPASS_BUS_NUM           0
-#define MPU_COMPASS_ORIENTATION_E1569 MTMAT_TOP_CCW_180
 #define MPU_COMPASS_ORIENTATION       MTMAT_BOT_CCW_270
 
 /* Modem related GPIOs */

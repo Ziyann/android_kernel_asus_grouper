@@ -617,19 +617,12 @@ FIXED_REG(9,   en_avdd_hdmi_pll,       en_avdd_hdmi_pll,
 	ADD_FIXED_REG(vddio_sd_slot),		\
 	ADD_FIXED_REG(vd_cam_1v8),
 
-#define E1569_FIXED_REG				\
-	ADD_FIXED_REG(dvdd_lcd_1v8),		\
-	ADD_FIXED_REG(dvdd_ts),
-
 #define P1988_FIXED_REG				\
+	ADD_FIXED_REG(dvdd_lcd_1v8),		\
+	ADD_FIXED_REG(dvdd_ts),                 \
 	ADD_FIXED_REG(en_lcd_1v8),              \
 	ADD_FIXED_REG(en_avdd_hdmi_pll)
 
-/* Gpio switch regulator platform data for TegraNote7C E1569 */
-static struct platform_device *fixed_reg_devs_e1569[] = {
-	TEGRANOTE7C_COMMON_FIXED_REG
-	E1569_FIXED_REG
-};
 
 /* Gpio switch regulator platform data for Tegranote7c */
 static struct platform_device *fixed_reg_devs_p1988[] = {
@@ -642,7 +635,6 @@ int __init tegranote7c_palmas_regulator_init(void)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
 	int i;
-	struct board_info board_info;
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -655,29 +647,19 @@ int __init tegranote7c_palmas_regulator_init(void)
 		pmic_platform.reg_init[i] = tegranote7c_reg_init[i];
 	}
 
-	tegra_get_board_info(&board_info);
+	/* Boot strapping 0, 2, 3 indicate Micron 1GB MT41K128M16-125
+	 * and it requires VDDIO_DDR 1.38V for stability.
+	 * Boot strapping 1 indicates Hynix 1GB H5TC2G63FFR-PBA and
+	 * it requires VDDIO_DDR 1.35V.
+	 */
+	tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.min_uV =
+								1380000;
+	tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.max_uV =
+								1380000;
 
-	if (board_info.board_id == BOARD_P1988 &&
-			((board_info.fab < BOARD_FAB_A04) ||
-			(board_info.fab >= BOARD_FAB_A04 &&
-			tegra_bct_strapping != 1))) {
-		/* Boot strapping 0, 2, 3 indicate Micron 1GB MT41K128M16-125
-		 * and it requires VDDIO_DDR 1.38V for stability.
-		 * Boot strapping 1 indicates Hynix 1GB H5TC2G63FFR-PBA and
-		 * it requires VDDIO_DDR 1.35V.
-		 */
-		tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.min_uV =
-									1380000;
-		tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.max_uV =
-									1380000;
-	}
-
-	if (board_info.board_id == BOARD_P1988 &&
-				board_info.fab >= BOARD_FAB_A01) {
-		palmas_pdata.clk32k_init_data = tegranote7c_palmas_clk32k_idata;
-		palmas_pdata.clk32k_init_data_size =
-				ARRAY_SIZE(tegranote7c_palmas_clk32k_idata);
-	}
+	palmas_pdata.clk32k_init_data = tegranote7c_palmas_clk32k_idata;
+	palmas_pdata.clk32k_init_data_size =
+			ARRAY_SIZE(tegranote7c_palmas_clk32k_idata);
 
 	if (get_androidboot_mode_charger())
 		palmas_pdata.long_press_delay =
@@ -791,22 +773,14 @@ static int __init tegranote7c_cl_dvfs_init(void)
 
 static int __init tegranote7c_fixed_regulator_init(void)
 {
-	struct board_info board_info;
 	int ret;
 
 	if (!machine_is_tegranote7c()) {
 		return 0;
 	}
 
-	tegra_get_board_info(&board_info);
-
-	if (board_info.board_id == BOARD_P1988)
-		ret = platform_add_devices(fixed_reg_devs_p1988,
-					   ARRAY_SIZE(fixed_reg_devs_p1988));
-	else
-		ret = platform_add_devices(fixed_reg_devs_e1569,
-					   ARRAY_SIZE(fixed_reg_devs_e1569));
-
+	ret = platform_add_devices(fixed_reg_devs_p1988,
+				   ARRAY_SIZE(fixed_reg_devs_p1988));
 	return ret;
 }
 subsys_initcall_sync(tegranote7c_fixed_regulator_init);
@@ -991,17 +965,6 @@ int __init tegranote7c_soctherm_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	/*
-	 * P1988 has oc4 from ina230. E1569 has oc4 from pmic powergood
-	 * Disable oc4 throttle for E1569
-	 */
-	if (board_info.board_id == BOARD_E1569) {
-		tegranote7c_soctherm_data.throttle[THROTTLE_OC4]
-			.devs[THROTTLE_DEV_CPU].enable = false;
-		tegranote7c_soctherm_data.throttle[THROTTLE_OC4]
-			.devs[THROTTLE_DEV_GPU].enable = false;
-	}
-
 	tegra_platform_edp_init(tegranote7c_soctherm_data.therm[THERM_CPU].trips,
 			&tegranote7c_soctherm_data.therm[THERM_CPU].num_trips,
 			6000); /* edp temperature margin */
@@ -1010,14 +973,9 @@ int __init tegranote7c_soctherm_init(void)
 	tegra_add_vc_trips(tegranote7c_soctherm_data.therm[THERM_CPU].trips,
 			&tegranote7c_soctherm_data.therm[THERM_CPU].num_trips);
 
-	if (board_info.board_id != BOARD_E1569 &&
-			(board_info.board_id == BOARD_P1988 &&
-			(board_info.fab != BOARD_FAB_A00 &&
-			board_info.fab != BOARD_FAB_A01))) {
-		tegra_add_cdev_trips(
-			tegranote7c_soctherm_data.therm[THERM_CPU].trips,
-			&tegranote7c_soctherm_data.therm[THERM_CPU].num_trips);
-	}
+	tegra_add_cdev_trips(
+		tegranote7c_soctherm_data.therm[THERM_CPU].trips,
+		&tegranote7c_soctherm_data.therm[THERM_CPU].num_trips);
 
 	return tegra11_soctherm_init(&tegranote7c_soctherm_data);
 }

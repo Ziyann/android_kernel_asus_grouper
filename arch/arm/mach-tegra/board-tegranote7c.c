@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-tegranote7c.c
  *
- * Copyright (c) 2013 - 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -111,13 +111,8 @@ static struct platform_device btwilink_device = {
 
 static noinline void __init tegranote7c_bt_st(void)
 {
-	struct board_info board_info;
-
 	pr_info("tegranote7c_bt_st");
-	tegra_get_board_info(&board_info);
-
-	if (board_info.board_id == BOARD_P1988)
-		tegranote7c_wilink_pdata.nshutdown_gpio = TEGRA_GPIO_PR1;
+	tegranote7c_wilink_pdata.nshutdown_gpio = TEGRA_GPIO_PR1;
 
 	platform_device_register(&wl128x_device);
 	platform_device_register(&btwilink_device);
@@ -181,17 +176,6 @@ static __initdata struct tegra_clk_init_table tegranote7c_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static __initdata struct tegra_clk_init_table e1569_wifi_clk_init_table[] = {
-	{ "blink",	"clk_32k",	32768,		true},
-	{ NULL,		NULL,		0,		0},
-};
-
-static __initdata struct tegra_clk_init_table P1988_wifi_clk_init_table[] = {
-	{ "extern3",	"clk_32k",	32768,		true},
-	{ "clk_out_3",	"extern3",	32768,		true},
-	{ NULL,		NULL,		0,		0},
-};
-
 #ifdef CONFIG_USE_OF
 static struct tegra_i2c_platform_data tegranote7c_i2c1_platform_data = {
 	.adapter_nr	= 0,
@@ -240,24 +224,13 @@ static struct tegra_i2c_platform_data tegranote7c_i2c5_platform_data = {
 };
 #endif
 
-static struct i2c_board_info __initdata rt5640_board_info = {
-	I2C_BOARD_INFO("rt5640", 0x1c),
-};
-
 static struct i2c_board_info __initdata rt5639_board_info = {
 	I2C_BOARD_INFO("rt5639", 0x1c),
 };
 
 static void tegranote7c_i2c_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
-	if (board_info.board_id == BOARD_P1988)
-		i2c_register_board_info(0, &rt5639_board_info, 1);
-	else
-		i2c_register_board_info(0, &rt5640_board_info, 1);
+	i2c_register_board_info(0, &rt5639_board_info, 1);
 }
 
 static struct platform_device *tegranote7c_uart_devices[] __initdata = {
@@ -361,6 +334,10 @@ static struct platform_device tegranote7c_tegra_wakeup_monitor_device = {
 #endif
 
 static struct tegra_asoc_platform_data tegranote7c_audio_pdata = {
+	.codec_name = "rt5639.0-001c",
+	.codec_dai_name = "rt5639-aif1",
+	.gpio_hp_det = TEGRA_GPIO_CDC_IRQ,
+	.use_codec_jd_irq = true,
 	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_mute		= -1,
 	.gpio_int_mic_en	= TEGRA_GPIO_INT_MIC_EN,
@@ -609,29 +586,6 @@ static void tegranote7c_usb_init(void) { }
 static void tegranote7c_modem_init(void) { }
 #endif
 
-static void tegranote7c_audio_init(void)
-{
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
-	if (board_info.board_id == BOARD_P1988) {
-		tegranote7c_audio_pdata.codec_name = "rt5639.0-001c";
-		tegranote7c_audio_pdata.codec_dai_name = "rt5639-aif1";
-		if (board_info.fab == BOARD_FAB_A00)
-			tegranote7c_audio_pdata.gpio_hp_det = TEGRA_GPIO_HP_DET;
-		else {/* from A01, CDC_IRQ from codec is used as interrupt */
-			tegranote7c_audio_pdata.gpio_hp_det = TEGRA_GPIO_CDC_IRQ;
-			tegranote7c_audio_pdata.use_codec_jd_irq = true;
-		}
-	} else {
-		tegranote7c_audio_pdata.codec_name = "rt5640.0-001c";
-		tegranote7c_audio_pdata.codec_dai_name = "rt5640-aif1";
-		tegranote7c_audio_pdata.gpio_hp_det = TEGRA_GPIO_HP_DET;
-	}
-}
-
-
 static struct platform_device *tegranote7c_spi_devices[] __initdata = {
 	&tegra11_spi_device1,
 };
@@ -748,17 +702,12 @@ struct spi_board_info rm31080a_tegranote7c_spi_board[1] = {
 
 static int __init tegranote7c_touch_init(void)
 {
-	struct board_info board_info;
-
 	if (get_androidboot_mode_charger())
 		return 0;
 
-	tegra_get_board_info(&board_info);
-
 #if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
 	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
-	if (board_info.board_id == BOARD_P1988)
-		(void)touch_init_maxim_sti(&maxim_sti_spi_board);
+	(void)touch_init_maxim_sti(&maxim_sti_spi_board);
 #else
 	tegra_clk_init_from_table(touch_clk_init_table);
 	rm31080ts_tegranote7c_data.platform_id = RM_PLATFORM_D010;
@@ -776,16 +725,7 @@ static int __init tegranote7c_touch_init(void)
 
 static void __init tegra_tegranote7c_early_init(void)
 {
-	struct board_info board_info;
-
 	tegra_clk_init_from_table(tegranote7c_clk_init_table);
-	/* enable wifi 32K clk according to board revision */
-	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E1569)
-		tegra_clk_init_from_table(e1569_wifi_clk_init_table);
-	else if (board_info.board_id == BOARD_P1988 &&
-			board_info.fab == BOARD_FAB_A00)
-		tegra_clk_init_from_table(P1988_wifi_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("tegranote7c");
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
@@ -887,7 +827,6 @@ static void __init tegra_tegranote7c_late_init(void)
 	tegranote7c_spi_init();
 	tegranote7c_usb_init();
 	tegranote7c_uart_init();
-	tegranote7c_audio_init();
 	platform_add_devices(tegranote7c_devices, ARRAY_SIZE(tegranote7c_devices));
 	tegra_ram_console_debug_init();
 	tegra_io_dpd_init();

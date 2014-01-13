@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_emc.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1152,10 +1152,6 @@ static struct device_node *tegra_emc_ramcode_devnode(struct device_node *np)
 			} else if (board_info.board_id == BOARD_P1640) {
 				/* force select ram strapping 0x0 */
 				if (reg == 0x0)
-					return of_node_get(iter);
-			} else if (board_info.board_id == BOARD_P1988 &&
-				board_info.fab >= BOARD_FAB_A04) {
-				if (reg == tegra_bct_strapping)
 					return of_node_get(iter);
 			} else if (board_info.board_id == BOARD_P1988) {
 				/* force select ram strapping 0x0 */

@@ -61,8 +61,6 @@
 #include "tegra-board-id.h"
 #include "dvfs.h"
 
-static struct board_info board_info;
-
 static struct throttle_table tj_throttle_table[] = {
 		/* CPU_THROT_LOW cannot be used by other than CPU */
 		/* NO_CAP cannot be used by CPU */
@@ -427,24 +425,6 @@ static int tegranote7c_camera_init(void)
 }
 
 /* MPU board file definition	*/
-static struct mpu_platform_data mpu6050_gyro_data_e1569 = {
-	.int_config	= 0x10,
-	.level_shifter	= 0,
-	/* Located in board_[platformname].h */
-	.orientation	= MPU_GYRO_ORIENTATION_E1569,
-	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
-			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
-};
-
-static struct mpu_platform_data mpu6050_gyro_data_p1640_a01 = {
-	.int_config	= 0x10,
-	.level_shifter	= 0,
-	/* Located in board_[platformname].h */
-	.orientation	= MPU_GYRO_ORIENTATION_P1988_A01,
-	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
-			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
-};
-
 static struct mpu_platform_data mpu6050_gyro_data = {
 	.int_config	= 0x10,
 	.level_shifter	= 0,
@@ -474,7 +454,6 @@ static void mpuirq_init(void)
 	unsigned gyro_irq_gpio = MPU_GYRO_IRQ_GPIO;
 	unsigned gyro_bus_num = MPU_GYRO_BUS_NUM;
 	char *gyro_name = MPU_GYRO_NAME;
-	struct board_info board_info;
 
 	pr_info("*** MPU START *** mpuirq_init...\n");
 
@@ -495,20 +474,11 @@ static void mpuirq_init(void)
 
 	inv_mpu6050_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 
-	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E1569)
-		inv_mpu6050_i2c2_board_info[0].platform_data =
-			&mpu6050_gyro_data_e1569;
-	else if ((board_info.board_id == BOARD_P1988) &&
-			(board_info.fab <= BOARD_FAB_A01))
-		inv_mpu6050_i2c2_board_info[0].platform_data =
-			&mpu6050_gyro_data_p1640_a01;
-
 	i2c_register_board_info(gyro_bus_num, inv_mpu6050_i2c2_board_info,
 		ARRAY_SIZE(inv_mpu6050_i2c2_board_info));
 }
 
-static int tegranote7c_nct1008_init(void)
+static int __maybe_unused tegranote7c_nct1008_init(void)
 {
 	int nct1008_port;
 	int ret = 0;
@@ -555,29 +525,6 @@ static struct therm_est_subdevice skin_devs[] = {
 	{
 		.dev_data = "Tdiode",
 		.coeffs = {
-			3, 0, -2, -2,
-			-2, -2, -4, -2,
-			-2, -3, -4, -3,
-			-5, -2, -4, -3,
-			0, -3, -2, -22
-		},
-	},
-	{
-		.dev_data = "Tboard",
-		.coeffs = {
-			46, 11, 8, 10,
-			10, 12, 10, 13,
-			9, 8, 8, 9,
-			6, 6, 3, 5,
-			1, 3, -2, -27
-		},
-	},
-};
-
-static struct therm_est_subdevice skin_devs_a02[] = {
-	{
-		.dev_data = "Tdiode",
-		.coeffs = {
 			0, -1, -5, -6,
 			-6, -5, -5, -4,
 			-4, -4, -4, -4,
@@ -600,8 +547,11 @@ static struct therm_est_subdevice skin_devs_a02[] = {
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
 	.trips = skin_trips,
+	.ndevs = ARRAY_SIZE(skin_devs),
+	.devs = skin_devs,
 	.polling_period = 1100,
 	.passive_delay = 15000,
+	.toffset = 799,
 	.tc1 = 10,
 	.tc2 = 1,
 };
@@ -643,22 +593,6 @@ static struct balanced_throttle skin_throttle = {
 static int __init tegranote7c_skin_init(void)
 {
 	if (machine_is_tegranote7c()) {
-		tegra_get_board_info(&board_info);
-		if (board_info.board_id == BOARD_E1569 ||
-			(board_info.board_id == BOARD_P1988 &&
-			(board_info.fab == BOARD_FAB_A00 ||
-			board_info.fab == BOARD_FAB_A01))) {
-			/* Use this for E1569 and P1988 A00/A01 */
-			skin_data.toffset = 5588;
-			skin_data.ndevs = ARRAY_SIZE(skin_devs);
-			skin_data.devs = skin_devs;
-		} else {
-			/* Use this after P1988 A02. */
-			skin_data.toffset = 799;
-			skin_data.ndevs = ARRAY_SIZE(skin_devs_a02);
-			skin_data.devs = skin_devs_a02;
-		}
-
 		balanced_throttle_register(&skin_throttle, "skin-balanced");
 		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
 		platform_device_register(&tegra_skin_therm_est_device);
@@ -828,24 +762,11 @@ int __init tegranote7c_sensors_init(void)
 {
 	int err;
 
-	tegra_get_board_info(&board_info);
-
-	if (board_info.board_id == BOARD_E1569 ||
-			(board_info.board_id == BOARD_P1988 &&
-			(board_info.fab == BOARD_FAB_A00 ||
-			board_info.fab == BOARD_FAB_A01))) {
-		err = tegranote7c_nct1008_init();
-		if (err) {
-			pr_err("%s: nct1008 register failed.\n", __func__);
-			return err;
-		}
-	} else {
-		err = platform_add_devices(gadc_thermal_devices,
-					   ARRAY_SIZE(gadc_thermal_devices));
-		if (err) {
-			pr_err("%s: gadc_thermal register failed\n", __func__);
-			return err;
-		}
+	err = platform_add_devices(gadc_thermal_devices,
+				   ARRAY_SIZE(gadc_thermal_devices));
+	if (err) {
+		pr_err("%s: gadc_thermal register failed\n", __func__);
+		return err;
 	}
 
 	tegratab_i2c1_ltr659ps_board_info[0].irq =

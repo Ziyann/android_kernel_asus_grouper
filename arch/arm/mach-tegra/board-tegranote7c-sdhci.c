@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-tegranote7c-sdhci.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -313,7 +313,6 @@ int __init tegranote7c_sdhci_init(void)
 	int nominal_core_mv;
 	int min_vcore_override_mv;
 	int boot_vcore_mv;
-	struct board_info board_info;
 	nominal_core_mv =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
 	if (nominal_core_mv) {
@@ -338,9 +337,7 @@ int __init tegranote7c_sdhci_init(void)
 		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
 	}
 
-	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_P1988)
-		tegra_sdhci_platform_data2.wp_gpio = -1;
+	tegra_sdhci_platform_data2.wp_gpio = -1;
 	if ((tegra_sdhci_platform_data3.uhs_mask & MMC_MASK_HS200)
 	&& (!(tegra_sdhci_platform_data3.uhs_mask & MMC_UHS_MASK_DDR50)))
 		tegra_sdhci_platform_data3.trim_delay = 0;
