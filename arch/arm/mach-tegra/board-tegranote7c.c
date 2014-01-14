@@ -529,7 +529,7 @@ static void tegranote7c_usb_init(void)
 
 static struct gpio modem_gpios[] = { /* Nemo modem */
 	{MODEM_EN, GPIOF_OUT_INIT_HIGH, "MODEM EN"},
-	{MDM_RST, GPIOF_OUT_INIT_LOW, "MODEM RESET"},
+	{MDM_RST, GPIOF_OUT_INIT_HIGH, "MODEM RESET"},
 	{MDM_APACK2, GPIOF_IN, "MODEM APACK2"},
 };
 
