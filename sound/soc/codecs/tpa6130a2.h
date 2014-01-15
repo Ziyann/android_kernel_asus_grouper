@@ -2,6 +2,7 @@
  * ALSA SoC TPA6130A2 amplifier driver
  *
  * Copyright (C) Nokia Corporation
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Peter Ujfalusi <peter.ujfalusi@ti.com>
  *
@@ -58,5 +59,6 @@
 
 extern int tpa6130a2_add_controls(struct snd_soc_codec *codec);
 extern int tpa6130a2_stereo_enable(struct snd_soc_codec *codec, int enable);
+extern int tpa6130a2_power(u8 power);
 
 #endif /* __TPA6130A2_H__ */

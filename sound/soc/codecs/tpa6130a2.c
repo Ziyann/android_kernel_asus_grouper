@@ -2,6 +2,7 @@
  * ALSA SoC Texas Instruments TPA6130A2 headset stereo amplifier driver
  *
  * Copyright (C) Nokia Corporation
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Peter Ujfalusi <peter.ujfalusi@ti.com>
  *
@@ -44,8 +45,6 @@ static struct i2c_client *tpa6130a2_client;
 struct tpa6130a2_data {
 	struct mutex mutex;
 	unsigned char regs[TPA6130A2_CACHEREGNUM];
-	struct regulator *supply;
-	int power_gpio;
 	u8 power_state:1;
 	enum tpa_model id;
 };
@@ -121,13 +120,14 @@ static int tpa6130a2_initialize(void)
 	return ret;
 }
 
-static int tpa6130a2_power(u8 power)
+int tpa6130a2_power(u8 power)
 {
 	struct	tpa6130a2_data *data;
 	u8	val;
 	int	ret = 0;
 
-	BUG_ON(tpa6130a2_client == NULL);
+	if (tpa6130a2_client == NULL)
+		return -1;
 	data = i2c_get_clientdata(tpa6130a2_client);
 
 	mutex_lock(&data->mutex);
@@ -135,24 +135,12 @@ static int tpa6130a2_power(u8 power)
 		goto exit;
 
 	if (power) {
-		ret = regulator_enable(data->supply);
-		if (ret != 0) {
-			dev_err(&tpa6130a2_client->dev,
-				"Failed to enable supply: %d\n", ret);
-			goto exit;
-		}
 		/* Power on */
-		if (data->power_gpio >= 0)
-			gpio_set_value(data->power_gpio, 1);
-
 		data->power_state = 1;
 		ret = tpa6130a2_initialize();
 		if (ret < 0) {
 			dev_err(&tpa6130a2_client->dev,
 				"Failed to initialize chip\n");
-			if (data->power_gpio >= 0)
-				gpio_set_value(data->power_gpio, 0);
-			regulator_disable(data->supply);
 			data->power_state = 0;
 			goto exit;
 		}
@@ -162,11 +150,6 @@ static int tpa6130a2_power(u8 power)
 		val |= TPA6130A2_SWS;
 		tpa6130a2_i2c_write(TPA6130A2_REG_CONTROL, val);
 
-		/* Power off */
-		if (data->power_gpio >= 0)
-			gpio_set_value(data->power_gpio, 0);
-
-		ret = regulator_disable(data->supply);
 		if (ret != 0) {
 			dev_err(&tpa6130a2_client->dev,
 				"Failed to disable supply: %d\n", ret);
@@ -180,6 +163,7 @@ exit:
 	mutex_unlock(&data->mutex);
 	return ret;
 }
+EXPORT_SYMBOL_GPL(tpa6130a2_power);
 
 static int tpa6130a2_get_volsw(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
@@ -325,6 +309,8 @@ static void tpa6130a2_channel_enable(u8 channel, int enable)
 int tpa6130a2_stereo_enable(struct snd_soc_codec *codec, int enable)
 {
 	int ret = 0;
+	if (tpa6130a2_client == NULL)
+		return -1;
 	if (enable) {
 		ret = tpa6130a2_power(1);
 		if (ret < 0)
@@ -387,7 +373,6 @@ static int __devinit tpa6130a2_probe(struct i2c_client *client,
 	i2c_set_clientdata(tpa6130a2_client, data);
 
 	pdata = client->dev.platform_data;
-	data->power_gpio = pdata->power_gpio;
 	data->id = id->driver_data;
 
 	mutex_init(&data->mutex);
@@ -396,16 +381,6 @@ static int __devinit tpa6130a2_probe(struct i2c_client *client,
 	data->regs[TPA6130A2_REG_CONTROL] =	TPA6130A2_SWS;
 	data->regs[TPA6130A2_REG_VOL_MUTE] =	TPA6130A2_MUTE_R |
 						TPA6130A2_MUTE_L;
-
-	if (data->power_gpio >= 0) {
-		ret = gpio_request(data->power_gpio, "tpa6130a2 enable");
-		if (ret < 0) {
-			dev_err(dev, "Failed to request power GPIO (%d)\n",
-				data->power_gpio);
-			goto err_gpio;
-		}
-		gpio_direction_output(data->power_gpio, 0);
-	}
 
 	switch (data->id) {
 	default:
@@ -417,13 +392,6 @@ static int __devinit tpa6130a2_probe(struct i2c_client *client,
 	case TPA6140A2:
 		regulator = "AVdd";
 		break;
-	}
-
-	data->supply = regulator_get(dev, regulator);
-	if (IS_ERR(data->supply)) {
-		ret = PTR_ERR(data->supply);
-		dev_err(dev, "Failed to request supply: %d\n", ret);
-		goto err_regulator;
 	}
 
 	ret = tpa6130a2_power(1);
@@ -439,16 +407,10 @@ static int __devinit tpa6130a2_probe(struct i2c_client *client,
 
 	/* Disable the chip */
 	ret = tpa6130a2_power(0);
-	if (ret != 0)
-		goto err_power;
 
 	return 0;
 
 err_power:
-	regulator_put(data->supply);
-err_regulator:
-	if (data->power_gpio >= 0)
-		gpio_free(data->power_gpio);
 err_gpio:
 	tpa6130a2_client = NULL;
 
@@ -461,10 +423,6 @@ static int __devexit tpa6130a2_remove(struct i2c_client *client)
 
 	tpa6130a2_power(0);
 
-	if (data->power_gpio >= 0)
-		gpio_free(data->power_gpio);
-
-	regulator_put(data->supply);
 	tpa6130a2_client = NULL;
 
 	return 0;

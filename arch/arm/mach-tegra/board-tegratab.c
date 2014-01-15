@@ -69,6 +69,9 @@
 #include <mach/tegra_wakeup_monitor.h>
 #include <mach/hardware.h>
 #include <mach/dc.h>
+#ifdef CONFIG_SND_SOC_TI_TPA6130A2
+#include <sound/tpa6130a2-plat.h>
+#endif
 
 #include "board-touch-raydium.h"
 #include "board.h"
@@ -236,6 +239,18 @@ static struct tegra_i2c_platform_data tegratab_i2c5_platform_data = {
 };
 #endif
 
+
+#ifdef CONFIG_SND_SOC_TI_TPA6130A2
+static struct tpa6130a2_platform_data tpa6130a2_pdata = {
+	/*.power_gpio = TEGRA_GPIO_HP_EN,*/
+};
+
+static struct i2c_board_info __initdata tpa6130a2_board_info = {
+	I2C_BOARD_INFO("tpa6130a2", 0x60),
+	.platform_data = &tpa6130a2_pdata,
+};
+#endif
+
 static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
 };
@@ -255,6 +270,9 @@ static void tegratab_i2c_init(void)
 		i2c_register_board_info(0, &rt5639_board_info, 1);
 	else
 		i2c_register_board_info(0, &rt5640_board_info, 1);
+#ifdef CONFIG_SND_SOC_TI_TPA6130A2
+	i2c_register_board_info(0, &tpa6130a2_board_info, 1);
+#endif
 }
 
 static struct platform_device *tegratab_uart_devices[] __initdata = {

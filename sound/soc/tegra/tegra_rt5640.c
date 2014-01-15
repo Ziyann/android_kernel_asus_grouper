@@ -50,6 +50,9 @@
 #include <sound/soc.h>
 #include "../codecs/rt5639.h"
 #include "../codecs/rt5640.h"
+#ifdef CONFIG_SND_SOC_TI_TPA6130A2
+#include "../codecs/tpa6130a2.h"
+#endif
 
 #include "tegra_pcm.h"
 #include "tegra_asoc_utils.h"
@@ -1366,7 +1369,14 @@ static int tegra_rt5640_event_hp(struct snd_soc_dapm_widget *w,
 	struct snd_soc_card *card = dapm->card;
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+#ifdef CONFIG_SND_SOC_TI_TPA6130A2
+	struct snd_soc_codec *codec = card->rtd[DAI_LINK_HIFI].codec;
 
+		if (SND_SOC_DAPM_EVENT_ON(event))
+			tpa6130a2_stereo_enable(codec, 1);
+		else
+			tpa6130a2_stereo_enable(codec, 0);
+#endif
 	if (!(machine->gpio_requested & GPIO_HP_MUTE))
 		return 0;
 
@@ -1909,7 +1919,6 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 	}
 #endif
 
-
 	if (!pdata->edp_support)
 		return 0;
 
@@ -1957,7 +1966,9 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 			machine->spk_edp_client = NULL;
 		}
 	}
-
+#ifdef CONFIG_SND_SOC_TI_TPA6130A2
+	tpa6130a2_add_controls(card->rtd[DAI_LINK_HIFI].codec);
+#endif
 	return 0;
 
 err_unregister_card:

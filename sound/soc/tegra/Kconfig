@@ -216,6 +216,16 @@ config SND_SOC_TEGRA_RT5640
 	  boards using the ALC5640 codec. Currently, the supported boards
 	  are Kai,Cardhu,Dalmore and Macallan.
 
+config SND_SOC_TI_TPA6130A2
+	tristate "SoC Audio support for Tegra boards using a TPA6130A2 amp"
+	bool "Enable system DMA driver for NVIDIA Tegra SoCs"
+	select SND_SOC_TPA6130A2
+	help
+	  Enable support for the
+	  Tegra PWM controller(s).
+	  This item is just
+	  used for project with TPA6130A2.
+
 config MACH_HAS_SND_SOC_TEGRA_MAX98095
 	bool
 	help
