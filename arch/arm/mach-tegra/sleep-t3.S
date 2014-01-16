@@ -889,15 +889,6 @@ powerdown_pll_cx:
 	str	r0, [r5, #CLK_RESET_SCLK_BURST]
 	mov	pc, lr
 
-	/*
-	 * Switch to STDBY clock (CLKS), bits 28:31 == 0
-	 * Enable burst on CPU IRQ (bit 24)
-	 * Set clock sources to CLKM (clock source 0)
-	 */
-	mov	r0, #(1 << 24)
-	str	r0, [r5, #CLK_RESET_SCLK_BURST]
-	mov	pc, lr
-
 /*
  * tegra3_enter_sleep
  *
