@@ -1502,7 +1502,9 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 
 	if (udc->vbus_active && !is_active) {
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-		queue_work(udc->boost_cpufreq_wq, &udc->boost_cpufreq_work);
+		if (system_state != SYSTEM_BOOTING)
+			queue_work(udc->boost_cpufreq_wq,
+				&udc->boost_cpufreq_work);
 #endif
 		/* If cable disconnected, cancel any delayed work */
 		cancel_delayed_work_sync(&udc->non_std_charger_work);
@@ -1520,7 +1522,9 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		tegra_usb_set_charging_current(udc);
 	} else if (!udc->vbus_active && is_active) {
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-		queue_work(udc->boost_cpufreq_wq, &udc->boost_cpufreq_work);
+		if (system_state != SYSTEM_BOOTING)
+			queue_work(udc->boost_cpufreq_wq,
+				&udc->boost_cpufreq_work);
 #endif
 		tegra_usb_phy_power_on(udc->phy);
 		/* setup the controller in the device mode */
