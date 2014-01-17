@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -77,6 +77,14 @@ static void __init tegranote7c_gpio_init_configure(void)
 	}
 }
 
+#ifdef CONFIG_PM_SLEEP
+/* pinmux settings during low power mode for power saving purpose */
+static struct tegra_pingroup_config tegranote7c_sleep_pinmux[] = {
+    /* Config RT6154 to PSM mode to save modem power */
+	GPIO_PINMUX(KB_COL1, PULL_DOWN, NORMAL, OUTPUT, DISABLE),
+};
+#endif
+
 int __init tegranote7c_pinmux_init(void)
 {
 	tegranote7c_gpio_init_configure();
@@ -94,6 +102,10 @@ int __init tegranote7c_pinmux_init(void)
 	if (get_tegra_uart_debug_port_id() == UART_FROM_SDCARD)
 		tegra_pinmux_config_table(e2542_uart_config_pinmux,
 			ARRAY_SIZE(e2542_uart_config_pinmux));
+#ifdef CONFIG_PM_SLEEP
+	tegra11x_set_sleep_pinmux(tegranote7c_sleep_pinmux,
+		ARRAY_SIZE(tegranote7c_sleep_pinmux));
+#endif
 
 	return 0;
 }

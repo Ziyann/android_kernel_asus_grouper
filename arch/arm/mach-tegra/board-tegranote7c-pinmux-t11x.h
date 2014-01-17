@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -176,6 +176,7 @@ static __initdata struct tegra_pingroup_config tegranote7c_pinmux_common[] = {
 	GPIO_PINMUX(SDMMC1_WP_N, NORMAL, NORMAL, OUTPUT, DISABLE),
 	GPIO_PINMUX(CLK_32K_OUT, NORMAL, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(KB_COL0, PULL_UP, NORMAL, INPUT, DISABLE),
+	GPIO_PINMUX(KB_COL1, PULL_UP, NORMAL, OUTPUT, DISABLE),
 	GPIO_PINMUX(KB_COL2, PULL_UP, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(KB_COL5, PULL_UP, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(KB_ROW0, NORMAL, NORMAL, OUTPUT, DISABLE),
@@ -222,7 +223,6 @@ struct tegra_pingroup_config tegranote7c_unused_pins_lowpower[] = {
 	UNUSED_PINMUX(GMI_WAIT),
 	UNUSED_PINMUX(GMI_WR_N),
 	UNUSED_PINMUX(CLK2_OUT),
-	UNUSED_PINMUX(KB_COL1),
 	UNUSED_PINMUX(KB_COL3),
 	UNUSED_PINMUX(KB_COL4),
 	UNUSED_PINMUX(KB_COL6),
