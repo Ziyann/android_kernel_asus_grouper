@@ -3,7 +3,7 @@
  * Copyright (C) 2011 Capella Microsystems Inc.
  * Author: Frank Hsieh <pengyueh@gmail.com>
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -358,11 +358,14 @@ static int lightsensor_enable(struct cm3217_info *lpi)
 	int ret = 0;
 	uint8_t cmd = 0;
 
-	als_power(1);
-
 	mutex_lock(&lpi->enable_lock);
 
+	if (lpi->als_enable)
+		goto out;
+
 	D("[LS][CM3217] %s\n", __func__);
+
+	als_power(1);
 
 	cmd = (CM3217_ALS_IT_2_T | CM3217_ALS_BIT5_Default_1 |
 	       CM3217_ALS_WDM_DEFAULT_1);
@@ -374,6 +377,7 @@ static int lightsensor_enable(struct cm3217_info *lpi)
 	queue_delayed_work(lpi->lp_wq, &report_work, lpi->polling_delay);
 	lpi->als_enable = 1;
 
+out:
 	mutex_unlock(&lpi->enable_lock);
 
 	return ret;
@@ -385,6 +389,9 @@ static int lightsensor_disable(struct cm3217_info *lpi)
 	char cmd = 0;
 
 	mutex_lock(&lpi->disable_lock);
+
+	if (!lpi->als_enable)
+		goto out;
 
 	D("[LS][CM3217] %s\n", __func__);
 
@@ -401,9 +408,10 @@ static int lightsensor_disable(struct cm3217_info *lpi)
 	cancel_delayed_work(&report_work);
 	lpi->als_enable = 0;
 
-	mutex_unlock(&lpi->disable_lock);
-
 	als_power(0);
+
+out:
+	mutex_unlock(&lpi->disable_lock);
 
 	return ret;
 }
