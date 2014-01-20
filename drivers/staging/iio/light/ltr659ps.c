@@ -1037,6 +1037,9 @@ static void ltr659ps_work_function(struct work_struct *work)
 	struct i2c_client *client = data->client;
 	u8 status;
 
+	if (!data->enable)
+		return;
+
 	status = i2c_smbus_read_byte_data(client, LTR659PS_REG_PS_STATUS);
 	if ((status & 0x03) == 0x03)
 		ltr659ps_report_input_event(data);
@@ -1284,7 +1287,7 @@ static int __devinit ltr659ps_probe(struct i2c_client *client
 
 	prox_data->enable = 0;
 	prox_data->init = 0;
-	/* TODO Correct threshold in right ME */
+
 	prox_data->ps_lowthresh = pdata->default_ps_lowthreshold;
 	prox_data->ps_highthresh = pdata->default_ps_highthreshold;
 	/* default configuration */
