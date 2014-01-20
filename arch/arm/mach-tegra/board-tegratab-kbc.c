@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -76,6 +76,14 @@ static struct gpio_keys_button tegratab_p1640_a01_keys[] = {
 	[4] = GPIO_SW(SW_TABLET_MODE, PO5, 0, 1),
 };
 
+static struct gpio_keys_button tegratab_p1988_keys[] = {
+	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
+	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
+	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ2, 0),
+	[3] = GPIO_SW(SW_LID, PC7, 1, 1),
+	[4] = GPIO_SW(SW_TABLET_MODE, PO5, 0, 1),
+};
+
 static int tegratab_wakeup_key(void)
 {
 	int wakeup_key;
@@ -124,6 +132,10 @@ int __init tegratab_kbc_init(void)
 			tegratab_keys_pdata.nbuttons =
 			   ARRAY_SIZE(tegratab_p1640_a01_keys);
 		}
+	} else if (board_info.board_id == BOARD_P1988) {
+		tegratab_keys_pdata.buttons = tegratab_p1988_keys;
+		tegratab_keys_pdata.nbuttons =
+		   ARRAY_SIZE(tegratab_p1988_keys);
 	}
 
 	platform_device_register(&tegratab_keys_device);

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-tegratab-power.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -651,10 +651,16 @@ int __init tegratab_palmas_regulator_init(void)
 									1380000;
 		tegratab_reg_data[PALMAS_REG_SMPS7]->constraints.max_uV =
 									1380000;
+	} else if (board_info.board_id == BOARD_P1988) {
+		tegratab_reg_data[PALMAS_REG_SMPS7]->constraints.min_uV =
+									1380000;
+		tegratab_reg_data[PALMAS_REG_SMPS7]->constraints.max_uV =
+									1380000;
 	}
 
-	if (board_info.board_id == BOARD_P1640 &&
-				board_info.fab >= BOARD_FAB_A01) {
+	if ((board_info.board_id == BOARD_P1640 &&
+				board_info.fab >= BOARD_FAB_A01) ||
+			board_info.board_id == BOARD_P1988) {
 		palmas_pdata.clk32k_init_data = tegratab_palmas_clk32k_idata;
 		palmas_pdata.clk32k_init_data_size =
 				ARRAY_SIZE(tegratab_palmas_clk32k_idata);
@@ -780,7 +786,8 @@ static int __init tegratab_fixed_regulator_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640)
+	if (board_info.board_id == BOARD_P1640 ||
+			board_info.board_id == BOARD_P1988)
 		ret = platform_add_devices(fixed_reg_devs_p1640,
 					   ARRAY_SIZE(fixed_reg_devs_p1640));
 	else
@@ -991,6 +998,10 @@ int __init tegratab_soctherm_init(void)
 			(board_info.board_id == BOARD_P1640 &&
 			(board_info.fab != BOARD_FAB_A00 &&
 			board_info.fab != BOARD_FAB_A01))) {
+		tegra_add_cdev_trips(
+			tegratab_soctherm_data.therm[THERM_CPU].trips,
+			&tegratab_soctherm_data.therm[THERM_CPU].num_trips);
+	} else if (board_info.board_id == BOARD_P1988) {
 		tegra_add_cdev_trips(
 			tegratab_soctherm_data.therm[THERM_CPU].trips,
 			&tegratab_soctherm_data.therm[THERM_CPU].num_trips);

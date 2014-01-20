@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-tegratab.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -116,7 +116,8 @@ static noinline void __init tegratab_bt_st(void)
 	pr_info("tegratab_bt_st");
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640)
+	if (board_info.board_id == BOARD_P1640 ||
+		board_info.board_id == BOARD_P1988)
 		tegratab_wilink_pdata.nshutdown_gpio = TEGRA_GPIO_PR1;
 
 	platform_device_register(&wl128x_device);
@@ -249,7 +250,8 @@ static void tegratab_i2c_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640)
+	if (board_info.board_id == BOARD_P1640 ||
+		board_info.board_id == BOARD_P1988)
 		i2c_register_board_info(0, &rt5639_board_info, 1);
 	else
 		i2c_register_board_info(0, &rt5640_board_info, 1);
@@ -582,15 +584,19 @@ static void tegratab_audio_init(void)
 
 	tegra_get_board_info(&board_info);
 
+	tegratab_audio_pdata.codec_name = "rt5639.0-001c";
+	tegratab_audio_pdata.codec_dai_name = "rt5639-aif1";
+
 	if (board_info.board_id == BOARD_P1640) {
-		tegratab_audio_pdata.codec_name = "rt5639.0-001c";
-		tegratab_audio_pdata.codec_dai_name = "rt5639-aif1";
 		if (board_info.fab == BOARD_FAB_A00)
 			tegratab_audio_pdata.gpio_hp_det = TEGRA_GPIO_HP_DET;
 		else {/* from A01, CDC_IRQ from codec is used as interrupt */
 			tegratab_audio_pdata.gpio_hp_det = TEGRA_GPIO_CDC_IRQ;
 			tegratab_audio_pdata.use_codec_jd_irq = true;
 		}
+	} else if (board_info.board_id == BOARD_P1988) {
+		tegratab_audio_pdata.gpio_hp_det = TEGRA_GPIO_CDC_IRQ;
+		tegratab_audio_pdata.use_codec_jd_irq = true;
 	} else {
 		tegratab_audio_pdata.codec_name = "rt5640.0-001c";
 		tegratab_audio_pdata.codec_dai_name = "rt5640-aif1";
@@ -724,7 +730,8 @@ static int __init tegratab_touch_init(void)
 
 #if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
 	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
-	if (board_info.board_id == BOARD_P1640) {
+	if (board_info.board_id == BOARD_P1640 ||
+		board_info.board_id == BOARD_P1988) {
 		(void)touch_init_maxim_sti(&maxim_sti_spi_board);
 	}
 #else
