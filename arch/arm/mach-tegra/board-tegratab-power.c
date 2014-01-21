@@ -505,6 +505,10 @@ static struct regulator_consumer_supply fixed_reg_vddio_sd_slot_supply[] = {
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
 };
 
+static struct regulator_consumer_supply fixed_reg_vlogic_gyro_supply[] = {
+	REGULATOR_SUPPLY("vlogic_gyro", "0-0069"),
+};
+
 static struct regulator_consumer_supply fixed_reg_vd_cam_1v8_supply[] = {
 	REGULATOR_SUPPLY("dovdd", "2-0010"),
 	REGULATOR_SUPPLY("vif2", "2-0048"),
@@ -588,6 +592,10 @@ FIXED_REG(7,	en_lcd_1v8,	en_lcd_1v8,
 	palmas_rails(smps8),	0,	1,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	false,	true,	1,	1800);
 
+FIXED_REG(8,	vlogic_gyro,	vlogic_gyro,
+	palmas_rails(smps8),	0,	0,
+	TEGRA_GPIO_PR0,	false,	true,	0,	1800);
+
 /*
  * Creating the fixed regulator device tables
  */
@@ -606,6 +614,10 @@ FIXED_REG(7,	en_lcd_1v8,	en_lcd_1v8,
 #define P1640_FIXED_REG				\
 	ADD_FIXED_REG(en_lcd_1v8),
 
+#define P1988_FIXED_REG				\
+	ADD_FIXED_REG(en_lcd_1v8),		\
+	ADD_FIXED_REG(vlogic_gyro),
+
 /* Gpio switch regulator platform data for Tegratab E1569 */
 static struct platform_device *fixed_reg_devs_e1569[] = {
 	TEGRATAB_COMMON_FIXED_REG
@@ -616,6 +628,12 @@ static struct platform_device *fixed_reg_devs_e1569[] = {
 static struct platform_device *fixed_reg_devs_p1640[] = {
 	TEGRATAB_COMMON_FIXED_REG
 	P1640_FIXED_REG
+};
+
+/* Gpio switch regulator platform data for Tegratab P1988 */
+static struct platform_device *fixed_reg_devs_p1988[] = {
+	TEGRATAB_COMMON_FIXED_REG
+	P1988_FIXED_REG
 };
 
 int __init tegratab_palmas_regulator_init(void)
@@ -786,8 +804,10 @@ static int __init tegratab_fixed_regulator_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640 ||
-			board_info.board_id == BOARD_P1988)
+	if (board_info.board_id == BOARD_P1988)
+		ret = platform_add_devices(fixed_reg_devs_p1988,
+					   ARRAY_SIZE(fixed_reg_devs_p1988));
+	else if (board_info.board_id == BOARD_P1640)
 		ret = platform_add_devices(fixed_reg_devs_p1640,
 					   ARRAY_SIZE(fixed_reg_devs_p1640));
 	else
