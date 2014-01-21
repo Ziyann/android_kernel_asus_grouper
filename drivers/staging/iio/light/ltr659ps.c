@@ -952,7 +952,7 @@ IIO_DEVICE_ATTR(ps_offset, 0644, show_ps_offset, store_ps_offset, 0);
 IIO_DEVICE_ATTR(interrupt_persist, 0644
 	, show_interrupt_persist, store_interrupt_persist, 0);
 IIO_DEVICE_ATTR(ps_data, 0444, show_ps_data, NULL, 0);
-IIO_DEVICE_ATTR(enable, 0666, show_enable, store_enable, 0);
+IIO_DEVICE_ATTR(enable, 0644, show_enable, store_enable, 0);
 IIO_DEVICE_ATTR(dump_reg, 0444, show_dump_reg, NULL, 0);
 IIO_DEVICE_ATTR(dump_gpio, 0444, show_dump_gpio, NULL, 0);
 
