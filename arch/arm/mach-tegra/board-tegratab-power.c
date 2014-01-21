@@ -221,7 +221,6 @@ static struct regulator_consumer_supply palmas_smps10_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo1_supply[] = {
-	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "vi"),
@@ -522,6 +521,14 @@ static struct regulator_consumer_supply fixed_reg_en_lcd_1v8_supply[] = {
 	REGULATOR_SUPPLY("dvdd", "spi0.0"),
 };
 
+static struct regulator_consumer_supply fixed_reg_avdd_hdmi_pll_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
+};
+static struct regulator_consumer_supply fixed_reg_en_avdd_hdmi_pll_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
+};
+
+
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
@@ -596,6 +603,15 @@ FIXED_REG(8,	vlogic_gyro,	vlogic_gyro,
 	palmas_rails(smps8),	0,	0,
 	TEGRA_GPIO_PR0,	false,	true,	0,	1800);
 
+FIXED_REG(9,   avdd_hdmi_pll,       avdd_hdmi_pll,
+	palmas_rails(ldo1),     0,      0,
+	-1, false,  true,   0,      1050);
+
+FIXED_REG(10,   en_avdd_hdmi_pll,       en_avdd_hdmi_pll,
+	palmas_rails(ldo1),     0,      0,
+	TEGRA_GPIO_PO6, false,  true,   0,      1050);
+
+
 /*
  * Creating the fixed regulator device tables
  */
@@ -609,14 +625,18 @@ FIXED_REG(8,	vlogic_gyro,	vlogic_gyro,
 
 #define E1569_FIXED_REG				\
 	ADD_FIXED_REG(dvdd_lcd_1v8),		\
-	ADD_FIXED_REG(dvdd_ts),
+	ADD_FIXED_REG(dvdd_ts),			\
+	ADD_FIXED_REG(avdd_hdmi_pll),
+
 
 #define P1640_FIXED_REG				\
-	ADD_FIXED_REG(en_lcd_1v8),
+	ADD_FIXED_REG(en_lcd_1v8),		\
+	ADD_FIXED_REG(avdd_hdmi_pll),
 
 #define P1988_FIXED_REG				\
 	ADD_FIXED_REG(en_lcd_1v8),		\
-	ADD_FIXED_REG(vlogic_gyro),
+	ADD_FIXED_REG(vlogic_gyro),		\
+	ADD_FIXED_REG(en_avdd_hdmi_pll),
 
 /* Gpio switch regulator platform data for Tegratab E1569 */
 static struct platform_device *fixed_reg_devs_e1569[] = {
