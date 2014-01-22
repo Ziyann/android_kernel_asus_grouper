@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -56,11 +56,30 @@ static __initdata struct tegra_pingroup_config manual_config_pinmux[] = {
 	DEFAULT_PINMUX(ULPI_DATA7,    ULPI,        NORMAL,    NORMAL,   INPUT),
 };
 
-static __initdata struct tegra_pingroup_config dvt_a00_manual_config_pinmux[] = {
-	GPIO_PINMUX(KB_COL1, PULL_UP, NORMAL, INPUT, DISABLE), /* hall sensor input */
+static __initdata struct tegra_pingroup_config p1640_manual_config_pinmux[] = {
+	/* hall sensor input */
+	GPIO_PINMUX(KB_COL1, PULL_UP, NORMAL, INPUT, DISABLE),
 };
 
-static struct gpio_init_pin_info dvt_a00_manual_gpio_mode[] = {
+static __initdata struct tegra_pingroup_config
+		p1640_manual_unused_pins_lowpower[] = {
+	/* ULPI_DATA5 is not connected */
+	UNUSED_PINMUX(ULPI_DATA5),
+};
+
+static __initdata struct tegra_pingroup_config p1988_manual_config_pinmux[] = {
+	/* ULPI_DATA5 is used for en_avdd_hdmi_pll */
+	GPIO_PINMUX(ULPI_DATA5, NORMAL, NORMAL, OUTPUT, DISABLE),
+	/* hall sensor input */
+	GPIO_PINMUX(KB_COL1, PULL_UP, NORMAL, INPUT, DISABLE),
+};
+
+static struct gpio_init_pin_info p1640_manual_gpio_mode[] = {
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ1, true, 0), /* hall sensor input */
+};
+
+static struct gpio_init_pin_info p1988_manual_gpio_mode[] = {
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PO6, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ1, true, 0), /* hall sensor input */
 };
 
@@ -73,7 +92,8 @@ static void __init tegratab_gpio_init_configure(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_P1640) {
+	if ((board_info.board_id == BOARD_P1640) ||
+		(board_info.board_id == BOARD_P1988)) {
 		len = ARRAY_SIZE(init_gpio_mode_tegratab_ffd_common);
 		pins_info = init_gpio_mode_tegratab_ffd_common;
 	} else { /* ERS */
@@ -87,9 +107,15 @@ static void __init tegratab_gpio_init_configure(void)
 		pins_info++;
 	}
 
-	if (board_info.board_id == BOARD_P1640) {
-		len = ARRAY_SIZE(dvt_a00_manual_gpio_mode);
-		pins_info = dvt_a00_manual_gpio_mode;
+	if ((board_info.board_id == BOARD_P1640) ||
+		(board_info.board_id == BOARD_P1988)) {
+		if (board_info.board_id == BOARD_P1640) {
+			len = ARRAY_SIZE(p1640_manual_gpio_mode);
+			pins_info = p1640_manual_gpio_mode;
+		} else {
+			len = ARRAY_SIZE(p1988_manual_gpio_mode);
+			pins_info = p1988_manual_gpio_mode;
+		}
 		for (i = 0; i < len; ++i) {
 			tegra_gpio_init_configure(pins_info->gpio_nr,
 				pins_info->is_input, pins_info->value);
@@ -112,10 +138,20 @@ int __init tegratab_pinmux_init(void)
 	if (board_info.board_id == BOARD_P1640) {
 		tegra_pinmux_config_table(tegratab_ffd_pinmux_common,
 					ARRAY_SIZE(tegratab_ffd_pinmux_common));
+		tegra_pinmux_config_table(p1640_manual_config_pinmux,
+					ARRAY_SIZE(p1640_manual_config_pinmux));
 		tegra_pinmux_config_table(ffd_unused_pins_lowpower,
 					ARRAY_SIZE(ffd_unused_pins_lowpower));
-		tegra_pinmux_config_table(dvt_a00_manual_config_pinmux,
-					ARRAY_SIZE(dvt_a00_manual_config_pinmux));
+		tegra_pinmux_config_table(p1640_manual_unused_pins_lowpower,
+					ARRAY_SIZE(
+					p1640_manual_unused_pins_lowpower));
+	} else if (board_info.board_id == BOARD_P1988) {
+		tegra_pinmux_config_table(tegratab_ffd_pinmux_common,
+					ARRAY_SIZE(tegratab_ffd_pinmux_common));
+		tegra_pinmux_config_table(p1988_manual_config_pinmux,
+					ARRAY_SIZE(p1988_manual_config_pinmux));
+		tegra_pinmux_config_table(ffd_unused_pins_lowpower,
+					ARRAY_SIZE(ffd_unused_pins_lowpower));
 	} else { /* ERS */
 		tegra_pinmux_config_table(tegratab_pinmux_common,
 					ARRAY_SIZE(tegratab_pinmux_common));
