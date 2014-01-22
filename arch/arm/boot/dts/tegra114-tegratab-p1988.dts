@@ -1853,16 +1853,16 @@
 					};
 					tmds-cfg@1 {
 						pclk = <74250000>;
-						pll0 = <0x01003f10>;
-						pll1 = <0x10300b00>;
+						pll0 = <0x01003110>;
+						pll1 = <0x00301b00>;
 						pe-current = <0x00000000>;
 						drive-current = <0x21212121>;
 						peak-current = <0x03030303>;
 					};
 					tmds-cfg@2 {
 						pclk = <148500000>;
-						pll0 = <0x01003f10>;
-						pll1 = <0x10300b00>;
+						pll0 = <0x01003310>;
+						pll1 = <0x00301b00>;
 						pe-current = <0x00000000>;
 						drive-current = <0x24242424>;
 						peak-current = <0x03030303>;
@@ -1909,6 +1909,7 @@
 					    "vdd_hdmi_5v0";
 			nvidia,ddc-i2c-bus = <&hdmi_ddc>;
 			nvidia,hpd-gpio = <&gpio 111 1>;
+			nvidia,hotplug-report = <1>;
 		};
 	};
 	pwm-bl {
@@ -1981,7 +1982,7 @@
 		ak8963c@0d {
 			compatible = "ak,ak8963";
 			reg = <0x0d>;
-			orientation = [00 01 00 01 00 00 00 00 ff];
+			orientation = [ff 00 00 00 01 00 00 00 ff];
 			config = "mpu";
 			sec-slave-id = <18>;
 		};
