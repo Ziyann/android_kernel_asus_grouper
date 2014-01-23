@@ -28,6 +28,7 @@
 #include <mach/usb_phy.h>
 #include <mach/iomap.h>
 #include <linux/pm_qos.h>
+#include <linux/wakelock.h>
 
 #if 0
 #define EHCI_DBG(stuff...)	pr_info("ehci-tegra: " stuff)
@@ -53,6 +54,7 @@ struct tegra_ehci_hcd {
 	struct usb_phy *transceiver;
 #endif
 	struct mutex sync_lock;
+	struct wake_lock ehci_wake_lock;
 	bool port_resuming;
 	unsigned int irq;
 	bool bus_suspended_fail;
@@ -191,6 +193,7 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	}
 	if (tegra_usb_phy_pmc_wakeup(tegra->phy)) {
 		ehci_dbg(ehci, "pmc wakeup detected\n");
+		wake_lock_timeout(&tegra->ehci_wake_lock, HZ);
 		usb_hcd_resume_root_hub(hcd);
 		spin_unlock(&ehci->lock);
 		return irq_status;
@@ -686,6 +689,9 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	tegra->cpu_boost_in_work = true;
 #endif
 
+	wake_lock_init(&tegra->ehci_wake_lock,
+		       WAKE_LOCK_SUSPEND, dev_name(&pdev->dev));
+
 	return err;
 
 fail_phy:
@@ -751,6 +757,8 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 
 	if (hcd == NULL)
 		return -EINVAL;
+
+	wake_lock_destroy(&tegra->ehci_wake_lock);
 
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
 	cancel_delayed_work_sync(&tegra->boost_cpu_freq_work);
