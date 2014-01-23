@@ -543,6 +543,7 @@ static int baseband_init(void)
 				    TEGRA_PUPD_PULL_DOWN);
 
 	/* export GPIO for user space access through sysfs */
+	gpio_export(MODEM_EN, false);
 	gpio_export(MDM_RST, false);
 	gpio_export(MDM_APACK2, false);
 
