@@ -525,21 +525,21 @@ static struct therm_est_subdevice skin_devs[] = {
 	{
 		.dev_data = "Tdiode",
 		.coeffs = {
-			0, -1, -5, -6,
-			-6, -5, -5, -4,
-			-4, -4, -4, -4,
-			-4, -4, -5, -5,
-			-6, -6, -7, -8
+			6, 1, 0, -2,
+			-1, -2, -3, -2,
+			-2, -2, -3, -2,
+			-3, -2, -3, -4,
+			-5, -5, -6, -12
 		},
 	},
 	{
 		.dev_data = "Tboard",
 		.coeffs = {
-			117, 31, -1, -12,
-			-16, 4, 1, 5,
-			-1, 12, 15, 14,
-			9, 9, 7, 20,
-			-2, -23, -42, 34
+			35, 11, 3, 4,
+			-2, 3, 6, -2,
+			5, 8, 14, 12,
+			16, 17, 15, 9,
+			-3, -23, -24, 36
 		},
 	},
 };
@@ -551,7 +551,7 @@ static struct therm_est_data skin_data = {
 	.devs = skin_devs,
 	.polling_period = 1100,
 	.passive_delay = 15000,
-	.toffset = 799,
+	.toffset = 1480,
 	.tc1 = 10,
 	.tc2 = 1,
 };
