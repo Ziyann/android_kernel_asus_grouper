@@ -3,7 +3,7 @@
  *
  * Common pinmux configurations for Tegra11x SoCs
  *
- * Copyright (C) 2011-2013 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (C) 2011-2014 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -395,7 +395,7 @@ static int tegra11x_pinmux_suspend(void)
 				tegra_soc_drive_pingroups[i].reg);
 
 	/* change to sleep pinmux settings */
-	if (sleep_pinmux)
+	if (sleep_pinmux && sleep_pinmux_size > 0)
 		tegra_pinmux_config_table(sleep_pinmux, sleep_pinmux_size);
 	return 0;
 }

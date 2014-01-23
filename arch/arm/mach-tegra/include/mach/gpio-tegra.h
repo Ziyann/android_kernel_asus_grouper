@@ -6,6 +6,8 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -46,4 +48,10 @@ int tegra_gpio_get_bank_int_nr(int gpio);
 int tegra_gpio_resume_init(void);
 int tegra_is_gpio(int);
 
+#ifdef CONFIG_PM_SLEEP
+void tegra11x_set_sleep_gpio(struct gpio_init_pin_info *config, int size);
+#else
+static inline void
+tegra11x_set_sleep_gpio(struct gpio_init_pin_info *config, int size) {}
+#endif
 #endif
