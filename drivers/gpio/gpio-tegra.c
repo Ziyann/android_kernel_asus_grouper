@@ -6,7 +6,7 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -355,7 +355,30 @@ static void tegra_gpio_irq_handler(unsigned int irq, struct irq_desc *desc)
 
 }
 
+static void tegra_gpio_config_table(struct gpio_init_pin_info *config, int len)
+{
+	int i;
+	struct gpio_init_pin_info *pins_info;
+	pins_info = config;
+
+	for (i = 0; i < len; ++i) {
+		tegra_gpio_init_configure(pins_info->gpio_nr,
+			pins_info->is_input, pins_info->value);
+		pins_info++;
+	}
+}
+
 #ifdef CONFIG_PM_SLEEP
+
+static struct gpio_init_pin_info *sleep_gpio;
+static int sleep_gpio_size;
+
+void tegra11x_set_sleep_gpio(struct gpio_init_pin_info *config, int size)
+{
+	sleep_gpio = config;
+	sleep_gpio_size = size;
+}
+
 void tegra_gpio_resume(void)
 {
 	unsigned long flags;
@@ -402,6 +425,11 @@ int tegra_gpio_suspend(void)
 			tegra_gpio_writel(bank->wake_enb[p], GPIO_INT_ENB(gpio));
 		}
 	}
+
+	/* change to sleep gpio settings */
+	if (sleep_gpio && sleep_gpio_size > 0)
+		tegra_gpio_config_table(sleep_gpio, sleep_gpio_size);
+
 	local_irq_restore(flags);
 
 	return 0;
