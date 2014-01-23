@@ -78,10 +78,13 @@ static void __init tegranote7c_gpio_init_configure(void)
 }
 
 #ifdef CONFIG_PM_SLEEP
-/* pinmux settings during low power mode for power saving purpose */
-static struct tegra_pingroup_config tegranote7c_sleep_pinmux[] = {
+/* pinmux settings during low power mode for special purpose */
+static struct tegra_pingroup_config tegranote7c_sleep_pinmux[] = { };
+
+/* gpio settings during low power mode for special purpose */
+static struct gpio_init_pin_info tegranote7c_sleep_gpio[] = {
     /* Config RT6154 to PSM mode to save modem power */
-	GPIO_PINMUX(KB_COL1, PULL_DOWN, NORMAL, OUTPUT, DISABLE),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ1, false, 0),
 };
 #endif
 
@@ -105,6 +108,8 @@ int __init tegranote7c_pinmux_init(void)
 #ifdef CONFIG_PM_SLEEP
 	tegra11x_set_sleep_pinmux(tegranote7c_sleep_pinmux,
 		ARRAY_SIZE(tegranote7c_sleep_pinmux));
+	tegra11x_set_sleep_gpio(tegranote7c_sleep_gpio,
+		ARRAY_SIZE(tegranote7c_sleep_gpio));
 #endif
 
 	return 0;
