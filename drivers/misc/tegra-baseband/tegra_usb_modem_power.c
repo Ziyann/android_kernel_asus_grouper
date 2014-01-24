@@ -385,7 +385,7 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 			pr_warn("%s: wakelock was active, aborting suspend\n",
 				__func__);
 			mutex_unlock(&modem->lock);
-			return NOTIFY_STOP;
+			return NOTIFY_OK;
 		}
 
 		modem->system_suspend = 1;
