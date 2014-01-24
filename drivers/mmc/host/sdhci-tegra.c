@@ -349,7 +349,6 @@ struct sdhci_tegra {
 	/* Freq tuning information for each sampling clock freq */
 	struct tegra_tuning_data tuning_data[DFS_FREQ_COUNT];
 	bool is_parent_pllc;
-	struct notifier_block reboot_notify;
 	struct tegra_freq_gov_data *gov_data;
 };
 
@@ -2672,26 +2671,6 @@ static ssize_t sdhci_show_turbo_mode(struct device *dev,
 static DEVICE_ATTR(cmd_state, 0644, sdhci_show_turbo_mode,
 			sdhci_handle_boost_mode_tap);
 
-static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
-				unsigned long event, void *data)
-{
-	struct sdhci_tegra *tegra_host =
-		container_of(nb, struct sdhci_tegra, reboot_notify);
-	int err;
-
-	switch (event) {
-	case SYS_RESTART:
-	case SYS_POWER_OFF:
-		err = tegra_sdhci_configure_regulators(tegra_host,
-			CONFIG_REG_DIS, 0, 0);
-		if (err)
-			pr_err("Disable regulator in reboot notify failed %d\n",
-				err);
-		return NOTIFY_OK;
-	}
-	return NOTIFY_DONE;
-}
-
 static struct tegra_sdhci_platform_data * __devinit sdhci_tegra_dt_parse_pdata(
 						struct platform_device *pdev)
 {
@@ -3135,11 +3114,6 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	/* Enable async suspend/resume to reduce LP0 latency */
 	device_enable_async_suspend(&pdev->dev);
 
-	if (plat->power_off_rail) {
-		tegra_host->reboot_notify.notifier_call =
-			tegra_sdhci_reboot_notify;
-		register_reboot_notifier(&tegra_host->reboot_notify);
-	}
 	return 0;
 
 err_add_host:
@@ -3211,12 +3185,22 @@ static int __devexit sdhci_tegra_remove(struct platform_device *pdev)
 	if (tegra_host->sclk && tegra_host->is_sdmmc_sclk_on)
 		clk_disable_unprepare(tegra_host->sclk);
 
-	if (plat->power_off_rail)
-		unregister_reboot_notifier(&tegra_host->reboot_notify);
-
 	sdhci_pltfm_free(pdev);
 
 	return rc;
+}
+
+static void tegra_sdhci_shutdown(struct platform_device *pdev)
+{
+	struct sdhci_host *host = platform_get_drvdata(pdev);
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	int err;
+
+	err = tegra_sdhci_configure_regulators(tegra_host,
+						CONFIG_REG_DIS, 0, 0);
+	if (err)
+		pr_err("Disable regulator in shutdown failed %d\n", err);
 }
 
 static struct platform_driver sdhci_tegra_driver = {
@@ -3228,6 +3212,7 @@ static struct platform_driver sdhci_tegra_driver = {
 	},
 	.probe		= sdhci_tegra_probe,
 	.remove		= __devexit_p(sdhci_tegra_remove),
+	.shutdown	= tegra_sdhci_shutdown,
 };
 
 module_platform_driver(sdhci_tegra_driver);
