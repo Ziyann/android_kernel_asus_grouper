@@ -542,6 +542,13 @@ static int baseband_init(void)
 	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_GMI_IORDY,
 				    TEGRA_PUPD_PULL_DOWN);
 
+	/* If modem part is not inserted,
+	 * cut modem buck-boost circuit power
+	 * MDM_APACK2 0 : inserted
+	 * MDM_APACK2 1 : not inserted  */
+	if (gpio_get_value(MDM_APACK2))
+		gpio_set_value(MODEM_EN, 0);
+
 	/* export GPIO for user space access through sysfs */
 	gpio_export(MODEM_EN, false);
 	gpio_export(MDM_RST, false);
