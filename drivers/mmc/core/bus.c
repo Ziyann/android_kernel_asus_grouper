@@ -133,6 +133,15 @@ static int mmc_bus_remove(struct device *dev)
 	return 0;
 }
 
+static void mmc_bus_shutdown(struct device *dev)
+{
+	struct mmc_driver *drv = to_mmc_driver(dev->driver);
+	struct mmc_card *card = mmc_dev_to_card(dev);
+
+	if (dev->driver && drv->shutdown)
+		drv->shutdown(card);
+}
+
 static int mmc_bus_suspend(struct device *dev, pm_message_t state)
 {
 	struct mmc_driver *drv = to_mmc_driver(dev->driver);
@@ -198,6 +207,7 @@ static struct bus_type mmc_bus_type = {
 	.probe		= mmc_bus_probe,
 	.remove		= mmc_bus_remove,
 	.suspend	= mmc_bus_suspend,
+	.shutdown	= mmc_bus_shutdown,
 	.resume		= mmc_bus_resume,
 	.pm		= MMC_PM_OPS_PTR,
 };
