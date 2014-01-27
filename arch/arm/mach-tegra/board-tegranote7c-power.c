@@ -647,15 +647,17 @@ int __init tegranote7c_palmas_regulator_init(void)
 		pmic_platform.reg_init[i] = tegranote7c_reg_init[i];
 	}
 
-	/* Boot strapping 0, 2, 3 indicate Micron 1GB MT41K128M16-125
+	/* Boot strapping 0, indicate Micron 1GB MT41K128M16-125
 	 * and it requires VDDIO_DDR 1.38V for stability.
-	 * Boot strapping 1 indicates Hynix 1GB H5TC2G63FFR-PBA and
-	 * it requires VDDIO_DDR 1.35V.
+	 * Boot strapping 1, indicates Hynix 1GB H5TC2G63FFR-PBA
+	 * and it requires VDDIO_DDR 1.35V for stability.
 	 */
-	tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.min_uV =
-								1380000;
-	tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.max_uV =
-								1380000;
+	if (0 == tegra_bct_strapping) {
+		tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.min_uV =
+			1380000;
+		tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.max_uV =
+			1380000;
+	}
 
 	palmas_pdata.clk32k_init_data = tegranote7c_palmas_clk32k_idata;
 	palmas_pdata.clk32k_init_data_size =
