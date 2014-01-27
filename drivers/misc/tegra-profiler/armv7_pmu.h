@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/armv7_pmu.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -16,6 +16,8 @@
 
 #ifndef __ARMV7_PMU_H
 #define __ARMV7_PMU_H
+
+#include <linux/list.h>
 
 #define QUADD_ARM_CPU_IMPLEMENTER 0x41
 
@@ -32,32 +34,32 @@ enum {
 #define QUADD_ARM_CPU_PART_NUMBER_CORTEX_A9	0xC090
 #define QUADD_ARM_CPU_PART_NUMBER_CORTEX_A15	0xC0F0
 
-
 #define QUADD_MAX_PMU_COUNTERS	32
 
 struct quadd_pmu_event_info {
 	int quadd_event_id;
 	int hw_value;
-	int counter_idx;
+
+	struct list_head list;
 };
 
 struct armv7_pmu_ctx {
 	int arch;
 	char arch_name[32];
 
-	int nr_counters;
 	u32 counters_mask;
 
-	struct quadd_pmu_event_info pmu_events[QUADD_MAX_PMU_COUNTERS];
-	int nr_used_counters;
+	struct list_head used_events;
 
 	int l1_cache_rw;
 	int *current_map;
 };
 
+
 struct quadd_event_source_interface;
 
 extern struct quadd_event_source_interface *quadd_armv7_pmu_init(void);
+extern void quadd_armv7_pmu_deinit(void);
 
 /*
  * PMNC Register
@@ -80,10 +82,9 @@ extern struct quadd_event_source_interface *quadd_armv7_pmu_init(void);
 /* Mask for writable bits */
 #define	QUADD_ARMV7_PMNC_MASK		0x3f
 
-
-#define QUADD_ARMV7_CCNT		(1 << 31)	/* Cycle counter */
-
-#define QUADD_ARMV7_CYCLE_COUNTER	-1
+/* Cycle counter */
+#define QUADD_ARMV7_CCNT_BIT		31
+#define QUADD_ARMV7_CCNT		(1 << QUADD_ARMV7_CCNT_BIT)
 
 /*
  * CNTENS: counters enable reg
