@@ -1141,6 +1141,7 @@ static void ltr659ps_enable_sensor(struct i2c_client *client, int enable)
 
 	if (data->enable != enable) {
 		if (enable) {
+			regulator_enable(data->reg);
 			if (!data->init) {
 				ltr659ps_init_sensor(data->client);
 				data->init = 1;
@@ -1155,6 +1156,8 @@ static void ltr659ps_enable_sensor(struct i2c_client *client, int enable)
 				, LTR659PS_REG_PS_CONTR, 0x00, 0x03);
 			cancel_delayed_work_sync(&data->work);
 			flush_workqueue(data->prox_wq);
+			regulator_disable(data->reg);
+			data->init = 0;
 		}
 	}
 
@@ -1249,23 +1252,19 @@ static int __devinit ltr659ps_probe(struct i2c_client *client
 	}
 
 	prox_data->reg = regulator_get(&client->dev, "va_sns_hv");
-	if (IS_ERR(prox_data->reg)) {
+	if (IS_ERR_OR_NULL(prox_data->reg)) {
 		PROX_ERROR("regulator_get failed!\n");
 		goto err_regulator_get;
 	}
 
-	rc = regulator_enable(prox_data->reg);
-	if (rc) {
-		PROX_ERROR("regulator_enable failed!\n");
-		goto err_regulator_enable;
+	if (regulator_is_enabled(prox_data->reg)) {
+		rc = ltr659ps_check_id(prox_data->client);
+		if (rc) {
+			PROX_ERROR("ltr659ps_check_id failed!\n");
+			goto err_check_id_failed;
+		}
+		PROX_DEBUG("Device LTR659ps found.\n");
 	}
-
-	rc = ltr659ps_check_id(prox_data->client);
-	if (rc) {
-		PROX_ERROR("ltr659ps_check_id failed!\n");
-		goto err_check_id_failed;
-	}
-	PROX_DEBUG("Device LTR659ps found.\n");
 
 	rc = ltr659ps_setup(prox_data);
 	if (rc) {
@@ -1380,8 +1379,6 @@ static int ltr659ps_suspend(struct i2c_client *client, pm_message_t mesg)
 	} else {
 		mutex_lock(&data->prox_mtx);
 		ltr659ps_enable_sensor(client, 0);
-		regulator_disable(data->reg);
-		regulator_put(data->reg);
 		data->init = 0;
 		data->suspend = 1;
 		mutex_unlock(&data->prox_mtx);
@@ -1403,8 +1400,6 @@ static int ltr659ps_resume(struct i2c_client *client)
 		mutex_unlock(&data->prox_mtx);
 	} else {
 		mutex_lock(&data->prox_mtx);
-		data->reg = regulator_get(&client->dev, "va_sns_hv");
-		regulator_enable(data->reg);
 		ltr659ps_enable_sensor(client, 1);
 		mutex_unlock(&data->prox_mtx);
 	}
