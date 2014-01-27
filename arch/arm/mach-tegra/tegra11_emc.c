@@ -1154,8 +1154,11 @@ static struct device_node *tegra_emc_ramcode_devnode(struct device_node *np)
 				if (reg == 0x0)
 					return of_node_get(iter);
 			} else if (board_info.board_id == BOARD_P1988) {
-				/* force select ram strapping 0x0 */
-				if (reg == 0x0)
+				/*
+				 * RAM_CODE[1:0] = 0x00 -> Micron DDR3L 1GB
+				 * RAM_CODE[1:0] = 0x01 -> Hynix DDR3L 1GB
+				 */
+				if (reg == tegra_bct_strapping)
 					return of_node_get(iter);
 			}
 		}
