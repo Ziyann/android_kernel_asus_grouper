@@ -580,8 +580,11 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
 	tegra->boost_requested = false;
-	/* Add boost enable/disable knob */
-	tegra->boost_enable = true;
+	/* Add boost enable/disable knob, disable for modem */
+	if (instance == 1)
+		tegra->boost_enable = false;
+	else
+		tegra->boost_enable = true;
 	err = device_create_file(hcd->self.controller, &dev_attr_boost_enable);
 	if (err < 0)
 		goto fail_sysfs;
