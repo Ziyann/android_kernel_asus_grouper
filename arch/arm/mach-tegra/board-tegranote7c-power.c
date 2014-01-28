@@ -486,6 +486,7 @@ static struct i2c_board_info palma_device[] = {
 
 static struct regulator_consumer_supply fixed_reg_dvdd_lcd_1v8_supply[] = {
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
+	REGULATOR_SUPPLY("dvdd_ts", "spi0.0"),
 };
 
 static struct regulator_consumer_supply fixed_reg_vdd_lcd_bl_en_supply[] = {
