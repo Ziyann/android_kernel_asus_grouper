@@ -1553,6 +1553,12 @@ static void acm_disconnect(struct usb_interface *intf)
 	if (!acm)
 		return;
 
+#if defined(CONFIG_ICERA_MDM_LOGGING_BOOST_CPU_FREQ) && \
+	defined(CONFIG_TEGRA_USB_MODEM_POWER)
+	if (acm->minor == MODEM_LOG_PORT)
+		pm_qos_remove_request(&boost_cpu_freq_req);
+#endif
+
 	mutex_lock(&acm->mutex);
 	acm->disconnected = true;
 	if (acm->country_codes) {
