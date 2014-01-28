@@ -418,6 +418,13 @@ static struct iio_map palmas_adc_iio_maps[] = {
 	PALMAS_GPADC_IIO_MAP(NULL, NULL, NULL),
 };
 
+struct palmas_adc_auto_conv_property palmas_adc_auto_conv0_data = {
+	.adc_channel_number = PALMAS_ADC_CH_IN1, /* NTC thermistor(Tboard) */
+	/* Shutdown if ADC auto conversion is below 298(>78C). */
+	.adc_low_threshold = 298, /* 78C */
+	.adc_shutdown = true,
+};
+
 static struct palmas_gpadc_platform_data palmas_adc_pdata = {
 	.ch0_current_uA = 5,
 	/* If ch3_dual_current is true, it will measure ch3 input signal with
@@ -700,6 +707,15 @@ int __init tegratab_palmas_regulator_init(void)
 		palmas_pdata.clk32k_init_data = tegratab_palmas_clk32k_idata;
 		palmas_pdata.clk32k_init_data_size =
 				ARRAY_SIZE(tegratab_palmas_clk32k_idata);
+	}
+
+	if (board_info.board_id != BOARD_E1569 &&
+			(board_info.board_id == BOARD_P1640 &&
+			(board_info.fab != BOARD_FAB_A00 &&
+			board_info.fab != BOARD_FAB_A01))) {
+		palmas_adc_pdata.auto_conversion_period_ms = 1000;
+		palmas_adc_pdata.adc_auto_conv0_data =
+				&palmas_adc_auto_conv0_data;
 	}
 
 	if (get_androidboot_mode_charger())
