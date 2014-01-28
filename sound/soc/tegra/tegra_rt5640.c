@@ -138,13 +138,9 @@ static int tegra_call_mode_put(struct snd_kcontrol *kcontrol,
 
 	if (machine->is_call_mode == is_call_mode_new)
 		return 0;
-	if (machine->is_device_bt) {
-		codec_index = BT_SCO;
-		uses_voice_codec = 0;
-	} else {
-		codec_index = VOICE_CODEC;
-		uses_voice_codec = 0;
-	}
+
+	codec_index = VOICE_CODEC;
+	uses_voice_codec = 0;
 
 	if (is_call_mode_new) {
 		if (machine->codec_info[codec_index].rate == 0 ||
@@ -195,6 +191,93 @@ struct snd_kcontrol_new tegra_rt5640_call_mode_control = {
 	.info = tegra_call_mode_info,
 	.get = tegra_call_mode_get,
 	.put = tegra_call_mode_put
+};
+
+static int tegra_bt_call_mode_info(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 1;
+	return 0;
+}
+
+static int tegra_bt_call_mode_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct tegra_rt5640 *machine = snd_kcontrol_chip(kcontrol);
+
+	ucontrol->value.integer.value[0] = machine->is_call_mode;
+
+	return 0;
+}
+
+static int tegra_bt_call_mode_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct tegra_rt5640 *machine = snd_kcontrol_chip(kcontrol);
+	int is_call_mode_new = ucontrol->value.integer.value[0];
+	int codec_index;
+	unsigned int i;
+	int uses_voice_codec;
+
+	if (machine->is_call_mode == is_call_mode_new)
+		return 0;
+
+	codec_index = BT_SCO;
+	uses_voice_codec = 0;
+
+
+	if (is_call_mode_new) {
+		if (machine->codec_info[codec_index].rate == 0 ||
+			machine->codec_info[codec_index].channels == 0)
+				return -EINVAL;
+
+		for (i = 0; i < machine->pcard->num_links; i++)
+			machine->pcard->dai_link[i].ignore_suspend = 1;
+
+		if (machine->is_device_bt)
+			tegra30_make_bt_voice_call_connections(
+				&machine->codec_info[codec_index],
+				&machine->codec_info[BASEBAND],
+				uses_voice_codec);
+		else
+			tegra30_make_voice_call_connections(
+				&machine->codec_info[codec_index],
+				&machine->codec_info[BASEBAND],
+				uses_voice_codec);
+
+	} else {
+		if (machine->is_device_bt)
+			tegra30_break_bt_voice_call_connections(
+				&machine->codec_info[codec_index],
+				&machine->codec_info[BASEBAND],
+				uses_voice_codec);
+		else
+			tegra30_break_voice_call_connections(
+				&machine->codec_info[codec_index],
+				&machine->codec_info[BASEBAND],
+				uses_voice_codec);
+
+		for (i = 0; i < machine->pcard->num_links; i++)
+			machine->pcard->dai_link[i].ignore_suspend = 0;
+	}
+
+	machine->is_call_mode = is_call_mode_new;
+	g_is_call_mode = machine->is_call_mode;
+
+	return 1;
+}
+
+struct snd_kcontrol_new tegra_bt_call_mode_control = {
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "BT Call Mode Switch",
+	.private_value = 0xffff,
+	.info = tegra_bt_call_mode_info,
+	.get = tegra_bt_call_mode_get,
+	.put = tegra_bt_call_mode_put
 };
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
@@ -707,7 +790,7 @@ static int tegra_bt_startup(struct snd_pcm_substream *substream)
 
 		if (machine->is_call_mode) {
 			tegra30_ahub_set_rx_cif_source(
-				TEGRA30_AHUB_RXCIF_DAM0_RX0 +
+				TEGRA30_AHUB_RXCIF_DAM0_RX1 +
 				(i2s->dam_ifc*2), i2s->txcif);
 
 			/*
@@ -1478,6 +1561,10 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 	/* Add call mode switch control */
 	ret = snd_ctl_add(codec->card->snd_card,
 		snd_ctl_new1(&tegra_rt5640_call_mode_control, machine));
+
+	ret = snd_ctl_add(codec->card->snd_card,
+		snd_ctl_new1(&tegra_bt_call_mode_control, machine));
+
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
 		return ret;
