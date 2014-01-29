@@ -43,6 +43,7 @@
 #include <mach/hardware.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
+#include <mach/pinmux-t11.h>
 
 #include "cpu-tegra.h"
 #include "pm.h"
@@ -697,6 +698,18 @@ static struct platform_device tegranote7c_pda_power_device = {
 	},
 };
 
+static struct tegra_pingroup_config tegranote7c_sleep_pinmux[] = {
+	GPIO_PINMUX(KB_ROW3, PULL_DOWN, NORMAL, INPUT, DISABLE),
+};
+
+static void tegranote7c_board_suspend(int state, enum suspend_stage stage)
+{
+	if (TEGRA_SUSPEND_LP0 == state &&
+	    TEGRA_SUSPEND_BEFORE_PERIPHERAL == stage)
+		tegra_pinmux_config_table(tegranote7c_sleep_pinmux,
+					  ARRAY_SIZE(tegranote7c_sleep_pinmux));
+}
+
 static struct tegra_suspend_platform_data tegranote7c_suspend_data = {
 	.cpu_timer	= 300,
 	.cpu_off_timer	= 300,
@@ -715,6 +728,7 @@ static struct tegra_suspend_platform_data tegranote7c_suspend_data = {
 	.lp1_core_volt_low = 0,
 	.lp1_core_volt_high = 0,
 #endif
+	.board_suspend = tegranote7c_board_suspend,
 };
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */
