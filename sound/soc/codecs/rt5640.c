@@ -46,7 +46,7 @@ struct rt5640_init_reg {
 };
 
 static struct rt5640_init_reg init_list[] = {
-	{RT5640_GEN_CTRL1	, 0x3701},/*fa[12:13] = 1'b; fa[8~10]=1; fa[0]=1 */
+	{RT5640_GEN_CTRL1	, 0x3b01},/*fa[12:13] = 1'b; fa[8~10]=1; fa[0]=1 */
 	{RT5640_DEPOP_M1	, 0x0019},/* 8e[4:3] = 11'b; 8e[0] = 1'b */
 	{RT5640_DEPOP_M2	, 0x3100},/* 8f[13] = 1'b */
 	{RT5640_ADDA_CLK1	, 0x1114},/* 73[2] = 1'b  */
@@ -496,7 +496,7 @@ int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
 			snd_soc_write(codec, RT5640_PWR_ANLG1, 0x2004);
 			snd_soc_write(codec, RT5640_MICBIAS, 0x3830);
-			snd_soc_write(codec, RT5640_GEN_CTRL1 , 0x3701);
+			snd_soc_write(codec, RT5640_GEN_CTRL1 , 0x3b01);
 		}
 		sclk_src = snd_soc_read(codec, RT5640_GLB_CLK) &
 			RT5640_SCLK_SRC_MASK;
@@ -2698,7 +2698,7 @@ static int rt5640_set_bias_level(struct snd_soc_codec *codec,
 			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
 				RT5640_PWR_FV1 | RT5640_PWR_FV2,
 				RT5640_PWR_FV1 | RT5640_PWR_FV2);
-			snd_soc_write(codec, RT5640_GEN_CTRL1, 0x3701);
+			snd_soc_write(codec, RT5640_GEN_CTRL1, 0x3b01);
 			codec->cache_only = false;
 			codec->cache_sync = 1;
 			snd_soc_cache_sync(codec);
@@ -2719,7 +2719,7 @@ static int rt5640_set_bias_level(struct snd_soc_codec *codec,
 #endif
 		snd_soc_write(codec, RT5640_DEPOP_M1, 0x0004);
 		snd_soc_write(codec, RT5640_DEPOP_M2, 0x1100);
-		snd_soc_write(codec, RT5640_GEN_CTRL1, 0x3700);
+		snd_soc_write(codec, RT5640_GEN_CTRL1, 0x3b01);
 		snd_soc_write(codec, RT5640_PWR_DIG1, 0x0000);
 		snd_soc_write(codec, RT5640_PWR_DIG2, 0x0000);
 		snd_soc_write(codec, RT5640_PWR_VOL, 0x0000);
