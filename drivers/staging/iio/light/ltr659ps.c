@@ -146,6 +146,10 @@ struct ltr659ps_data {
 	int enable;
 
 	int init;
+	/* suspend state */
+#define SUSPEND_NO_SUSPEND 0
+#define SUSPEND_RESUME_ENABLE 1
+#define SUSPEND_RESUMOE_NO_ENABLE 2
 	int suspend;
 
 	int irq;
@@ -1139,6 +1143,7 @@ static void ltr659ps_enable_sensor(struct i2c_client *client, int enable)
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct ltr659ps_data *data = iio_priv(indio_dev);
 
+	PROX_DEBUG("enable %d\n", enable);
 	if (data->enable != enable) {
 		if (enable) {
 			regulator_enable(data->reg);
@@ -1332,7 +1337,6 @@ err_init_sensor_failed:
 err_setup_failed:
 err_check_id_failed:
 	regulator_disable(prox_data->reg);
-err_regulator_enable:
 	regulator_put(prox_data->reg);
 err_regulator_get:
 err_gpio_direction_input:
@@ -1374,14 +1378,20 @@ static int ltr659ps_suspend(struct i2c_client *client, pm_message_t mesg)
 	if (tegra_is_voice_call_active()) {
 		mutex_lock(&data->prox_mtx);
 		enable_irq_wake(client->irq);
-		data->suspend = 0;
+		data->suspend = SUSPEND_NO_SUSPEND;
 		mutex_unlock(&data->prox_mtx);
 	} else {
-		mutex_lock(&data->prox_mtx);
-		ltr659ps_enable_sensor(client, 0);
-		data->init = 0;
-		data->suspend = 1;
-		mutex_unlock(&data->prox_mtx);
+		if (data->enable == 0) {
+			mutex_lock(&data->prox_mtx);
+			data->suspend = SUSPEND_RESUMOE_NO_ENABLE;
+			mutex_unlock(&data->prox_mtx);
+		} else {
+			mutex_lock(&data->prox_mtx);
+			data->suspend = SUSPEND_RESUME_ENABLE;
+			ltr659ps_enable_sensor(client, 0);
+			data->init = 0;
+			mutex_unlock(&data->prox_mtx);
+		}
 	}
 	PROX_DEBUG("-\n");
 	return 0;
@@ -1394,11 +1404,11 @@ static int ltr659ps_resume(struct i2c_client *client)
 
 	PROX_DEBUG("+\n");
 	/* in voice call mode, do not suspend PS */
-	if (data->suspend == 0) {
+	if (data->suspend == SUSPEND_NO_SUSPEND) {
 		mutex_lock(&data->prox_mtx);
 		disable_irq_wake(client->irq);
 		mutex_unlock(&data->prox_mtx);
-	} else {
+	} else if (data->suspend == SUSPEND_RESUME_ENABLE) {
 		mutex_lock(&data->prox_mtx);
 		ltr659ps_enable_sensor(client, 1);
 		mutex_unlock(&data->prox_mtx);
