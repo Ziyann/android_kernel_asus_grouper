@@ -571,15 +571,14 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		 * Stop the timerschedule work, when this governor
 		 * is used for first time
 		 */
-		if (dbs_enable == 0)
+		if (dbs_enable == 0) {
 			cpufreq_unregister_notifier(
 					&dbs_cpufreq_notifier_block,
 					CPUFREQ_TRANSITION_NOTIFIER);
-
-		mutex_unlock(&dbs_mutex);
-		if (!dbs_enable)
 			sysfs_remove_group(cpufreq_global_kobject,
-					   &dbs_attr_group);
+					&dbs_attr_group);
+		}
+		mutex_unlock(&dbs_mutex);
 
 		break;
 
