@@ -928,10 +928,10 @@ static void __init tegra_tegratab_dt_init(void)
 
 #ifdef CONFIG_USE_OF
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
-	tegratab_dc0_platform_data.of_data.fb_size = SZ_16M + SZ_2M;
+	tegratab_dc0_platform_data.of_data.fb_size = SZ_8M;
 	tegratab_dc1_platform_data.of_data.fb_size = SZ_16M;
 #else
-	tegratab_dc0_platform_data.of_data.fb_size = SZ_16M + SZ_2M;
+	tegratab_dc0_platform_data.of_data.fb_size = SZ_8M;
 	tegratab_dc1_platform_data.of_data.fb_size = SZ_4M;
 #endif
 	tegratab_dc0_platform_data.of_data.fb_start = tegra_fb_start;
@@ -955,10 +955,10 @@ static void __init tegra_tegratab_dt_init(void)
 static void __init tegra_tegratab_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
-	/* 1920*1200*4*2 = 18432000 bytes */
-	tegra_reserve(0, SZ_16M + SZ_2M, SZ_16M);
+	/* 800*1280*4*2 =  8192000 bytes */
+	tegra_reserve(0, SZ_8M, SZ_16M);
 #else
-	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
+	tegra_reserve(SZ_128M, SZ_8M, SZ_4M);
 #endif
 	tegratab_ramconsole_reserve(SZ_1M);
 }
