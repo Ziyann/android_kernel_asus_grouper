@@ -56,8 +56,8 @@
 
 static struct gpio_keys_button tegranote7c_p1988_keys[] = {
 	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
-	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
-	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ2, 0),
+	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 1),
+	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ2, 1),
 	[3] = GPIO_SW(SW_LID, PC7, 1, 1),
 	[4] = GPIO_SW(SW_TABLET_MODE, PO5, 0, 1),
 };
