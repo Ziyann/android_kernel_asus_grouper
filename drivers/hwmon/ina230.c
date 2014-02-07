@@ -3,7 +3,7 @@
  * monitor sensor
  *
  *
- * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2009-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,6 +101,7 @@ struct ina230_data {
 	struct mutex mutex;
 	bool running;
 	struct notifier_block nb;
+	bool suspended;
 };
 struct ina230_data *p_ina230_data;
 
@@ -579,7 +580,11 @@ s32 ina230_get_current(void)
 	client = p_ina230_data->client;
 	data = p_ina230_data;
 
+	if (data->suspended)
+		return INA230_ERROR;
+
 	mutex_lock(&data->mutex);
+
 	/* fill calib data */
 	retval = i2c_smbus_write_word_data(client, INA230_CAL,
 		__constant_cpu_to_be16(data->pdata->calibration_data));
@@ -728,13 +733,24 @@ static int __devexit ina230_remove(struct i2c_client *client)
 
 static int ina230_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-	return power_down_ina230(client);
+	int ret;
+	struct ina230_data *data = i2c_get_clientdata(client);
+
+	ret = power_down_ina230(client);
+	if (!ret)
+		data->suspended = true;
+
+	return ret;
 }
 
 
 static int ina230_resume(struct i2c_client *client)
 {
+	struct ina230_data *data = i2c_get_clientdata(client);
+
 	evaluate_state(client);
+	data->suspended = false;
+
 	return 0;
 }
 
