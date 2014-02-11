@@ -389,15 +389,6 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 		}
 
 		modem->system_suspend = 1;
-#ifdef CONFIG_PM
-		if (modem->capability & TEGRA_MODEM_AUTOSUSPEND &&
-		    modem->udev &&
-		    modem->udev->state != USB_STATE_NOTATTACHED) {
-			pm_runtime_set_autosuspend_delay(&modem->udev->dev,
-					modem->pdata->short_autosuspend_delay);
-			modem->short_autosuspend_enabled = 1;
-		}
-#endif
 		mutex_unlock(&modem->lock);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
