@@ -580,10 +580,12 @@ s32 ina230_get_current(void)
 	client = p_ina230_data->client;
 	data = p_ina230_data;
 
-	if (data->suspended)
-		return INA230_ERROR;
-
 	mutex_lock(&data->mutex);
+
+	if (data->suspended) {
+		mutex_unlock(&data->mutex);
+		return INA230_ERROR;
+	}
 
 	/* fill calib data */
 	retval = i2c_smbus_write_word_data(client, INA230_CAL,
@@ -736,9 +738,11 @@ static int ina230_suspend(struct i2c_client *client, pm_message_t mesg)
 	int ret;
 	struct ina230_data *data = i2c_get_clientdata(client);
 
-	ret = power_down_ina230(client);
+	mutex_lock(&data->mutex);
+	ret = __locked_power_down_ina230(client);
 	if (!ret)
 		data->suspended = true;
+	mutex_unlock(&data->mutex);
 
 	return ret;
 }
@@ -748,8 +752,10 @@ static int ina230_resume(struct i2c_client *client)
 {
 	struct ina230_data *data = i2c_get_clientdata(client);
 
-	evaluate_state(client);
+	mutex_lock(&data->mutex);
+	__locked_evaluate_state(client);
 	data->suspended = false;
+	mutex_unlock(&data->mutex);
 
 	return 0;
 }
