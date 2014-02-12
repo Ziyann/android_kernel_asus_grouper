@@ -1729,11 +1729,8 @@ static int acm_reset_resume(struct usb_interface *intf)
 	if (test_bit(ASYNCB_INITIALIZED, &acm->port.flags)) {
 		tty = tty_port_tty_get(&acm->port);
 		if (tty) {
-			if (!acm->no_hangup_in_reset_resume) {
-				pr_info("%s: tty(%d) hangup due to reset resume.\n",
-					__func__, tty->index);
+			if (!acm->no_hangup_in_reset_resume)
 				tty_hangup(tty);
-			}
 			tty_kref_put(tty);
 		}
 	}
@@ -1919,11 +1916,6 @@ static const struct usb_device_id acm_ids[] = {
 
 	/* Icera 450 */
 	{ USB_DEVICE(0x1983, 0x0321),
-	.driver_info = NO_HANGUP_IN_RESET_RESUME,
-	},
-
-	/* Icera 500 - Bruce */
-	{ USB_DEVICE(0x1983, 0x1007),
 	.driver_info = NO_HANGUP_IN_RESET_RESUME,
 	},
 
