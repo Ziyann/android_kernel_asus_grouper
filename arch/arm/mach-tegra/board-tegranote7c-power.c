@@ -44,6 +44,7 @@
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-t11.h>
+#include <mach/io_dpd.h>
 
 #include "cpu-tegra.h"
 #include "pm.h"
@@ -703,12 +704,31 @@ static struct tegra_pingroup_config tegranote7c_sleep_pinmux[] = {
 	GPIO_PINMUX(KB_ROW3, PULL_DOWN, NORMAL, INPUT, DISABLE),
 };
 
+static struct tegra_io_dpd hv_io = {
+	.name			= "HV",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 6,
+};
+
 static void tegranote7c_board_suspend(int state, enum suspend_stage stage)
 {
 	if (TEGRA_SUSPEND_LP0 == state &&
 	    TEGRA_SUSPEND_BEFORE_PERIPHERAL == stage)
 		tegra_pinmux_config_table(tegranote7c_sleep_pinmux,
 					  ARRAY_SIZE(tegranote7c_sleep_pinmux));
+
+	/* put HV IOs into DPD mode to save additional power */
+	if (state == TEGRA_SUSPEND_LP1 && stage == TEGRA_SUSPEND_BEFORE_CPU)
+		tegra_io_dpd_enable(&hv_io);
+}
+
+static void tegranote7c_board_resume(int state, enum resume_stage stage)
+{
+	/* bring HV IOs back from DPD mode, GPIO configuration
+	 * will be restored by gpio driver
+	 */
+	if (state == TEGRA_SUSPEND_LP1 && stage == TEGRA_RESUME_AFTER_CPU)
+		tegra_io_dpd_disable(&hv_io);
 }
 
 static struct tegra_suspend_platform_data tegranote7c_suspend_data = {
@@ -722,14 +742,16 @@ static struct tegra_suspend_platform_data tegranote7c_suspend_data = {
 	.cpu_lp2_min_residency = 1000,
 	.min_residency_crail = 20000,
 #ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
-	.lp1_lowvolt_support = false,
-	.i2c_base_addr = 0,
-	.pmuslave_addr = 0,
-	.core_reg_addr = 0,
-	.lp1_core_volt_low = 0,
-	.lp1_core_volt_high = 0,
+	.lp1_lowvolt_support = true,
+	.i2c_base_addr = TEGRA_I2C5_BASE,
+	.pmuslave_addr = 0xB0,
+	.core_reg_addr = 0x2B,
+	.lp1_core_volt_low_cold = 0x33,
+	.lp1_core_volt_low = 0x2e,
+	.lp1_core_volt_high = 0x42,
 #endif
 	.board_suspend = tegranote7c_board_suspend,
+	.board_resume  = tegranote7c_board_resume,
 };
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */
