@@ -1000,7 +1000,7 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 	if ((cmd->opcode == MMC_SWITCH) &&
 		(((cmd->arg >> 16) & EXT_CSD_SANITIZE_START)
 		== EXT_CSD_SANITIZE_START))
-		timeout = 100;
+		timeout = 920;
 	else
 		timeout = 10;
 
