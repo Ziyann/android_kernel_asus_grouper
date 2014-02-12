@@ -512,6 +512,7 @@ static struct gpio modem_gpios[] = { /* Nemo modem */
 	{MODEM_EN, GPIOF_OUT_INIT_HIGH, "MODEM EN"},
 	{MDM_RST, GPIOF_OUT_INIT_HIGH, "MODEM RESET"},
 	{MDM_APACK2, GPIOF_IN, "MODEM APACK2"},
+	{MDM_PWR_BOOST, GPIOF_OUT_INIT_HIGH, "MODEM BOOST"},
 };
 
 static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
@@ -553,6 +554,7 @@ static int baseband_init(void)
 	gpio_export(MODEM_EN, false);
 	gpio_export(MDM_RST, false);
 	gpio_export(MDM_APACK2, false);
+	gpio_export(MDM_PWR_BOOST, false);
 
 	return 0;
 }

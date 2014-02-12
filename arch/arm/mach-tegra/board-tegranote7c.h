@@ -97,6 +97,7 @@
 #define MDM_RST			TEGRA_GPIO_PP0
 #define MDM_COLDBOOT		TEGRA_GPIO_PI5
 #define MDM_APACK2		TEGRA_GPIO_PV0
+#define MDM_PWR_BOOST	TEGRA_GPIO_PQ1
 
 int tegranote7c_regulator_init(void);
 int tegranote7c_power_off_init(void);
