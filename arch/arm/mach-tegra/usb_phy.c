@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/usb_phy.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -240,8 +240,8 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 		goto fail_emc;
 	}
 
-	if(phy->pdata->has_hostpc)
-		clk_set_rate(phy->emc_clk, 100000000);
+	if (phy->pdata->has_hostpc)
+		clk_set_rate(phy->emc_clk, 200000000);
 	else
 		clk_set_rate(phy->emc_clk, 300000000);
 
