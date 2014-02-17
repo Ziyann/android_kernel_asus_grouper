@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/edp.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION. All Rights Reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -536,7 +536,7 @@ unsigned int tegra_edp_find_maxf(int volt)
 		if (freq_voltage_lut_saved[i].voltage_mV > volt)
 			break;
 	}
-	return freq_voltage_lut[i - 1].freq;
+	return freq_voltage_lut_saved[i - 1].freq;
 }
 
 
