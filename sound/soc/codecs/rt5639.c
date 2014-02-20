@@ -62,7 +62,6 @@ static struct rt5639_init_reg init_list[] = {
 	{RT5639_ADDA_CLK1	, 0x1114},/* 73[2] = 1'b */
 	{RT5639_MICBIAS		, 0x3030},/* 93[5:4] = 11'b */
 	{RT5639_CLS_D_OUT	, 0xa000},/* 8d[11] = 0'b */
-	{RT5639_CLS_D_OVCD	, 0x0301},/* 8c[8] = 1'b */
 	{RT5639_PRIV_INDEX	, 0x001d},/* PR1d[8] = 1'b; */
 	{RT5639_PRIV_DATA	, 0x0347},
 	{RT5639_PRIV_INDEX	, 0x003d},/* PR3d[12] = 0'b; PR3d[9] = 1'b */
@@ -1396,26 +1395,14 @@ static int rt5639_spk_event(struct snd_soc_dapm_widget *w,
 #endif
 		snd_soc_update_bits(codec, RT5639_PWR_DIG1,
 			RT5639_PWR_CLS_D, RT5639_PWR_CLS_D);
-		rt5639_index_update_bits(codec,
-			RT5639_CLSD_INT_REG1, 0xf000, 0xf000);
 		snd_soc_update_bits(codec, RT5639_SPK_VOL,
 			RT5639_L_MUTE | RT5639_R_MUTE, 0);
-
-		/* Make sure test mode is not enabled */
-		val = rt5639_index_read(codec, 0x001B);
-		if (val == 0x9200)
-			snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0301);
-		else
-			snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0328);
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
-		snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0301);
 		snd_soc_update_bits(codec, RT5639_SPK_VOL,
 			RT5639_L_MUTE | RT5639_R_MUTE,
 			RT5639_L_MUTE | RT5639_R_MUTE);
-		rt5639_index_update_bits(codec,
-			RT5639_CLSD_INT_REG1, 0xf000, 0x0000);
 		snd_soc_update_bits(codec, RT5639_PWR_DIG1,
 			RT5639_PWR_CLS_D, 0);
 		break;
@@ -1498,14 +1485,8 @@ static void hp_amp_power(struct snd_soc_codec *codec, int on)
 	if (on) {
 		if (hp_amp_power_count <= 0) {
 			/* depop parameters */
-			rt5639_index_update_bits(codec, RT5639_CHPUMP_INT_REG1,
-				0x0700, 0x0200);
 			snd_soc_update_bits(codec, RT5639_DEPOP_M2,
 				RT5639_DEPOP_MASK, RT5639_DEPOP_MAN);
-			snd_soc_update_bits(codec, RT5639_DEPOP_M1,
-				RT5639_HP_CP_MASK | RT5639_HP_SG_MASK
-				| RT5639_HP_CB_MASK, RT5639_HP_CP_PU
-				| RT5639_HP_SG_DIS | RT5639_HP_CB_PU);
 			/* headphone amp power on */
 			snd_soc_update_bits(codec, RT5639_PWR_ANLG1,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2, 0);
@@ -1526,18 +1507,20 @@ static void hp_amp_power(struct snd_soc_codec *codec, int on)
 				RT5639_DEPOP_AUTO | RT5639_DIG_DP_EN);
 			snd_soc_update_bits(codec, RT5639_CHARGE_PUMP,
 				RT5639_PM_HP_MASK, RT5639_PM_HP_HV);
+			snd_soc_update_bits(codec, RT5639_DEPOP_M1,
+				RT5639_HP_CP_MASK | RT5639_HP_SG_MASK
+				| RT5639_HP_CB_MASK, RT5639_HP_CP_PU
+				| RT5639_HP_SG_DIS | RT5639_HP_CB_PU);
 			snd_soc_update_bits(codec, RT5639_DEPOP_M3,
 				RT5639_CP_FQ1_MASK | RT5639_CP_FQ2_MASK
 				| RT5639_CP_FQ3_MASK,
 				(RT5639_CP_FQ_192_KHZ << RT5639_CP_FQ1_SFT) |
 				(RT5639_CP_FQ_24_KHZ << RT5639_CP_FQ2_SFT) |
 				(RT5639_CP_FQ_192_KHZ << RT5639_CP_FQ3_SFT));
-			rt5639_index_write(codec, RT5639_MAMP_INT_REG2, 0x1c00);
+			rt5639_index_write(codec, RT5639_MAMP_INT_REG2, 0xfc00);
 			snd_soc_update_bits(codec, RT5639_DEPOP_M1,
 				RT5639_HP_CP_MASK | RT5639_HP_SG_MASK,
 				RT5639_HP_CP_PD | RT5639_HP_SG_EN);
-			rt5639_index_update_bits(codec, RT5639_CHPUMP_INT_REG1,
-						0x0700, 0x0400);
 		}
 		hp_amp_power_count++;
 	} else {
@@ -1573,7 +1556,7 @@ static void rt5639_pmd_depop(struct snd_soc_codec *codec)
 		(RT5639_CP_FQ_96_KHZ << RT5639_CP_FQ1_SFT) |
 		(RT5639_CP_FQ_12_KHZ << RT5639_CP_FQ2_SFT) |
 		(RT5639_CP_FQ_96_KHZ << RT5639_CP_FQ3_SFT));
-	rt5639_index_write(codec, RT5639_MAMP_INT_REG2, 0x7c00);
+	rt5639_index_write(codec, RT5639_MAMP_INT_REG2, 0xfc00);
 	/*snd_soc_update_bits(codec, RT5639_HP_CALIB_AMP_DET,
 		RT5639_HPD_PS_MASK, RT5639_HPD_PS_DIS); */
 	snd_soc_update_bits(codec, RT5639_HP_VOL,
@@ -2934,13 +2917,6 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 	mutex_lock(&rt5639->lock);
 	CHECK_I2C_SHUTDOWN(rt5639, codec)
 
-	/* Make sure test mode is not enabled */
-	val = rt5639_index_read(codec, 0x001B);
-	if (val == 0x9200)
-		snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0301);
-	else
-		snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0328);
-
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		break;
@@ -2982,7 +2958,6 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 		snd_soc_write(codec, RT5639_PWR_MIXER, 0x0000);
 		snd_soc_write(codec, RT5639_PWR_ANLG1, 0x0000);
 		snd_soc_write(codec, RT5639_PWR_ANLG2, 0x0000);
-		snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0301);
 		break;
 
 	default:
