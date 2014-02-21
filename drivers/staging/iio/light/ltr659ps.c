@@ -1308,7 +1308,7 @@ static int __devinit ltr659ps_probe(struct i2c_client *client
 	/* PS persist 0 */
 	prox_data->ps_persist = 0;
 	/* LED pulse count 1 */
-	prox_data->led_pulse_count = 1;
+	prox_data->led_pulse_count = 4;
 	/* LED driving peak current 100mA */
 	prox_data->led_drv_peak_current = 4;
 	/* LED duty cycle 100% */
