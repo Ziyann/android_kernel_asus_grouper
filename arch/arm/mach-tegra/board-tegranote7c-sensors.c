@@ -746,8 +746,8 @@ static struct platform_device *gadc_thermal_devices[] = {
 
 static struct ltr659_platform_data tegranote7c_ltr659ps_pdata = {
 	.gpio = TEGRA_GPIO_PX3,
-	.default_ps_lowthreshold = 20,
-	.default_ps_highthreshold = 30,
+	.default_ps_lowthreshold = 40,
+	.default_ps_highthreshold = 50,
 };
 
 static struct i2c_board_info tegratab_i2c1_ltr659ps_board_info[] = {
