@@ -986,4 +986,11 @@ config TEGRA_VDD_CORE_OVERRIDE
 	  When enabled, core rail can be fixed and locked at specified voltage
 	  within override range, and core modules clocks are capped at rates
 	  safe at override level.
+
+config TEGRA_SET_DCP_CURRENT_LIMIT_2A
+	bool "set 2A when DCP charger is connected"
+	default n
+	help
+	  When enabled, we can use 2A charging with DCP charger, but it is
+	  violation of BC 1.2 spec
 endif
