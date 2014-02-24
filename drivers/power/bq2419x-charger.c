@@ -229,11 +229,6 @@ static int bq2419x_init(struct bq2419x_chip *bq2419x)
 		return ret;
 	}
 
-	/* Set input current limit to 2A in case of DCP */
-	if ((machine_is_tegratab() || machine_is_tegranote7c()) &&
-			(bq2419x->in_current_limit >= 1800))
-		bq2419x->in_current_limit = 2000;
-
 	dev_info(bq2419x->dev,
 		"bq2419x_init: bq2419x->in_current_limit %d\n",
 		bq2419x->in_current_limit);
