@@ -305,7 +305,7 @@
 		nvidia,max-brightness = <255>;
 		nvidia,dft-brightness = <153>;
 		nvidia,dft-charge-brightness = <60>;
-		nvidia,pwm-period-ns = <1000000>;
+		nvidia,pwm-period-ns = <40000>;
 		nvidia,disable-edp-throttle = <1>;
 		nvidia,edp-states = <1711 1390 1057 713 360 0>;
 		nvidia,edp-brightness = <255 204 153 101 50 0>;
