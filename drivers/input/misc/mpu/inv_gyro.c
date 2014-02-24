@@ -4355,7 +4355,15 @@ static int nvi_resume(struct device *dev)
 
 	inf = dev_get_drvdata(dev);
 	inf->suspend = false;
-	nvi_pm(inf, NVI_PM_ON_FULL);
+	if (inf->chip_config.accl_enable || inf->chip_config.gyro_enable) {
+		mutex_lock(&inf->mutex);
+		nvi_pm(inf, NVI_PM_ON);
+		if (inf->chip_config.gyro_enable)
+			nvi_gyro_config_wr(inf, 0, inf->chip_config.gyro_fsr);
+		nvi_global_delay(inf);
+		nvi_pm(inf, NVI_PM_AUTO);
+		mutex_unlock(&inf->mutex);
+	}
 	enable_irq(inf->i2c->irq);
 	if (inf->dbg & NVI_DBG_SPEW_MSG)
 		dev_info(dev, "%s done\n", __func__);
