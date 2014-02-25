@@ -144,6 +144,9 @@
 #define   UTMIP_XCVR_SETUP_MSB(x)		(((x) & 0x7) << 22)
 #define   UTMIP_XCVR_HSSLEW_MSB(x)		(((x) & 0x7f) << 25)
 #define   UTMIP_XCVR_HSSLEW_LSB(x)		(((x) & 0x3) << 4)
+#ifdef CONFIG_MACH_TEGRANOTE7C
+#define	  UTMIP_XCVR_DEV_SLEW(x)		(((x) & 0x3) << 6)
+#endif
 #define   UTMIP_XCVR_MAX_OFFSET		2
 #define   UTMIP_XCVR_SETUP_MAX_VALUE	0x7f
 #define   UTMIP_XCVR_SETUP_MIN_VALUE	0
@@ -1023,6 +1026,14 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		val |= UTMIP_XCVR_HSSLEW_MSB(0x3);
 	if (config->xcvr_hsslew_lsb)
 		val |= UTMIP_XCVR_HSSLEW_LSB(config->xcvr_hsslew_lsb);
+
+#ifdef CONFIG_MACH_TEGRANOTE7C
+	/* device mode */
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
+		val &= ~(UTMIP_XCVR_DEV_SLEW(~0));
+		val |= UTMIP_XCVR_DEV_SLEW(0x01);
+	}
+#endif
 	writel(val, base + UTMIP_XCVR_CFG0);
 
 	val = readl(base + UTMIP_XCVR_CFG1);
