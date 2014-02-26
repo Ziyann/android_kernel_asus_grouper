@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_clocks.c
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -7581,7 +7581,8 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 	cpu_clk_g->min_rate = min(freq_table[i-2].frequency, g_vmin_freq)*1000;
 
 	/* Suspend index at max LP CPU */
-	freq_table_data.suspend_index = i - 1;
+	freq_table_data.suspend_index_lp0 = i - 1;
+	freq_table_data.suspend_index_lp1 = i - 4;
 
 	/* Fill in "hole" (if any) between LP CPU maximum rate and G CPU dvfs
 	   ladder rate at minimum voltage */

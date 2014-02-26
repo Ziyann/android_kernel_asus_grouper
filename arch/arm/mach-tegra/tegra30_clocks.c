@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_clocks.c
  *
- * Copyright (c) 2010-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4902,7 +4902,8 @@ static int clip_cpu_rate_limits(
 	}
 	cpu_clk_lp->max_rate = freq_table[idx].frequency * 1000;
 	cpu_clk_g->min_rate = freq_table[idx-1].frequency * 1000;
-	data->suspend_index = idx;
+	data->suspend_index_lp0 = idx;
+	data->suspend_index_lp1 = idx;
 	return 0;
 }
 

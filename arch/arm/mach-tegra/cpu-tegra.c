@@ -7,7 +7,7 @@
  *	Colin Cross <ccross@google.com>
  *	Based on arch/arm/plat-omap/cpu-omap.c, (C) 2005 Nokia Corporation
  *
- * Copyright (C) 2010-2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -42,6 +42,7 @@
 #include "clock.h"
 #include "cpu-tegra.h"
 #include "dvfs.h"
+#include "pm.h"
 
 /* tegra throttling and edp governors require frequencies in the table
    to be in ascending order */
@@ -53,7 +54,8 @@ static unsigned long policy_max_speed[CONFIG_NR_CPUS];
 static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
 static DEFINE_MUTEX(tegra_cpu_lock);
 static bool is_suspended;
-static int suspend_index;
+static int suspend_index_lp0;
+static int suspend_index_lp1;
 static unsigned int volt_capped_speed;
 static struct pm_qos_request cpufreq_max_req;
 static struct pm_qos_request cpufreq_min_req;
@@ -706,10 +708,16 @@ _out:
 	return ret;
 }
 
+extern enum tegra_suspend_mode current_suspend_mode;
 
 static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
 {
+	int suspend_index;
+
+	suspend_index = (current_suspend_mode == TEGRA_SUSPEND_LP0) ?
+		suspend_index_lp0 : suspend_index_lp1;
+
 	if (event == PM_SUSPEND_PREPARE) {
 		int i;
 
@@ -856,7 +864,8 @@ static int __init tegra_cpufreq_init(void)
 	if (IS_ERR_OR_NULL(table_data))
 		return -EINVAL;
 
-	suspend_index = table_data->suspend_index;
+	suspend_index_lp0 = table_data->suspend_index_lp0;
+	suspend_index_lp1 = table_data->suspend_index_lp1;
 
 	ret = tegra_throttle_init(&tegra_cpu_lock);
 	if (ret)

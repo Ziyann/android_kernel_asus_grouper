@@ -6,7 +6,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -371,7 +371,8 @@ struct tegra_cpufreq_table_data {
 	struct cpufreq_frequency_table *freq_table;
 	int throttle_lowest_index;
 	int throttle_highest_index;
-	int suspend_index;
+	int suspend_index_lp0;
+	int suspend_index_lp1;
 };
 struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void);
 unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate);
