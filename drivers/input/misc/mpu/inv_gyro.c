@@ -1,6 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
-* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -4355,6 +4355,7 @@ static int nvi_resume(struct device *dev)
 
 	inf = dev_get_drvdata(dev);
 	inf->suspend = false;
+	nvi_pm(inf, NVI_PM_ON_FULL);
 	enable_irq(inf->i2c->irq);
 	if (inf->dbg & NVI_DBG_SPEW_MSG)
 		dev_info(dev, "%s done\n", __func__);
