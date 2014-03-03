@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2014 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -29,6 +29,7 @@
 #include <linux/memblock.h>
 #include <linux/bitops.h>
 #include <linux/sched.h>
+#include <linux/module.h>
 #include <linux/cpufreq.h>
 #include <linux/of.h>
 #include <linux/persistent_ram.h>
@@ -1111,6 +1112,10 @@ int get_pwr_i2c_clk_rate(void)
 }
 __setup("pwr_i2c=", tegra_get_pwr_i2c_clk_rate);
 
+static unsigned long board_info_fab;
+
+module_param_named(hw_id, board_info_fab, ulong, 0444);
+
 void tegra_get_board_info(struct board_info *bi)
 {
 #ifdef CONFIG_OF
@@ -1164,6 +1169,8 @@ void tegra_get_board_info(struct board_info *bi)
 #ifdef CONFIG_OF
 	}
 #endif
+
+	board_info_fab = bi->fab;
 }
 
 static int __init tegra_pmu_board_info(char *info)
