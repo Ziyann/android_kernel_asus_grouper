@@ -38,11 +38,11 @@
 					clock-frequency = <70666000>;
 					hactive = <800>;
 					vactive = <1280>;
-					hfront-porch = <32>;
-					hback-porch = <57>;
+					hfront-porch = <40>;
+					hback-porch = <60>;
 					hsync-len = <1>;
-					vfront-porch = <28>;
-					vback-porch = <14>;
+					vfront-porch = <30>;
+					vback-porch = <24>;
 					vsync-len = <1>;
 					nvidia,h-ref-to-sync = <10>;
 					nvidia,v-ref-to-sync = <1>;
