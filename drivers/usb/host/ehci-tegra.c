@@ -62,6 +62,7 @@ struct tegra_ehci_hcd {
 	bool has_hostpc;
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
 	bool boost_enable;
+	int boost_cpu_target_freq;
 	bool boost_requested;
 	bool cpu_boost_in_work;
 	struct delayed_work boost_cpu_freq_work;
@@ -174,7 +175,7 @@ static void tegra_ehci_boost_cpu_frequency_work(struct work_struct *work)
 		if (tegra->boost_enable)
 			pm_qos_update_request(
 				&tegra->boost_cpu_freq_req,
-				(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
+				tegra->boost_cpu_target_freq * 1000);
 	}
 }
 #endif
@@ -428,7 +429,7 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	if (pm_qos_request_active(&tegra->boost_cpu_freq_req)
 	    && tegra->boost_enable)
 		pm_qos_update_request(&tegra->boost_cpu_freq_req,
-			(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
+			tegra->boost_cpu_target_freq * 1000);
 	tegra->cpu_boost_in_work = false;
 
 #endif
@@ -529,7 +530,7 @@ static ssize_t store_boost_enable(struct device *dev,
 		    && pm_qos_request_active(&tegra->boost_cpu_freq_req))
 			pm_qos_update_request(
 				&tegra->boost_cpu_freq_req,
-				(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
+				tegra->boost_cpu_target_freq * 1000);
 		else if (old_boost && !new_boost
 			 && pm_qos_request_active(&tegra->boost_cpu_freq_req))
 			pm_qos_update_request(&tegra->boost_cpu_freq_req,
@@ -581,10 +582,13 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
 	tegra->boost_requested = false;
 	/* Add boost enable/disable knob, disable for modem */
-	if (instance == 1)
-		tegra->boost_enable = false;
-	else
+	if (instance == 1) {
 		tegra->boost_enable = true;
+		tegra->boost_cpu_target_freq = 200;
+	} else {
+		tegra->boost_enable = true;
+		tegra->boost_cpu_target_freq = CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ;
+	}
 	err = device_create_file(hcd->self.controller, &dev_attr_boost_enable);
 	if (err < 0)
 		goto fail_sysfs;
