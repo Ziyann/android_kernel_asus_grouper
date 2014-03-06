@@ -121,6 +121,13 @@ MODULE_DEVICE_TABLE(i2c, ltr659ps_id);
 /*
  * Global Variable
  */
+
+enum {
+	PS_DATA_COLLECTING,
+	PS_DATA_COLLECTED,
+	PS_DATA_WORKING,
+};
+
 struct ltr659ps_data {
 	struct workqueue_struct *prox_wq;
 
@@ -154,6 +161,15 @@ struct ltr659ps_data {
 
 	int irq;
 	int gpio;
+
+	int ps_data_state;
+	int ps_data_array[9];
+	int ps_data_index;
+	int calib_thresh_hi;
+	int calib_thresh_lo;
+
+	/* distance flag: 1: near, 0: far */
+	int near;
 
 	struct mutex prox_mtx;
 };
@@ -675,8 +691,9 @@ static ssize_t show_ps_threashold(
 				, LTR659PS_REG_PS_THRES_LOW_1) << 8) |
 			ltr659ps_read_reg(data->client
 				, LTR659PS_REG_PS_THRES_LOW_0);
-		ret = sprintf(buf, "high threshold 0x%x, low threshold 0x%x\n"
-			, hvalue, lvalue);
+		ret = sprintf(buf, "hi thresh %d (%d), lo thresh %d (%d)\n"
+			, hvalue, data->calib_thresh_hi
+			, lvalue, data->calib_thresh_lo);
 	} else {
 		ret = sprintf(buf, "-1\n");
 	}
@@ -897,6 +914,20 @@ static ssize_t show_enable(
 	return ret;
 }
 
+static ssize_t show_distance(
+	struct device *dev, struct device_attribute *devattr, char *buf)
+{
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct ltr659ps_data *data = iio_priv(indio_dev);
+	int ret;
+
+	mutex_lock(&data->prox_mtx);
+	ret = sprintf(buf, "%d\n", ((data->near) ? (1) : (0)));
+	mutex_unlock(&data->prox_mtx);
+
+	return ret;
+}
+
 static ssize_t show_dump_reg(
 	struct device *dev, struct device_attribute *devattr, char *buf)
 {
@@ -957,6 +988,7 @@ IIO_DEVICE_ATTR(interrupt_persist, 0644
 	, show_interrupt_persist, store_interrupt_persist, 0);
 IIO_DEVICE_ATTR(ps_data, 0444, show_ps_data, NULL, 0);
 IIO_DEVICE_ATTR(enable, 0644, show_enable, store_enable, 0);
+IIO_DEVICE_ATTR(distance, 0444, show_distance, NULL, 0);
 IIO_DEVICE_ATTR(dump_reg, 0444, show_dump_reg, NULL, 0);
 IIO_DEVICE_ATTR(dump_gpio, 0444, show_dump_gpio, NULL, 0);
 
@@ -974,6 +1006,7 @@ static struct attribute *ltr659ps_attr[] = {
 	&iio_dev_attr_interrupt_persist.dev_attr.attr,
 	&iio_dev_attr_ps_data.dev_attr.attr,
 	&iio_dev_attr_enable.dev_attr.attr,
+	&iio_dev_attr_distance.dev_attr.attr,
 	&iio_dev_attr_dump_reg.dev_attr.attr,
 	&iio_dev_attr_dump_gpio.dev_attr.attr,
 	NULL
@@ -983,9 +1016,29 @@ static const struct attribute_group ltr659ps_group = {
 	.attrs = ltr659ps_attr,
 };
 
+static int get_avg_ps_data(int *array, int size)
+{
+	/* Ignoring first 3 data */
+	int i;
+	int sum = 0;
+	int max = 0, min = 2048;
+
+	for (i = 3; i < size; i++) {
+		int val = array[i];
+		sum += val;
+		if (val > max)
+			max = val;
+		if (val < min)
+			min = val;
+	}
+
+	return (sum - max - min) / (size - 5);
+}
+
 static void ltr659ps_report_input_event(struct ltr659ps_data *data)
 {
 	int l_value, h_value, value;
+	int base_ps_data;
 
 	l_value = ltr659ps_read_reg(data->client, LTR659PS_REG_PS_DATA_0);
 	h_value = ltr659ps_read_reg(data->client, LTR659PS_REG_PS_DATA_1);
@@ -993,41 +1046,79 @@ static void ltr659ps_report_input_event(struct ltr659ps_data *data)
 
 	PROX_DEBUG("ltr659ps_report_input_event %d\n", value);
 
-	if (value > data->ps_highthresh) {
-		/* set low threshold to trigger far event */
+	if (data->ps_data_state == PS_DATA_COLLECTING) {
+		data->ps_data_array[data->ps_data_index] = value;
+		data->ps_data_index++;
+		if (data->ps_data_index == 9)
+			data->ps_data_state = PS_DATA_COLLECTED;
+		else
+			return;
+	}
+
+	if (data->ps_data_state == PS_DATA_COLLECTED) {
+		base_ps_data = get_avg_ps_data(data->ps_data_array
+			, data->ps_data_index);
+		if (base_ps_data < 100) {
+			data->calib_thresh_hi = base_ps_data + 100;
+			/* lo = hi * .85, = 870/1024 */
+			data->calib_thresh_lo =
+				(data->calib_thresh_hi * 870) >> 10;
+		} else if (base_ps_data < 200) {
+			data->calib_thresh_hi = base_ps_data + 150;
+			/* lo = hi * .85, = 870/1024 */
+			data->calib_thresh_lo =
+				(data->calib_thresh_hi * 870) >> 10;
+		} else {
+			data->calib_thresh_hi = base_ps_data + 120;
+			/* lo = hi * .90, = 921/1024 */
+			data->calib_thresh_lo =
+				(data->calib_thresh_hi * 921) >> 10;
+		}
+		data->ps_data_state = PS_DATA_WORKING;
+		/* set measure time to 100 ms in working mode */
 		ltr659ps_write_reg(data->client
-			, LTR659PS_REG_PS_THRES_UP_0, 0xff);
-		ltr659ps_write_reg(data->client
-			, LTR659PS_REG_PS_THRES_UP_1, 0x07);
-		ltr659ps_write_reg(data->client
-			, LTR659PS_REG_PS_THRES_LOW_0
-			, data->ps_lowthresh & 0xff);
-		ltr659ps_write_reg(data->client
-			, LTR659PS_REG_PS_THRES_LOW_1
-			, data->ps_lowthresh >> 8);
-	} else if (value < data->ps_lowthresh) {
-		/* set high threshold to trigger near event */
-		ltr659ps_write_reg(data->client
-			, LTR659PS_REG_PS_THRES_UP_0
-			, data->ps_highthresh & 0xff);
-		ltr659ps_write_reg(data->client
-			, LTR659PS_REG_PS_THRES_UP_1
-			, data->ps_highthresh >> 8);
-		ltr659ps_write_reg(data->client
-			, LTR659PS_REG_PS_THRES_LOW_0, 0x00);
-		ltr659ps_write_reg(data->client
-			, LTR659PS_REG_PS_THRES_LOW_1, 0x00);
-	} else {
-		h_value = (ltr659ps_read_reg(data->client
+			, LTR659PS_REG_PS_MEAS_RATE, 0x02);
+	}
+
+	if (data->ps_data_state == PS_DATA_WORKING) {
+		if (value > data->calib_thresh_hi) {
+			data->near = 1;
+			/* set low threshold to trigger far event */
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_UP_0, 0xff);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_UP_1, 0x07);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_LOW_0
+				, data->calib_thresh_lo & 0xff);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_LOW_1
+				, data->calib_thresh_lo >> 8);
+		} else if (value < data->calib_thresh_lo) {
+			data->near = 0;
+			/* set high threshold to trigger near event */
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_UP_0
+				, data->calib_thresh_hi & 0xff);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_UP_1
+				, data->calib_thresh_hi >> 8);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_LOW_0, 0x00);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_LOW_1, 0x00);
+		} else {
+			h_value = (ltr659ps_read_reg(data->client
 				, LTR659PS_REG_PS_THRES_UP_1) << 8) |
-			ltr659ps_read_reg(data->client
-				, LTR659PS_REG_PS_THRES_UP_0);
-		l_value = (ltr659ps_read_reg(data->client
-				, LTR659PS_REG_PS_THRES_LOW_1) << 8) |
-			ltr659ps_read_reg(data->client
-				, LTR659PS_REG_PS_THRES_LOW_0);
-		PROX_ERROR("Unexpected interrupt: (data %d) ", value);
-		PROX_ERROR("(high thr %d) (low thr %d)", l_value, h_value);
+				ltr659ps_read_reg(data->client
+					, LTR659PS_REG_PS_THRES_UP_0);
+			l_value = (ltr659ps_read_reg(data->client
+					, LTR659PS_REG_PS_THRES_LOW_1) << 8) |
+				ltr659ps_read_reg(data->client
+					, LTR659PS_REG_PS_THRES_LOW_0);
+			PROX_ERROR("Unexpected interrupt: (data %d) ", value);
+			PROX_ERROR("hi thr %d, lo thr %d", l_value, h_value);
+		}
 	}
 
 	return;
@@ -1112,9 +1203,9 @@ static int ltr659ps_init_sensor(struct i2c_client *client)
 	ltr659ps_masked_write_reg(client
 		, LTR659PS_REG_PS_LED, (data->led_pulse_freq << 5), 0xe0);
 	ltr659ps_write_reg(client
-		, LTR659PS_REG_PS_THRES_UP_0, data->ps_highthresh & 0xff);
+		, LTR659PS_REG_PS_THRES_UP_0, 0);
 	ltr659ps_write_reg(client
-		, LTR659PS_REG_PS_THRES_UP_1, data->ps_highthresh >> 8);
+		, LTR659PS_REG_PS_THRES_UP_1, 0);
 	ltr659ps_write_reg(client
 		, LTR659PS_REG_PS_THRES_LOW_0, 0);
 	ltr659ps_write_reg(client
@@ -1151,10 +1242,12 @@ static void ltr659ps_enable_sensor(struct i2c_client *client, int enable)
 				ltr659ps_init_sensor(data->client);
 				data->init = 1;
 			}
-			queue_delayed_work(data->prox_wq, &data->work
-				, msecs_to_jiffies(200));
+			data->ps_data_state = PS_DATA_COLLECTING;
+			data->ps_data_index = 0;
 			ltr659ps_masked_write_reg(client
 				, LTR659PS_REG_PS_CONTR, 0x03, 0x03);
+			data->enable = 1;
+			queue_delayed_work(data->prox_wq, &data->work, 0);
 		} else {
 			disable_irq(client->irq);
 			ltr659ps_masked_write_reg(client
@@ -1163,10 +1256,9 @@ static void ltr659ps_enable_sensor(struct i2c_client *client, int enable)
 			flush_workqueue(data->prox_wq);
 			regulator_disable(data->reg);
 			data->init = 0;
+			data->enable = 0;
 		}
 	}
-
-	data->enable = enable;
 
 	return;
 }
@@ -1303,16 +1395,24 @@ static int __devinit ltr659ps_probe(struct i2c_client *client
 	prox_data->led_pulse_freq = 3;
 	/* PS gain x16 */
 	prox_data->ps_gain = 0;
-	/* PS measurement time 100ms */
-	prox_data->ps_meas_time = 2;
+	/* PS measurement time 10ms */
+	prox_data->ps_meas_time = 15;
 	/* PS persist 0 */
 	prox_data->ps_persist = 0;
 	/* LED pulse count 1 */
-	prox_data->led_pulse_count = 4;
+	prox_data->led_pulse_count = 8;
 	/* LED driving peak current 100mA */
 	prox_data->led_drv_peak_current = 4;
 	/* LED duty cycle 100% */
 	prox_data->led_duty_cycle = 3;
+
+	/* auto-calibration members */
+	prox_data->ps_data_state = PS_DATA_COLLECTING;
+	prox_data->ps_data_index = 0;
+	prox_data->calib_thresh_hi = 0;
+	prox_data->calib_thresh_lo = 0;
+
+	prox_data->near = 0;
 
 	indio_dev->info = &ltr659ps_info;
 	indio_dev->dev.parent = &client->dev;
