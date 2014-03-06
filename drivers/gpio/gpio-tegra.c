@@ -37,6 +37,9 @@
 #include <mach/iomap.h>
 #include <mach/legacy_irq.h>
 #include <mach/pinmux.h>
+#if defined(CONFIG_MACH_TEGRANOTE7C)
+#include <linux/tegra_audio.h>
+#endif
 
 #include "../../arch/arm/mach-tegra/pm-irq.h"
 
@@ -425,11 +428,17 @@ int tegra_gpio_suspend(void)
 			tegra_gpio_writel(bank->wake_enb[p], GPIO_INT_ENB(gpio));
 		}
 	}
-
+#if defined(CONFIG_MACH_TEGRANOTE7C)
+	/* change to sleep gpio settings */
+	if (!tegra_is_voice_call_active() &&
+		sleep_gpio && sleep_gpio_size > 0)
+		tegra_gpio_config_table(sleep_gpio, sleep_gpio_size);
+#else
 	/* change to sleep gpio settings */
 	if (sleep_gpio && sleep_gpio_size > 0)
 		tegra_gpio_config_table(sleep_gpio, sleep_gpio_size);
 
+#endif
 	local_irq_restore(flags);
 
 	return 0;

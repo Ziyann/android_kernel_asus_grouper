@@ -34,6 +34,10 @@
 #include <mach/pinmux.h>
 #include <mach/pinmux-t11.h>
 
+#if defined(CONFIG_MACH_TEGRANOTE7C)
+#include <linux/tegra_audio.h>
+#endif
+
 #include "gpio-names.h"
 
 #define PINGROUP_REG_A	0x868
@@ -395,8 +399,14 @@ static int tegra11x_pinmux_suspend(void)
 				tegra_soc_drive_pingroups[i].reg);
 
 	/* change to sleep pinmux settings */
+#if defined(CONFIG_MACH_TEGRANOTE7C)
+	if (!tegra_is_voice_call_active() &&
+		sleep_pinmux && sleep_pinmux_size > 0)
+		tegra_pinmux_config_table(sleep_pinmux, sleep_pinmux_size);
+#else
 	if (sleep_pinmux && sleep_pinmux_size > 0)
 		tegra_pinmux_config_table(sleep_pinmux, sleep_pinmux_size);
+#endif
 	return 0;
 }
 
