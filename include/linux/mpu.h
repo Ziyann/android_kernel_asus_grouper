@@ -1,6 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
-* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -55,6 +55,14 @@
 *		bypass mode, devices behind the MPU can be accessed.
 **********************************************************************/
 #define	DEBUG_SYSFS_INTERFACE		1
+
+/*********************************************************************/
+/* LOCK_I2C_ON_REG_ON
+ * Lock I2C bus when regulators are turned on to avoid I2C error.
+ * Disable this feature if regulators are on the same bus.
+ * Otherwise deadlock occurs.
+**********************************************************************/
+#define	LOCK_I2C_ON_REG_ON		(1)
 
 /* Mount maxtices for mount orientation.
  * MTMAT_XXX_CCW_YYY

@@ -814,8 +814,14 @@ static int nvi_vreg_en_all(struct inv_gyro_state_s *inf)
 	unsigned i;
 	int err = 0;
 
+#if LOCK_I2C_ON_REG_ON
+	i2c_lock_adapter(inf->sl_handle);
+#endif
 	for (i = 0; i < ARRAY_SIZE(nvi_vregs); i++)
 		err |= nvi_vreg_en(inf, i);
+#if LOCK_I2C_ON_REG_ON
+	i2c_unlock_adapter(inf->sl_handle);
+#endif
 	if (err == 1)
 		mdelay(9);
 	return err;
