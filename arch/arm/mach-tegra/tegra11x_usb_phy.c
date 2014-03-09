@@ -1638,8 +1638,7 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 		local_irq_restore(flags);
 		mdelay(25);
 		local_irq_save(flags);
-	} else
-		mdelay(25);
+	}
 
 	pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 1);
 	phy->pmc_remote_wakeup = false;
