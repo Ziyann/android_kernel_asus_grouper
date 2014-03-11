@@ -619,6 +619,30 @@ static struct therm_est_subdevice skin_devs_p1988[] = {
 	},
 };
 
+static struct therm_est_subdevice skin_devs_p1988_a02[] = {
+	{
+		.dev_data = "Tdiode",
+		.coeffs = {
+			2, 1, -1, -2,
+			-3, -3, -3, -3,
+			-2, -2, -1, -1,
+			-1, -1, -1, -1,
+			-1, -2, -3, -6
+		},
+	},
+	{
+		.dev_data = "Tboard",
+		.coeffs = {
+			117, 43, 6, -11,
+			-20, -14, -7, -1,
+			4, 1, 2, 2,
+			2, -2, -11, -24,
+			-34, -31, 4, 99
+		},
+	},
+};
+
+
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
 	.trips = skin_trips,
@@ -668,9 +692,16 @@ static int __init tegratab_skin_init(void)
 		tegra_get_board_info(&board_info);
 		if (board_info.board_id == BOARD_P1988) {
 			/* Use this for P1988. */
-			skin_data.toffset = 1480;
-			skin_data.ndevs = ARRAY_SIZE(skin_devs_p1988);
-			skin_data.devs = skin_devs_p1988;
+	 		if (board_info.fab == BOARD_FAB_A00 ||
+	 				board_info.fab == BOARD_FAB_A01) {
+	 			skin_data.toffset = 1480;
+	 			skin_data.ndevs = ARRAY_SIZE(skin_devs_p1988);
+	 			skin_data.devs = skin_devs_p1988;
+	 		} else {
+	 			skin_data.toffset = -638;
+	 			skin_data.ndevs = ARRAY_SIZE(skin_devs_p1988_a02);
+	 			skin_data.devs = skin_devs_p1988_a02;
+	 		}
 		} else if (board_info.board_id == BOARD_E1569 ||
 			(board_info.board_id == BOARD_P1640 &&
 			(board_info.fab == BOARD_FAB_A00 ||

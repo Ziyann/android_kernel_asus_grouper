@@ -544,14 +544,34 @@ static struct therm_est_subdevice skin_devs[] = {
 	},
 };
 
+static struct therm_est_subdevice skin_devs_a02[] = {
+	{
+		.dev_data = "Tdiode",
+		.coeffs = {
+			2, 1, -1, -2,
+			-3, -3, -3, -3,
+			-2, -2, -1, -1,
+			-1, -1, -1, -1,
+			-1, -2, -3, -6
+		},
+	},
+	{
+		.dev_data = "Tboard",
+		.coeffs = {
+			117, 43, 6, -11,
+			-20, -14, -7, -1,
+			4, 1, 2, 2,
+			2, -2, -11, -24,
+			-34, -31, 4, 99
+		},
+	},
+};
+
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
 	.trips = skin_trips,
-	.ndevs = ARRAY_SIZE(skin_devs),
-	.devs = skin_devs,
 	.polling_period = 1100,
 	.passive_delay = 15000,
-	.toffset = 1480,
 	.tc1 = 10,
 	.tc2 = 1,
 };
@@ -590,9 +610,21 @@ static struct balanced_throttle skin_throttle = {
 	.throt_tab = skin_throttle_table,
 };
 
+static struct board_info board_info;
 static int __init tegranote7c_skin_init(void)
 {
 	if (machine_is_tegranote7c()) {
+		tegra_get_board_info(&board_info);
+		if (board_info.fab == BOARD_FAB_A00 ||
+				board_info.fab == BOARD_FAB_A01) {
+			skin_data.toffset = 1480;
+			skin_data.ndevs = ARRAY_SIZE(skin_devs);
+			skin_data.devs = skin_devs;
+		} else {
+			skin_data.toffset = -638;
+			skin_data.ndevs = ARRAY_SIZE(skin_devs_a02);
+			skin_data.devs = skin_devs_a02;
+		}
 		balanced_throttle_register(&skin_throttle, "skin-balanced");
 		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
 		platform_device_register(&tegra_skin_therm_est_device);
