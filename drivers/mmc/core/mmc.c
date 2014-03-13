@@ -459,7 +459,11 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		if (card->ext_csd.rev == 6) {
 			card->ext_csd.sec_feature_support =
 				ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT] &
-				~EXT_CSD_SEC_ER_EN;
+#if defined(CONFIG_SEC_SANITIZE_IGNORE)
+				~(EXT_CSD_SEC_ER_EN | EXT_CSD_SEC_SANITIZE);
+#else
+				~(EXT_CSD_SEC_ER_EN);
+#endif
 		}
 
 		card->ext_csd.trim_timeout = 300 *

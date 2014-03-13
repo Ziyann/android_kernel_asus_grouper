@@ -54,3 +54,9 @@ config MMC_FREQ_SCALING
 	  device frequency dynamically. Enable this config only if
 	  there is a custom implementation to determine the frequency
 	  using the device stats.
+
+config SEC_SANITIZE_IGNORE 
+	bool "Disable Sanitize"
+	default N
+	help
+	  If you say Y here, Disable Sanitize.
