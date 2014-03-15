@@ -1393,7 +1393,7 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 				   sizeof(*async_data) + dd->irq_param[4] +
 				   2 * sizeof(u16));
 	if (async_data == NULL) {
-		ERROR("can't add data to async IRQ buffer");
+		INFO("can't add data to async IRQ buffer");
 		return;
 	}
 	async_data->length = dd->irq_param[4] + 2 * sizeof(u16);
@@ -1415,11 +1415,10 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 			return;
 		}
 
-		if (rx_limit == rx_len)
-			usleep_range(200, 300);
+		usleep_range(310, 335);
 
 		if (buf[0] == 0x6060) {
-			ERROR("data not ready");
+			INFO("data not ready");
 			start_legacy_acceleration_canned(dd);
 			ret = -EBUSY;
 			break;
@@ -1430,7 +1429,7 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 
 			if (async_data->address +
 					offset / sizeof(u16) != buf[1]) {
-				ERROR("sequence number incorrect %04X", buf[1]);
+				INFO("sequence number incorrect %04X", buf[1]);
 				start_legacy_acceleration_canned(dd);
 				ret = -EBUSY;
 				break;
@@ -1444,7 +1443,7 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 	async_data->status = *(buf + rx_len / sizeof(u16) + 2);
 
 	if (ret < 0) {
-		ERROR("can't read IRQ buffer (%d)", ret);
+		INFO("can't read IRQ buffer (%d)", ret);
 		nl_msg_init(dd->outgoing_skb->data, dd->nl_family.id,
 			    dd->nl_seq - 1, MC_FUSION);
 	} else {
@@ -1454,7 +1453,7 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 					dd->nl_mc_groups[MC_FUSION].id,
 					GFP_KERNEL);
 		if (ret < 0) {
-			ERROR("can't send IRQ buffer %d", ret);
+			INFO("can't send IRQ buffer %d", ret);
 			msleep(300);
 			if (++dd->send_fail_count >= 10 &&
 			    dd->fusion_process != (pid_t)0) {
@@ -1468,7 +1467,7 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 		}
 		ret = nl_msg_new(dd, MC_FUSION);
 		if (ret < 0)
-			ERROR("could not allocate outgoing skb (%d)", ret);
+			INFO("could not allocate outgoing skb (%d)", ret);
 	}
 }
 
