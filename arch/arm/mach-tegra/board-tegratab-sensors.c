@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-tegratab-sensors.c
  *
- * Copyright (c) 2012-2013 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2012-2014 NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -596,6 +596,29 @@ static struct therm_est_subdevice skin_devs_a02[] = {
 	},
 };
 
+static struct therm_est_subdevice skin_devs_p1988[] = {
+	{
+		.dev_data = "Tdiode",
+		.coeffs = {
+			6, 1, 0, -2,
+			-1, -2, -3, -2,
+			-2, -2, -3, -2,
+			-3, -2, -3, -4,
+			-5, -5, -6, -12
+		},
+	},
+	{
+		.dev_data = "Tboard",
+		.coeffs = {
+			35, 11, 3, 4,
+			-2, 3, 6, -2,
+			5, 8, 14, 12,
+			16, 17, 15, 9,
+			-3, -23, -24, 36
+		},
+	},
+};
+
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
 	.trips = skin_trips,
@@ -643,7 +666,12 @@ static int __init tegratab_skin_init(void)
 {
 	if (machine_is_tegratab()) {
 		tegra_get_board_info(&board_info);
-		if (board_info.board_id == BOARD_E1569 ||
+		if (board_info.board_id == BOARD_P1988) {
+			/* Use this for P1988. */
+			skin_data.toffset = 1480;
+			skin_data.ndevs = ARRAY_SIZE(skin_devs_p1988);
+			skin_data.devs = skin_devs_p1988;
+		} else if (board_info.board_id == BOARD_E1569 ||
 			(board_info.board_id == BOARD_P1640 &&
 			(board_info.fab == BOARD_FAB_A00 ||
 			board_info.fab == BOARD_FAB_A01))) {
