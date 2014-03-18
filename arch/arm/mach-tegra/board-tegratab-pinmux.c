@@ -81,6 +81,7 @@ static struct gpio_init_pin_info p1640_manual_gpio_mode[] = {
 static struct gpio_init_pin_info p1988_manual_gpio_mode[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PO6, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ1, true, 0), /* hall sensor input */
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR0, false, 0),
 };
 
 static void __init tegratab_gpio_init_configure(void)
