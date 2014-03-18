@@ -65,6 +65,7 @@ static __initdata struct tegra_pingroup_config
 		p1640_manual_unused_pins_lowpower[] = {
 	/* ULPI_DATA5 is not connected */
 	UNUSED_PINMUX(ULPI_DATA5),
+	UNUSED_PINMUX(KB_ROW0),
 };
 
 static __initdata struct tegra_pingroup_config p1988_manual_config_pinmux[] = {
@@ -72,6 +73,7 @@ static __initdata struct tegra_pingroup_config p1988_manual_config_pinmux[] = {
 	GPIO_PINMUX(ULPI_DATA5, NORMAL, NORMAL, OUTPUT, DISABLE),
 	/* hall sensor input */
 	GPIO_PINMUX(KB_COL1, PULL_UP, NORMAL, INPUT, DISABLE),
+	GPIO_PINMUX(KB_ROW0, NORMAL, NORMAL, OUTPUT, DISABLE),
 };
 
 static struct gpio_init_pin_info p1640_manual_gpio_mode[] = {

@@ -571,7 +571,6 @@ static __initdata struct tegra_pingroup_config ffd_unused_pins_lowpower[] = {
 	UNUSED_PINMUX(KB_COL4),
 	UNUSED_PINMUX(KB_COL6),
 	UNUSED_PINMUX(KB_COL7),
-	UNUSED_PINMUX(KB_ROW0),
 	UNUSED_PINMUX(KB_ROW4),
 	UNUSED_PINMUX(KB_ROW5),
 	UNUSED_PINMUX(KB_ROW6),
