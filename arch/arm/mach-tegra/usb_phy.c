@@ -240,9 +240,12 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 		goto fail_emc;
 	}
 
-	if (phy->pdata->has_hostpc)
-		clk_set_rate(phy->emc_clk, 200000000);
-	else
+	if (phy->pdata->has_hostpc) {
+		if (phy->pdata->phy_intf == TEGRA_USB_PHY_INTF_HSIC)
+			clk_set_rate(phy->emc_clk, 200000000);
+		else
+			clk_set_rate(phy->emc_clk, 100000000);
+	} else
 		clk_set_rate(phy->emc_clk, 300000000);
 
 	return err;
