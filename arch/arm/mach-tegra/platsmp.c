@@ -7,7 +7,7 @@
  *  Copyright (C) 2009 Palm
  *  All Rights Reserved
  *
- *  Copyright (C) 2010-2013 NVIDIA Corporation
+ *  Copyright (C) 2010-2014 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -279,6 +279,7 @@ static int tegra11x_power_up_cpu(unsigned int cpu)
 
 		reg = PMC_TOGGLE_START | TEGRA_CPU_POWERGATE_ID(cpu);
 		pmc_writel(reg, PWRGATE_TOGGLE);
+		pmc_readl(PWRGATE_TOGGLE);
 	}
 
 	return 0;
