@@ -359,6 +359,12 @@ config MACH_TEGRANOTE7C
        help
          Support for NVIDIA TEGRANOTE7C development platform
 
+config AUDIO_EDP
+       bool "AUDIO EDP"
+       depends on ARCH_TEGRA_11x_SOC
+       help
+         Support for Audio EDP for device beside Fairfax
+
 choice
        prompt "Tegra platform type"
        default TEGRA_SILICON_PLATFORM
