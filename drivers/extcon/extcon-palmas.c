@@ -1,7 +1,7 @@
 /*
  * palmas-extcon.c -- Palmas VBUS detection in extcon framework.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -32,8 +32,11 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/mfd/palmas.h>
+#include <linux/wakelock.h>
 
 #define MAX_INT_NAME	40
+#define USB_ID_DETECTION_DEBOUNCE_TIME_MS	500
+
 struct palmas_extcon {
 	struct device		*dev;
 	struct palmas		*palmas;
@@ -44,6 +47,10 @@ struct palmas_extcon {
 	char			id_irq_name[MAX_INT_NAME];
 	bool			enable_vbus_detection;
 	bool			enable_id_pin_detection;
+#ifdef USB_ID_DETECTION_DEBOUNCE_TIME_MS
+	struct delayed_work	id_pin_work;
+	struct wake_lock	id_pin_wake_lock;
+#endif
 };
 
 const char *palmas_excon_cable[] = {
@@ -78,6 +85,34 @@ static int palmas_extcon_vbus_cable_update(
 	return 0;
 }
 
+#ifdef USB_ID_DETECTION_DEBOUNCE_TIME_MS
+static void palmas_extcon_usb_id_detect_work(struct work_struct *w)
+{
+	int ret;
+	unsigned int status;
+
+	struct palmas_extcon *palma_econ = container_of(to_delayed_work(w),
+						struct palmas_extcon,
+						id_pin_work);
+
+	ret = palmas_read(palma_econ->palmas, PALMAS_INTERRUPT_BASE,
+				PALMAS_INT3_LINE_STATE,	&status);
+	if (ret < 0) {
+		dev_err(palma_econ->dev,
+			"INT3_LINE_STATE read failed: %d\n", ret);
+		return;
+	}
+
+	if (status & PALMAS_INT3_LINE_STATE_ID)
+		extcon_set_cable_state(palma_econ->edev, "USB-Host", true);
+	else
+		extcon_set_cable_state(palma_econ->edev, "USB-Host", false);
+
+	dev_info(palma_econ->dev, "ID USB-Host state: %s\n",
+		(status & PALMAS_INT3_LINE_STATE_ID) ? "true" : "false");
+}
+#endif
+
 static int palmas_extcon_id_cable_update(
 		struct palmas_extcon *palma_econ)
 {
@@ -92,15 +127,24 @@ static int palmas_extcon_id_cable_update(
 		return ret;
 	}
 
+#ifndef USB_ID_DETECTION_DEBOUNCE_TIME_MS
 	if (status & PALMAS_INT3_LINE_STATE_ID)
 		extcon_set_cable_state(palma_econ->edev, "USB-Host", true);
 	else
 		extcon_set_cable_state(palma_econ->edev, "USB-Host", false);
+#endif
 
 	dev_info(palma_econ->dev, "ID %s status: 0x%02x\n",
 		(status & PALMAS_INT3_LINE_STATE_ID) ? "Valid" : "Invalid",
 		status);
 
+#ifdef USB_ID_DETECTION_DEBOUNCE_TIME_MS
+	cancel_delayed_work(&palma_econ->id_pin_work);
+	schedule_delayed_work(&palma_econ->id_pin_work,
+		msecs_to_jiffies(USB_ID_DETECTION_DEBOUNCE_TIME_MS));
+	wake_lock_timeout(&palma_econ->id_pin_wake_lock,
+		msecs_to_jiffies(USB_ID_DETECTION_DEBOUNCE_TIME_MS) * 2);
+#endif
 	return 0;
 }
 
@@ -197,6 +241,14 @@ static int __devinit palmas_extcon_probe(struct platform_device *pdev)
 			goto out_free_vbus;
 		}
 
+#ifdef USB_ID_DETECTION_DEBOUNCE_TIME_MS
+		INIT_DELAYED_WORK(&palma_econ->id_pin_work,
+					palmas_extcon_usb_id_detect_work);
+
+		wake_lock_init(&palma_econ->id_pin_wake_lock,
+				WAKE_LOCK_SUSPEND, dev_name(palma_econ->dev));
+#endif
+
 		ret = palmas_extcon_id_cable_update(palma_econ);
 		if (ret < 0) {
 			dev_err(&pdev->dev, "ID Cable init failed: %d\n", ret);
@@ -228,6 +280,10 @@ static int __devexit palmas_extcon_remove(struct platform_device *pdev)
 {
 	struct palmas_extcon *palma_econ = dev_get_drvdata(&pdev->dev);
 
+#ifdef USB_ID_DETECTION_DEBOUNCE_TIME_MS
+	wake_lock_destroy(&palma_econ->id_pin_wake_lock);
+	cancel_delayed_work(&palma_econ->id_pin_work);
+#endif
 	extcon_dev_unregister(palma_econ->edev);
 	if (palma_econ->enable_vbus_detection)
 		free_irq(palma_econ->vbus_irq, palma_econ);
