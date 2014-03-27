@@ -167,6 +167,7 @@ struct ltr659ps_data {
 	int ps_data_index;
 	int calib_thresh_hi;
 	int calib_thresh_lo;
+	int base_ps_data;
 
 	/* distance flag: 1: near, 0: far */
 	int near;
@@ -1038,14 +1039,12 @@ static int get_avg_ps_data(int *array, int size)
 static void ltr659ps_report_input_event(struct ltr659ps_data *data)
 {
 	int l_value, h_value, value;
-	int base_ps_data;
 
 	l_value = ltr659ps_read_reg(data->client, LTR659PS_REG_PS_DATA_0);
 	h_value = ltr659ps_read_reg(data->client, LTR659PS_REG_PS_DATA_1);
 	value = h_value << 8 | l_value;
 
 	PROX_DEBUG("ltr659ps_report_input_event %d\n", value);
-
 	if (data->ps_data_state == PS_DATA_COLLECTING) {
 		data->ps_data_array[data->ps_data_index] = value;
 		data->ps_data_index++;
@@ -1056,20 +1055,20 @@ static void ltr659ps_report_input_event(struct ltr659ps_data *data)
 	}
 
 	if (data->ps_data_state == PS_DATA_COLLECTED) {
-		base_ps_data = get_avg_ps_data(data->ps_data_array
+		data->base_ps_data = get_avg_ps_data(data->ps_data_array
 			, data->ps_data_index);
-		if (base_ps_data < 100) {
-			data->calib_thresh_hi = base_ps_data + 100;
+		if (data->base_ps_data < 100) {
+			data->calib_thresh_hi = data->base_ps_data + 100;
 			/* lo = hi * .85, = 870/1024 */
 			data->calib_thresh_lo =
 				(data->calib_thresh_hi * 870) >> 10;
-		} else if (base_ps_data < 200) {
-			data->calib_thresh_hi = base_ps_data + 150;
+		} else if (data->base_ps_data < 200) {
+			data->calib_thresh_hi = data->base_ps_data + 150;
 			/* lo = hi * .85, = 870/1024 */
 			data->calib_thresh_lo =
 				(data->calib_thresh_hi * 870) >> 10;
 		} else {
-			data->calib_thresh_hi = base_ps_data + 120;
+			data->calib_thresh_hi = data->base_ps_data + 120;
 			/* lo = hi * .90, = 921/1024 */
 			data->calib_thresh_lo =
 				(data->calib_thresh_hi * 921) >> 10;
@@ -1094,6 +1093,20 @@ static void ltr659ps_report_input_event(struct ltr659ps_data *data)
 			ltr659ps_write_reg(data->client
 				, LTR659PS_REG_PS_THRES_LOW_1
 				, data->calib_thresh_lo >> 8);
+		} else if (value < (data->base_ps_data - 50)) {
+			data->ps_data_state = PS_DATA_COLLECTING;
+			data->ps_data_index = 0;
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_LOW_0, 0);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_LOW_1, 0);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_UP_0, 0);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_THRES_UP_1, 0);
+			ltr659ps_write_reg(data->client
+				, LTR659PS_REG_PS_MEAS_RATE
+				, data->ps_meas_time);
 		} else if (value < data->calib_thresh_lo) {
 			data->near = 0;
 			/* set high threshold to trigger near event */
@@ -1103,10 +1116,20 @@ static void ltr659ps_report_input_event(struct ltr659ps_data *data)
 			ltr659ps_write_reg(data->client
 				, LTR659PS_REG_PS_THRES_UP_1
 				, data->calib_thresh_hi >> 8);
-			ltr659ps_write_reg(data->client
-				, LTR659PS_REG_PS_THRES_LOW_0, 0x00);
-			ltr659ps_write_reg(data->client
-				, LTR659PS_REG_PS_THRES_LOW_1, 0x00);
+			if (data->base_ps_data > 50) {
+				int lo_threshold = data->base_ps_data - 50;
+				ltr659ps_write_reg(data->client
+					, LTR659PS_REG_PS_THRES_LOW_0
+					, lo_threshold & 0xff);
+				ltr659ps_write_reg(data->client
+					, LTR659PS_REG_PS_THRES_LOW_1
+					, lo_threshold >> 8);
+			} else {
+				ltr659ps_write_reg(data->client
+					, LTR659PS_REG_PS_THRES_LOW_0, 0x00);
+				ltr659ps_write_reg(data->client
+					, LTR659PS_REG_PS_THRES_LOW_1, 0x00);
+			}
 		} else {
 			h_value = (ltr659ps_read_reg(data->client
 				, LTR659PS_REG_PS_THRES_UP_1) << 8) |
