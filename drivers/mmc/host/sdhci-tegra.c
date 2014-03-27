@@ -3024,6 +3024,8 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 		tegra_sdhci_reset(sdhci, SDHCI_RESET_ALL);
 		sdhci_writeb(sdhci, SDHCI_POWER_ON, SDHCI_POWER_CONTROL);
 		sdhci->pwr = 0;
+
+		tegra_sdhci_do_calibration(sdhci);
 	}
 
 	return 0;
