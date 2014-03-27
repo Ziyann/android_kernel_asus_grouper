@@ -573,6 +573,32 @@ static struct therm_est_subdevice skin_devs[] = {
 	},
 };
 
+#if defined(CONFIG_FAIRFAX_TSKIN)
+static struct therm_est_subdevice skin_devs_fairfax[] = {
+	{
+		.dev_data = "Tdiode",
+		.coeffs = {
+			7, 0, -4, -6,
+			-5, -4, -3, -2,
+			-1, -1, 0, 0,
+			1, 1, 1, 0,
+			1, 0, -1, -5
+		},
+	},
+	{
+		.dev_data = "Tboard",
+		.coeffs = {
+			116, 37, 0, -14,
+			-20, -17, -17, -11,
+			-9, -3, -1, -2,
+			-4, -1, 0, -3,
+			-6, -4, 9, 49
+		},
+	},
+};
+
+#else
+
 static struct therm_est_subdevice skin_devs_a02[] = {
 	{
 		.dev_data = "Tdiode",
@@ -595,6 +621,9 @@ static struct therm_est_subdevice skin_devs_a02[] = {
 		},
 	},
 };
+
+
+#endif
 
 static struct therm_est_subdevice skin_devs_p1988[] = {
 	{
@@ -680,10 +709,16 @@ static int __init tegratab_skin_init(void)
 			skin_data.ndevs = ARRAY_SIZE(skin_devs);
 			skin_data.devs = skin_devs;
 		} else {
+#if defined(CONFIG_FAIRFAX_TSKIN)
+			skin_data.toffset = 1106;
+			skin_data.ndevs = ARRAY_SIZE(skin_devs_fairfax);
+			skin_data.devs = skin_devs_fairfax;
+#else
 			/* Use this after P1640 A02. */
 			skin_data.toffset = 799;
 			skin_data.ndevs = ARRAY_SIZE(skin_devs_a02);
 			skin_data.devs = skin_devs_a02;
+#endif
 		}
 
 		balanced_throttle_register(&skin_throttle, "skin-balanced");

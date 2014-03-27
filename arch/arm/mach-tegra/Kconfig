@@ -359,6 +359,12 @@ config MACH_TEGRANOTE7C
        help
          Support for NVIDIA TEGRANOTE7C development platform
 
+config FAIRFAX_TSKIN
+       bool "FAIRFAX TSKIN"
+       depends on ARCH_TEGRA_11x_SOC
+       help
+         Support for tskin parameters for device Fairfax
+
 config AUDIO_EDP
        bool "AUDIO EDP"
        depends on ARCH_TEGRA_11x_SOC

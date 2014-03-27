@@ -449,6 +449,8 @@ static void max17048_work(struct work_struct *work)
 		chip->temperature = temp;
 	}
 
+	printk("chip->temperature = %d\n", chip->temperature);
+
 	if (abs(chip->temperature - chip->lasttime_temperature) >= 1500) {
 		dev_info(&chip->client->dev, "%s(): Temp %ldC\n",
 				__func__, chip->temperature / 1000);
