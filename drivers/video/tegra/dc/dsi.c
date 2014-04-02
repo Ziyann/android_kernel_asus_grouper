@@ -2323,6 +2323,7 @@ static void tegra_dsi_panelB_enable(void)
 	writel(val, (IO_ADDRESS(APB_MISC_GP_MIPI_PAD_CTRL_0)));
 }
 
+extern atomic_t camera_power_on;
 static int tegra_dsi_init_hw(struct tegra_dc *dc,
 				struct tegra_dc_dsi_data *dsi)
 {
@@ -2359,7 +2360,11 @@ static int tegra_dsi_init_hw(struct tegra_dc *dc,
 			tegra_dsi_writel(dsi, 0, init_reg_vs1_ext[i]);
 	}
 
-	tegra_dsi_pad_calibration(dsi);
+	if (0 == atomic_read(&camera_power_on)) {
+	    tegra_dsi_pad_calibration(dsi);
+	} else {
+	    dev_warn(&dsi->dc->ndev->dev, "WAR 1490685\n");
+	}
 
 	tegra_dsi_writel(dsi,
 		DSI_POWER_CONTROL_LEG_DSI_ENABLE(TEGRA_DSI_ENABLE),

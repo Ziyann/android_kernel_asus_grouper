@@ -16,6 +16,8 @@
 
 #include "camera_power.h"
 
+atomic_t camera_power_on = ATOMIC_INIT(0);
+
 int tegra_camera_power_on(struct tegra_camera *camera)
 {
 	int ret = 0;
@@ -50,6 +52,7 @@ int tegra_camera_power_on(struct tegra_camera *camera)
 			__func__);
 #endif
 	camera->power_on = 1;
+	atomic_set(&camera_power_on, 1);
 	return ret;
 }
 
@@ -86,6 +89,7 @@ int tegra_camera_power_off(struct tegra_camera *camera)
 		}
 	}
 	camera->power_on = 0;
+	atomic_set(&camera_power_on, 0);
 	return ret;
 }
 
