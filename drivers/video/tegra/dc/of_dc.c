@@ -191,7 +191,7 @@ static int parse_dc_out_type(struct device_node *np,
 	return 0;
 }
 
-static int parse_tmds(struct device_node *np,
+static int __maybe_unused parse_tmds(struct device_node *np,
 	u8 *addr)
 {
 	u32 temp;
@@ -240,6 +240,42 @@ parse_tmds_fail:
 	return -EINVAL;
 }
 
+#ifdef CONFIG_FAIRFAX_HDMI_PARAM
+static struct tmds_config fairfax_tmds_config[] = {
+	{
+		.pclk = 27000000,
+		.pll0 = 0x01003010,
+		.pll1 = 0x00300f00,
+		.pe_current = 0x00000000,
+		.drive_current = 0x23232323,
+		.peak_current = 0x00000000,
+	},
+	{
+		.pclk = 74250000,
+		.pll0 = 0x01003f10,
+		.pll1 = 0x10300f00,
+		.pe_current = 0x00000000,
+		.drive_current = 0x21212121,
+		.peak_current = 0x03030303,
+	},
+	{
+		.pclk = 148500000,
+		.pll0 = 0x01003f10,
+		.pll1 = 0x10300f00,
+		.pe_current = 0x00000000,
+		.drive_current = 0x24242424,
+		.peak_current = 0x03030303,
+	},
+	{
+		.pclk = 0x7fffffff,
+		.pll0 = 0x01003f10,
+		.pll1 = 0x13300f00,
+		.pe_current = 0x00000000,
+		.drive_current = 0x24242424,
+		.peak_current = 0x07070707,
+	},
+};
+#endif
 static int parse_dc_default_out(struct platform_device *ndev,
 		struct device_node *np, struct tegra_dc_out *default_out)
 {
@@ -254,8 +290,8 @@ static int parse_dc_default_out(struct platform_device *ndev,
 		of_find_compatible_node(NULL, NULL, "nvidia,tegra114-hdmi");
 	struct i2c_adapter *adapter;
 	struct device_node *tmds_np = NULL;
-	struct device_node *entry = NULL;
-	u8 *addr;
+	struct device_node *entry __maybe_unused = NULL;
+	u8 *addr __maybe_unused;
 
 	err = parse_dc_out_type(np, default_out);
 	if (err) {
@@ -358,6 +394,11 @@ static int parse_dc_default_out(struct platform_device *ndev,
 			dev_err(&ndev->dev, "not enough memory\n");
 			return -ENOMEM;
 		}
+#ifdef CONFIG_FAIRFAX_HDMI_PARAM
+		default_out->hdmi_out->n_tmds_config =
+			ARRAY_SIZE(fairfax_tmds_config);
+		default_out->hdmi_out->tmds_config = fairfax_tmds_config;
+#else
 		default_out->hdmi_out->n_tmds_config =
 			tmds_set_count;
 
@@ -375,6 +416,7 @@ static int parse_dc_default_out(struct platform_device *ndev,
 				goto fail_dc_default_out;
 			addr += sizeof(struct tmds_config);
 		}
+#endif
 	}
 success_dc_default_out:
 	return 0;

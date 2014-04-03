@@ -233,6 +233,12 @@ config TEGRA_HDMI_74MHZ_LIMIT
 	  Say Y here to make kernel report only low bandwidth modes.
 	  Useful only for boards which can't deliver 148.50 MHz.
 
+config FAIRFAX_HDMI_PARAM
+	bool "Use Fairfax TDMS parameters"
+	default n
+	help
+	  Say Y here to use TDMS parameters only for Fairfax.
+
 endif
 
 config TEGRA_CAMERA
