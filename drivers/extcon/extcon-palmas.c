@@ -88,19 +88,21 @@ static int palmas_extcon_vbus_cable_update(
 #ifdef USB_ID_DETECTION_DEBOUNCE_TIME_MS
 static void palmas_extcon_usb_id_detect_work(struct work_struct *w)
 {
-	int ret;
+	int ret, try;
 	unsigned int status;
 
 	struct palmas_extcon *palma_econ = container_of(to_delayed_work(w),
 						struct palmas_extcon,
 						id_pin_work);
 
-	ret = palmas_read(palma_econ->palmas, PALMAS_INTERRUPT_BASE,
-				PALMAS_INT3_LINE_STATE,	&status);
-	if (ret < 0) {
-		dev_err(palma_econ->dev,
-			"INT3_LINE_STATE read failed: %d\n", ret);
-		return;
+	for (ret = 0, try = 0; try <= 3; try++) {
+		ret = palmas_read(palma_econ->palmas, PALMAS_INTERRUPT_BASE,
+					PALMAS_INT3_LINE_STATE,	&status);
+		if (ret >= 0)
+			break;
+		else
+			dev_err(palma_econ->dev,
+				"INT3_LINE_STATE read failed: %d\n", ret);
 	}
 
 	if (status & PALMAS_INT3_LINE_STATE_ID)
