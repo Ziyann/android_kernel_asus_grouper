@@ -39,6 +39,7 @@
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
+#include <linux/interrupt.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_rt5640_pdata.h>
@@ -1562,6 +1563,7 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 					1,
 					&tegra_rt5640_hp_jack_gpio);
 		machine->gpio_requested |= GPIO_HP_DET;
+		enable_irq_wake(gpio_to_irq(tegra_rt5640_hp_jack_gpio.gpio));
 	}
 
 	/* Add call mode switch control */
