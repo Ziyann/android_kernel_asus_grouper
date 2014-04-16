@@ -49,7 +49,7 @@ static int tegra_gpio_wakes[] = {
 	TEGRA_GPIO_PC7,				/* wake8 */
 	TEGRA_GPIO_PS2,				/* wake9 */
 	-EINVAL,				/* wake10 */
-	TEGRA_GPIO_PW3,				/* wake11 */
+	-EINVAL,				/* wake11 */
 	TEGRA_GPIO_PW2,				/* wake12 */
 	-EINVAL,				/* wake13 */
 	TEGRA_GPIO_PDD3,			/* wake14 */
