@@ -600,48 +600,24 @@ static struct therm_est_subdevice skin_devs_p1988[] = {
 	{
 		.dev_data = "Tdiode",
 		.coeffs = {
-			6, 1, 0, -2,
-			-1, -2, -3, -2,
-			-2, -2, -3, -2,
-			-3, -2, -3, -4,
-			-5, -5, -6, -12
-		},
-	},
-	{
-		.dev_data = "Tboard",
-		.coeffs = {
-			35, 11, 3, 4,
-			-2, 3, 6, -2,
-			5, 8, 14, 12,
-			16, 17, 15, 9,
-			-3, -23, -24, 36
-		},
-	},
-};
-
-static struct therm_est_subdevice skin_devs_p1988_a02[] = {
-	{
-		.dev_data = "Tdiode",
-		.coeffs = {
-			2, 1, -1, -2,
-			-3, -3, -3, -3,
-			-2, -2, -1, -1,
+			3, 1, -1, -2,
+			-2, -3, -3, -2,
+			-2, -1, -2, -1,
 			-1, -1, -1, -1,
-			-1, -2, -3, -6
+			-1, -1, -3, -7,
 		},
 	},
 	{
 		.dev_data = "Tboard",
 		.coeffs = {
-			117, 43, 6, -11,
-			-20, -14, -7, -1,
-			4, 1, 2, 2,
-			2, -2, -11, -24,
-			-34, -31, 4, 99
+			109, 37, -1, -15,
+			-11, -10, -6, 0,
+			0, 8, 6, 3,
+			-2, -3, -11, -21,
+			-28, -24, 4, 89,
 		},
 	},
 };
-
 
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
@@ -692,16 +668,9 @@ static int __init tegratab_skin_init(void)
 		tegra_get_board_info(&board_info);
 		if (board_info.board_id == BOARD_P1988) {
 			/* Use this for P1988. */
-	 		if (board_info.fab == BOARD_FAB_A00 ||
-	 				board_info.fab == BOARD_FAB_A01) {
-	 			skin_data.toffset = 1480;
-	 			skin_data.ndevs = ARRAY_SIZE(skin_devs_p1988);
-	 			skin_data.devs = skin_devs_p1988;
-	 		} else {
-	 			skin_data.toffset = -638;
-	 			skin_data.ndevs = ARRAY_SIZE(skin_devs_p1988_a02);
-	 			skin_data.devs = skin_devs_p1988_a02;
-	 		}
+			skin_data.toffset = 776;
+			skin_data.ndevs = ARRAY_SIZE(skin_devs_p1988);
+			skin_data.devs = skin_devs_p1988;
 		} else if (board_info.board_id == BOARD_E1569 ||
 			(board_info.board_id == BOARD_P1640 &&
 			(board_info.fab == BOARD_FAB_A00 ||
