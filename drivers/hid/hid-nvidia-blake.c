@@ -254,7 +254,19 @@ static struct hid_driver nvidia_driver = {
 	.raw_event = nvidia_raw_event,
 	.probe = nvidia_probe,
 };
-module_hid_driver(nvidia_driver);
+
+static int __init hid_nvidia_blake_init(void)
+{
+	return hid_register_driver(&nvidia_driver);
+}
+
+static void __exit hid_nvidia_blake_exit(void)
+{
+	hid_unregister_driver(&nvidia_driver);
+}
+
+module_init(hid_nvidia_blake_init);
+module_exit(hid_nvidia_blake_exit)
 
 MODULE_AUTHOR("Jun Yan <juyan@nvidia.com>");
 MODULE_LICENSE("GPL");
