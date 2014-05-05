@@ -666,7 +666,7 @@ int __init tegranote7c_palmas_regulator_init(void)
 	 * Boot strapping 1, indicates Hynix 1GB H5TC2G63FFR-PBA
 	 * and it requires VDDIO_DDR 1.35V for stability.
 	 */
-	if (0 == tegra_bct_strapping) {
+	if ((0 == tegra_bct_strapping) || (2 == tegra_bct_strapping)) {
 		tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.min_uV =
 			1380000;
 		tegranote7c_reg_data[PALMAS_REG_SMPS7]->constraints.max_uV =
