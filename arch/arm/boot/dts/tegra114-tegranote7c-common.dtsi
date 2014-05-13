@@ -18,7 +18,7 @@
 
 / {
 	model = "NVIDIA Tegra114 tegratab evaluation board";
-	compatible = "nvidia,tegranote7c", "nvidia,tegra114";
+	compatible = "nvidia,tegranote7c", "nvidia,tegratab", "nvidia,tegra114";
 
 	gpio@6000d000 {
 		status = "okay";
