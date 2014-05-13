@@ -583,7 +583,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	tegra->boost_requested = false;
 	/* Add boost enable/disable knob, disable for modem */
 	if (instance == 1) {
-		tegra->boost_enable = true;
+		tegra->boost_enable = false;
 		tegra->boost_cpu_target_freq = 200;
 	} else {
 		tegra->boost_enable = true;
