@@ -115,6 +115,8 @@ static struct tegra_camera_platform_data cardhu_ov5640_camera_platform_data = {
 	.port			= TEGRA_CAMERA_PORT_CSI_B,
 	.lanes			= 2,
 	.continuous_clk		= 0,
+	.continuous_capture 	= 1,
+	.vi_freq = 24000000,
 };
 
 static struct soc_camera_link ov5640_iclink = {
@@ -667,7 +669,7 @@ static const struct i2c_board_info cardhu_i2c3_board_info[] = {
 	},
 };
 
-
+#if !defined(CONFIG_SOC_CAMERA)
 static struct nvc_gpio_pdata sh532u_gpio_pdata[] = {
 	{ SH532U_GPIO_RESET, TEGRA_GPIO_PBB0, false, 0, },
 };
@@ -862,6 +864,7 @@ static struct i2c_board_info cardhu_i2c8_board_info[] = {
 	},
 #endif
 };
+#endif
 
 static int nct_get_temp(void *_data, long *temp)
 {
@@ -1190,14 +1193,15 @@ int __init cardhu_sensors_init(void)
 	cardhu_camera_init();
 	cam_tca6416_init();
 
+	i2c_register_board_info(2, cardhu_i2c3_board_info,
+		ARRAY_SIZE(cardhu_i2c3_board_info));
+
+#if !defined(CONFIG_SOC_CAMERA)
 	if (board_info.board_id != BOARD_PM315) {
-		i2c_register_board_info(2, cardhu_i2c3_board_info,
-			ARRAY_SIZE(cardhu_i2c3_board_info));
 
 		i2c_register_board_info(2, cardhu_i2c_board_info_tps61050,
 			ARRAY_SIZE(cardhu_i2c_board_info_tps61050));
 	}
-
 #ifdef CONFIG_VIDEO_OV14810
 	/* This is disabled by default; To enable this change Kconfig;
 	 * there should be some way to detect dynamically which board
@@ -1229,6 +1233,7 @@ int __init cardhu_sensors_init(void)
 	i2c_register_board_info(PCA954x_I2C_BUS2, cardhu_i2c8_board_info,
 		ARRAY_SIZE(cardhu_i2c8_board_info));
 
+#endif
 #endif
 	pmu_tca6416_init();
 
