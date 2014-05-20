@@ -364,8 +364,8 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 		unsigned Bpp = tegra_dc_fmt_bpp(win->fmt) / 8;
 		/* Bytes per pixel of bandwidth, used for dda_inc calculation */
 		unsigned Bpp_bw = Bpp * (yuvp ? 2 : 1);
-		bool filter_h;
-		bool filter_v;
+		const bool filter_h = win_use_h_filter(dc, win);
+		const bool filter_v = win_use_v_filter(dc, win);
 #if defined(CONFIG_TEGRA_DC_SCAN_COLUMN)
 		scan_column = (win->flags & TEGRA_WIN_FLAG_SCAN_COLUMN);
 #endif
@@ -394,9 +394,6 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 			tegra_dc_writel(dc, 0, DC_WIN_WIN_OPTIONS);
 			continue;
 		}
-
-		filter_h = win_use_h_filter(dc, win, scan_column);
-		filter_v = win_use_v_filter(dc, win, scan_column);
 
 		tegra_dc_writel(dc, tegra_dc_fmt(win->fmt),
 			DC_WIN_COLOR_DEPTH);

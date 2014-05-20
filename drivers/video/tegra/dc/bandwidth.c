@@ -66,7 +66,7 @@ static void tegra_dc_set_latency_allowance(struct tegra_dc *dc,
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* tegra_dc_get_bandwidth() treats V filter windows as double
 	 * bandwidth, but LA has a seperate client for V filter */
-	if (w->idx == 1 && win_use_v_filter(dc, w, false))
+	if (w->idx == 1 && win_use_v_filter(dc, w))
 		bw /= 2;
 #endif
 
@@ -211,7 +211,7 @@ static unsigned long tegra_dc_calc_win_bandwidth(struct tegra_dc *dc,
 		bw *= tiled_windows_bw_multiplier;
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	if (win_use_v_filter(dc, w, false))
+	if (win_use_v_filter(dc, w))
 		bw *= 2;
 #endif
 
@@ -220,7 +220,7 @@ static unsigned long tegra_dc_calc_win_bandwidth(struct tegra_dc *dc,
 	f_h = max(in_h * 100 / w->out_h, 100u);
 	bw *= f_w;
 	bw /= 100;
-	if (win_use_v_filter(dc, w, w->flags & TEGRA_WIN_FLAG_SCAN_COLUMN)) {
+	if (win_use_v_filter(dc, w)) {
 		bw *= f_h;
 		bw /= 100;
 	}

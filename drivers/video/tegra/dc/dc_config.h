@@ -1,7 +1,6 @@
 /*
  * drivers/video/tegra/dc/dc_config.c
- *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -157,26 +156,16 @@ long *tegra_dc_parse_feature(struct tegra_dc *dc, int win_idx, int operation);
 void tegra_dc_feature_register(struct tegra_dc *dc);
 
 static inline bool win_use_v_filter(struct tegra_dc *dc,
-	const struct tegra_dc_win *win, bool scan_column)
+	const struct tegra_dc_win *win)
 {
-	int has_filter;
-
-	has_filter = tegra_dc_feature_has_filter(dc, win->idx, HAS_V_FILTER);
-	if (scan_column)
-		return has_filter && win->w.full != dfixed_const(win->out_h);
-	else
-		return has_filter && win->h.full != dfixed_const(win->out_h);
+	return tegra_dc_feature_has_filter(dc, win->idx, HAS_V_FILTER) &&
+		win->h.full != dfixed_const(win->out_h);
 }
 static inline bool win_use_h_filter(struct tegra_dc *dc,
-	const struct tegra_dc_win *win, bool scan_column)
+	const struct tegra_dc_win *win)
 {
-	int has_filter;
-
-	has_filter = tegra_dc_feature_has_filter(dc, win->idx, HAS_H_FILTER);
-	if (scan_column)
-		return has_filter && win->h.full != dfixed_const(win->out_w);
-	else
-		return has_filter && win->w.full != dfixed_const(win->out_w);
+	return tegra_dc_feature_has_filter(dc, win->idx, HAS_H_FILTER) &&
+		win->w.full != dfixed_const(win->out_w);
 }
 
 #endif
