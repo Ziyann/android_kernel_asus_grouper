@@ -165,6 +165,7 @@
 #define SDMMC_AHB_MAX_FREQ	150000000
 #define SDMMC_EMC_MAX_FREQ	150000000
 #define SDMMC_EMC_NOM_VOLT_FREQ	900000000
+#define SDHCI_TEGRA_SDR50_FREQ	81600000
 
 /* Tuning related definitions */
 #define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_8	128
@@ -1221,9 +1222,18 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 			clk_rate = tegra_host->ddr_clk_limit * 2;
 		else
 			clk_rate = clock * 2;
+	} else if (sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50) {
+		/*
+		 * Max freq for SDR50 mode is 100MHz. However, 100MHz freq
+		 * cannot be set with the existing clock sources for sdmmc.
+		 * Hence, limiting SDR50 mode freq to 81.6MHz, which is the
+		 * closest freq for which tap hole coefficients exist.
+		 */
+		clk_rate = SDHCI_TEGRA_SDR50_FREQ;
 	} else {
 		clk_rate = clock;
 	}
+
 
 	if (tegra_host->max_clk_limit &&
 		(clk_rate > tegra_host->max_clk_limit))
