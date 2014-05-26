@@ -492,10 +492,11 @@ static struct i2c_board_info palma_device[] = {
 	},
 };
 
+#if 0
 static struct regulator_consumer_supply fixed_reg_dvdd_lcd_1v8_supply[] = {
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
-	REGULATOR_SUPPLY("dvdd_ts", "spi0.0"),
 };
+#endif
 
 static struct regulator_consumer_supply fixed_reg_vdd_lcd_bl_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
@@ -505,10 +506,12 @@ static struct regulator_consumer_supply fixed_reg_vlogic_gyro_supply[] = {
 	REGULATOR_SUPPLY("vlogic_gyro", "0-0069"),
 };
 
+#if 0
 /* EN_1V8_TS From TEGRA_GPIO_PH4 */
 static struct regulator_consumer_supply fixed_reg_dvdd_ts_supply[] = {
 	REGULATOR_SUPPLY("dvdd", "spi0.0"),
 };
+#endif
 
 /* ENABLE 5v0 for HDMI */
 static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {
@@ -578,18 +581,21 @@ static struct regulator_consumer_supply fixed_reg_en_avdd_hdmi_pll_supply[] = {
 /*
  * Creating the fixed regulator device table
  */
-
+#if 0
 FIXED_REG(1,	dvdd_lcd_1v8,	dvdd_lcd_1v8,
 	palmas_rails(smps8),	0,	1,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	false,	true,	1,	1800);
+#endif
 
 FIXED_REG(2,	vdd_lcd_bl_en,	vdd_lcd_bl_en,
 	NULL,	0,	1,
 	TEGRA_GPIO_PH2,	false,	true,	1,	3700);
 
+#if 0
 FIXED_REG(3,	dvdd_ts,	dvdd_ts,
 	palmas_rails(smps8),	0,	0,
 	TEGRA_GPIO_PH4,	false,	false,	1,	1800);
+#endif
 
 FIXED_REG(4,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	palmas_rails(smps10),	0,	0,
@@ -628,8 +634,6 @@ FIXED_REG(9,   en_avdd_hdmi_pll,       en_avdd_hdmi_pll,
 	ADD_FIXED_REG(vd_cam_1v8),
 
 #define P1988_FIXED_REG				\
-	ADD_FIXED_REG(dvdd_lcd_1v8),		\
-	ADD_FIXED_REG(dvdd_ts),                 \
 	ADD_FIXED_REG(en_lcd_1v8),              \
 	ADD_FIXED_REG(en_avdd_hdmi_pll)
 

@@ -96,9 +96,6 @@ struct dev_data {
 	struct sched_param           thread_sched;
 	struct list_head             dev_list;
 	struct regulator             *reg_avdd;
-#ifdef CONFIG_MACH_TEGRANOTE7C
-	struct regulator             *reg_dvdd_ts;
-#endif
 	struct regulator             *reg_dvdd;
 	void                         (*service_irq)(struct dev_data *dd);
 #if NV_ENABLE_CPU_BOOST
@@ -694,70 +691,43 @@ static int regulator_control(struct dev_data *dd, bool on)
 {
 	int ret = 0;
 
-#ifdef CONFIG_MACH_TEGRANOTE7C
-	if (!dd->reg_avdd || !dd->reg_dvdd || !dd->reg_dvdd_ts)
-#else
 	if (!dd->reg_avdd || !dd->reg_dvdd)
-#endif
 		return 0;
 
 	if (on) {
-#ifdef CONFIG_MACH_TEGRANOTE7C
-		ret = regulator_enable(dd->reg_dvdd_ts);
-		if (ret < 0) {
-			ERROR("Failed to enable regulator dvdd_ts: %d", ret);
-			return ret;
-		}
-#endif
-		ret = regulator_enable(dd->reg_dvdd);
-		if (ret < 0) {
-#ifdef CONFIG_MACH_TEGRANOTE7C
-			regulator_disable(dd->reg_dvdd_ts);
-#endif
-			ERROR("Failed to enable regulator dvdd: %d", ret);
-			return ret;
-		}
-		usleep_range(1000, 1020);
-
 		ret = regulator_enable(dd->reg_avdd);
 		if (ret < 0) {
 			ERROR("Failed to enable regulator avdd: %d", ret);
-#ifdef CONFIG_MACH_TEGRANOTE7C
-			regulator_disable(dd->reg_dvdd_ts);
-#endif
-			regulator_disable(dd->reg_dvdd);
 			return ret;
 		}
+
+		usleep_range(8000, 8800);
+		ret = regulator_enable(dd->reg_dvdd);
+		if (ret < 0) {
+			ERROR("Failed to enable regulator dvdd: %d", ret);
+			regulator_disable(dd->reg_avdd);
+			return ret;
+		}
+
 		if (prev_dvdd_rail_state == 0)
 			atomic_set(&touch_dvdd_on, 1);
 
 		prev_dvdd_rail_state = 1;
 	} else {
-		if (regulator_is_enabled(dd->reg_avdd))
-			ret = regulator_disable(dd->reg_avdd);
-		if (ret < 0) {
-			ERROR("Failed to disable regulator avdd: %d", ret);
-			return ret;
-		}
-
 		if (regulator_is_enabled(dd->reg_dvdd))
 			ret = regulator_disable(dd->reg_dvdd);
 		if (ret < 0) {
 			ERROR("Failed to disable regulator dvdd: %d", ret);
-			regulator_enable(dd->reg_avdd);
 			return ret;
 		}
 
-#ifdef CONFIG_MACH_TEGRANOTE7C
-		if (regulator_is_enabled(dd->reg_dvdd_ts))
-			ret = regulator_disable(dd->reg_dvdd_ts);
+		if (regulator_is_enabled(dd->reg_avdd))
+			ret = regulator_disable(dd->reg_avdd);
 		if (ret < 0) {
-			ERROR("Failed to disable regulator dvdd_ts: %d", ret);
-			regulator_enable(dd->reg_avdd);
 			regulator_enable(dd->reg_dvdd);
+			ERROR("Failed to disable regulator avdd: %d", ret);
 			return ret;
 		}
-#endif
 
 		if (!regulator_is_enabled(dd->reg_dvdd)) {
 			prev_dvdd_rail_state = 0;
@@ -775,12 +745,6 @@ static void regulator_init(struct dev_data *dd)
 	if (IS_ERR(dd->reg_avdd))
 		goto err_null_regulator;
 
-#ifdef CONFIG_MACH_TEGRANOTE7C
-	dd->reg_dvdd_ts = devm_regulator_get(&dd->spi->dev, "dvdd_ts");
-	if (IS_ERR(dd->reg_dvdd_ts))
-		goto err_null_regulator;
-#endif
-
 	dd->reg_dvdd = devm_regulator_get(&dd->spi->dev, "dvdd");
 	if (IS_ERR(dd->reg_dvdd))
 		goto err_null_regulator;
@@ -789,9 +753,6 @@ static void regulator_init(struct dev_data *dd)
 
 err_null_regulator:
 	dd->reg_avdd = NULL;
-#ifdef CONFIG_MACH_TEGRANOTE7C
-	dd->reg_dvdd_ts = NULL;
-#endif
 	dd->reg_dvdd = NULL;
 	dev_warn(&dd->spi->dev, "Failed to init regulators\n");
 }
