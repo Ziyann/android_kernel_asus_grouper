@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -39,10 +39,10 @@
 #define OV5693_TABLE_RESET		2
 #define OV5693_TABLE_RESET_TIMEOUT	50
 #define OV5693_LENS_MAX_APERTURE	0	/* _INT2FLOAT_DIVISOR */
-#define OV5693_LENS_FNUMBER		0	/* _INT2FLOAT_DIVISOR */
+#define OV5693_LENS_FNUMBER		2400	/* _INT2FLOAT_DIVISOR */
 #define OV5693_LENS_FOCAL_LENGTH	6120	/* _INT2FLOAT_DIVISOR */
-#define OV5693_LENS_VIEW_ANGLE_H	60000	/* _INT2FLOAT_DIVISOR */
-#define OV5693_LENS_VIEW_ANGLE_V	60000	/* _INT2FLOAT_DIVISOR */
+#define OV5693_LENS_VIEW_ANGLE_H	62800	/* _INT2FLOAT_DIVISOR */
+#define OV5693_LENS_VIEW_ANGLE_V	62800	/* _INT2FLOAT_DIVISOR */
 #define OV5693_OTP_BUF_SIZE		16
 #define	OV5693_FUSE_ID_SIZE		8
 
@@ -257,11 +257,11 @@ static const struct ov5693_reg ov5693_2592x1944_i2c[] = {
 	{0x37de, 0x00},
 	{0x37df, 0x00},
 	{0x3800, 0x00},
-	{0x3801, 0x02},
+	{0x3801, 0x14},
 	{0x3802, 0x00},
 	{0x3803, 0x02},
 	{0x3804, 0x0a},
-	{0x3805, 0x41},
+	{0x3805, 0x53},
 	{0x3806, 0x07},
 	{0x3807, 0xa5},
 	{0x3808, 0x0a},
@@ -1013,11 +1013,11 @@ static const struct ov5693_reg ov5693_1280x720_120fps_i2c[] = {
 	{0x37de, 0x00},
 	{0x37df, 0x00},
 	{0x3800, 0x00},
-	{0x3801, 0x00},
+	{0x3801, 0x10},
 	{0x3802, 0x00},
 	{0x3803, 0xf4},
 	{0x3804, 0x0a},
-	{0x3805, 0x3f},
+	{0x3805, 0x4f},
 	{0x3806, 0x06},
 	{0x3807, 0xab},
 	{0x3808, 0x05},
@@ -3081,6 +3081,7 @@ static int ov5693_set_mode(struct ov5693_info *info,
 	dev_dbg(&info->i2c_client->dev, "%s: AE: %d, %d, %d\n",
 		__func__, mode->frame_length,
 		mode->coarse_time, mode->gain);
+
 	err |= ov5693_exposure_wr(info, mode);
 	if (err < 0) {
 		info->mode_valid = false;
