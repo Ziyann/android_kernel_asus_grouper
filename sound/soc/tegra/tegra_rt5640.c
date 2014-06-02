@@ -485,8 +485,21 @@ static int tegra_bt_sco_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_card *card = rtd->card;
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
-	int srate, mclk, min_mclk, i2s_daifmt;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
+	int srate, mclk, min_mclk, sample_size, i2s_daifmt;
 	int err;
+
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		sample_size = 16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		sample_size = 24;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	srate = params_rate(params);
 	switch (srate) {
@@ -550,6 +563,11 @@ static int tegra_bt_sco_hw_params(struct snd_pcm_substream *substream,
 		dev_err(card->dev, "cpu_dai fmt not set\n");
 		return err;
 	}
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK && i2s->is_dam_used)
+		tegra_bt_set_dam_cif(i2s->dam_ifc,
+			srate, params_channels(params), sample_size,
+			0, 0, 0, 0);
 
 	return 0;
 }
@@ -794,20 +812,26 @@ static int tegra_bt_startup(struct snd_pcm_substream *substream)
 		i2s->dam_ch_refcount++;
 		tegra30_dam_enable_clock(i2s->dam_ifc);
 
-		tegra30_ahub_set_rx_cif_source(
-			TEGRA30_AHUB_RXCIF_DAM0_RX1 +
-			(i2s->dam_ifc*2), i2s->txcif);
-		/*
-		* make the dam tx to i2s rx connection
-		* if this is the only client
-		* using i2s for playback
-		*/
-		if (i2s->playback_ref_count == 1)
+		if (machine->is_call_mode) {
 			tegra30_ahub_set_rx_cif_source(
-				TEGRA30_AHUB_RXCIF_I2S0_RX0 +
-				i2s->id,
-				TEGRA30_AHUB_TXCIF_DAM0_TX0 +
-				i2s->dam_ifc);
+				TEGRA30_AHUB_RXCIF_DAM0_RX1 +
+				(i2s->dam_ifc*2), i2s->txcif);
+			/*
+			* make the dam tx to i2s rx connection
+			* if this is the only client
+			* using i2s for playback
+			*/
+			if (i2s->playback_ref_count == 1)
+				tegra30_ahub_set_rx_cif_source(
+					TEGRA30_AHUB_RXCIF_I2S0_RX0 +
+					i2s->id,
+					TEGRA30_AHUB_TXCIF_DAM0_TX0 +
+					i2s->dam_ifc);
+		} else {
+			tegra30_ahub_set_rx_cif_source(
+				TEGRA30_AHUB_RXCIF_I2S0_RX0 + i2s->id,
+				i2s->txcif);
+		}
 
 		/* enable the dam*/
 		tegra30_dam_enable(i2s->dam_ifc, TEGRA30_DAM_ENABLE,
