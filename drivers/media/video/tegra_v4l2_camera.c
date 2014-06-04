@@ -1000,7 +1000,7 @@ static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 	tegra_unpowergate_partition(TEGRA_POWERGATE_VENC);
 
 	/* Turn on relevant clocks. */
-	clk_set_rate(pcdev->clk_vi, 150000000);
+	clk_set_rate(pcdev->clk_vi, 300000000);
 	clk_enable(pcdev->clk_vi);
 	clk_set_rate(pcdev->clk_vi_sensor, 24000000);
 	clk_enable(pcdev->clk_vi_sensor);
@@ -1009,7 +1009,6 @@ static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 	clk_enable(pcdev->clk_csus);
 	clk_set_rate(pcdev->clk_sclk, 80000000);
 	clk_enable(pcdev->clk_sclk);
-	clk_set_rate(pcdev->clk_sclk, 375000000);
 	clk_enable(pcdev->clk_emc);
 
 	/* Save current syncpt values. */
@@ -1887,7 +1886,7 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 		goto exit_put_clk_sclk;
 	}
 
-	clk_set_rate(pcdev->clk_vi, 150000000);
+	clk_set_rate(pcdev->clk_vi, 300000000);
 	clk_set_rate(pcdev->clk_vi_sensor, 24000000);
 
 	/* Get regulator pointer */
