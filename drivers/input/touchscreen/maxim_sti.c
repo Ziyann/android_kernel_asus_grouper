@@ -695,13 +695,14 @@ static int regulator_control(struct dev_data *dd, bool on)
 		return 0;
 
 	if (on) {
+		usleep_range(4000, 4800);
 		ret = regulator_enable(dd->reg_avdd);
 		if (ret < 0) {
 			ERROR("Failed to enable regulator avdd: %d", ret);
 			return ret;
 		}
 
-		usleep_range(8000, 8800);
+		usleep_range(100, 300);
 		ret = regulator_enable(dd->reg_dvdd);
 		if (ret < 0) {
 			ERROR("Failed to enable regulator dvdd: %d", ret);
@@ -720,6 +721,8 @@ static int regulator_control(struct dev_data *dd, bool on)
 			ERROR("Failed to disable regulator dvdd: %d", ret);
 			return ret;
 		}
+
+		usleep_range(3000, 3800);
 
 		if (regulator_is_enabled(dd->reg_avdd))
 			ret = regulator_disable(dd->reg_avdd);
