@@ -718,6 +718,10 @@ int __init tegratab_palmas_regulator_init(void)
 				&palmas_adc_auto_conv0_data;
 	}
 
+	if (board_info.board_id == BOARD_P1988){
+		tegratab_reg_data[PALMAS_REG_LDO4]->constraints.boot_on = 1;
+	}
+
 	if (get_androidboot_mode_charger())
 		palmas_pdata.long_press_delay =
 				PALMAS_LONG_PRESS_KEY_TIME_12SECONDS;
