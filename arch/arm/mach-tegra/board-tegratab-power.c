@@ -689,7 +689,7 @@ int __init tegratab_palmas_regulator_init(void)
 			(board_info.fab >= BOARD_FAB_A04 &&
 			tegra_bct_strapping != 1))) ||
 			(board_info.board_id == BOARD_P1988 &&
-			tegra_bct_strapping == 0)) {
+			(tegra_bct_strapping == 0 || tegra_bct_strapping == 2))) {
 		/* Boot strapping 0, 2, 3 indicate Micron 1GB MT41K128M16-125
 		 * and it requires VDDIO_DDR 1.38V for stability.
 		 * Boot strapping 1 indicates Hynix 1GB H5TC2G63FFR-PBA and
