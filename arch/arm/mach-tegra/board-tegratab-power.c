@@ -718,14 +718,6 @@ int __init tegratab_palmas_regulator_init(void)
 				&palmas_adc_auto_conv0_data;
 	}
 
-	if (board_info.board_id == BOARD_E1569 ||
-			board_info.board_id == BOARD_P1640) {
-		tegratab_reg_data[PALMAS_REG_LDO4]->constraints.min_uV =
-									3000000;
-		tegratab_reg_data[PALMAS_REG_LDO4]->constraints.max_uV =
-									3000000;
-	}
-
 	if (get_androidboot_mode_charger())
 		palmas_pdata.long_press_delay =
 				PALMAS_LONG_PRESS_KEY_TIME_12SECONDS;
