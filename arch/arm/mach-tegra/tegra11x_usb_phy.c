@@ -37,6 +37,9 @@
 #include "tegra_usb_phy.h"
 #include "gpio-names.h"
 #include "fuse.h"
+#include "board.h"
+#include "board-common.h"
+#include "tegra-board-id.h"
 
 #define USB_USBCMD		0x130
 #define   USB_USBCMD_RS		(1 << 0)
@@ -144,9 +147,7 @@
 #define   UTMIP_XCVR_SETUP_MSB(x)		(((x) & 0x7) << 22)
 #define   UTMIP_XCVR_HSSLEW_MSB(x)		(((x) & 0x7f) << 25)
 #define   UTMIP_XCVR_HSSLEW_LSB(x)		(((x) & 0x3) << 4)
-#ifdef CONFIG_MACH_TEGRANOTE7C
 #define	  UTMIP_XCVR_DEV_SLEW(x)		(((x) & 0x3) << 6)
-#endif
 #define   UTMIP_XCVR_MAX_OFFSET		2
 #define   UTMIP_XCVR_SETUP_MAX_VALUE	0x7f
 #define   UTMIP_XCVR_SETUP_MIN_VALUE	0
@@ -954,6 +955,8 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 #endif
 	struct tegra_utmi_config *config = &phy->pdata->u_cfg.utmi;
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
 
 	PHY_DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	if (phy->phy_clk_on) {
@@ -1027,13 +1030,13 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	if (config->xcvr_hsslew_lsb)
 		val |= UTMIP_XCVR_HSSLEW_LSB(config->xcvr_hsslew_lsb);
 
-#ifdef CONFIG_MACH_TEGRANOTE7C
-	/* device mode */
-	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
-		val &= ~(UTMIP_XCVR_DEV_SLEW(~0));
-		val |= UTMIP_XCVR_DEV_SLEW(0x01);
+	if (board_info.board_id == BOARD_P1988) {
+		/* device mode */
+		if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
+			val &= ~(UTMIP_XCVR_DEV_SLEW(~0));
+			val |= UTMIP_XCVR_DEV_SLEW(0x01);
+		}
 	}
-#endif
 	writel(val, base + UTMIP_XCVR_CFG0);
 
 	val = readl(base + UTMIP_XCVR_CFG1);
