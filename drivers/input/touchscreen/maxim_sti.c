@@ -1574,6 +1574,7 @@ static int processing_thread(void *arg)
 
 	sched_setscheduler(current, SCHED_FIFO, &dd->thread_sched);
 
+	msleep(6000);
 	while (!kthread_should_stop()) {
 		set_current_state(TASK_INTERRUPTIBLE);
 
