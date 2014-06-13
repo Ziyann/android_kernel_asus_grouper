@@ -220,7 +220,7 @@
 		dc@54240000 {
 			status = "okay";
 			nvidia,emc-clk-rate = <300000000>;
-			nvidia,cmu-enable = <1>;
+			nvidia,cmu-enable = <0>;
 			dc-default-out {
 				nvidia,out-type = "hdmi";
 				nvidia,out-flags = "hotplug_high";
