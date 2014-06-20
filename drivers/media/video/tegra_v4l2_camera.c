@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -487,7 +487,7 @@ static void tegra_camera_capture_setup_csi_a(struct tegra_camera_dev *pcdev,
 		(pdata->continuous_clk << 5) |
 		0x5); /* Clock settle time */
 
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_CSI_PPA_FRAME_END,
+	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_CSI_PPA_FRAME_START,
 		(0x1 << 8) | /* Enable continuous syncpt */
 		TEGRA_VI_SYNCPT_CSI_A);
 
@@ -555,7 +555,7 @@ static void tegra_camera_capture_setup_csi_b(struct tegra_camera_dev *pcdev,
 		(pdata->continuous_clk << 5) |
 		0x5); /* Clock settle time */
 
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_CSI_PPB_FRAME_END,
+	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_CSI_PPB_FRAME_START,
 		(0x1 << 8) | /* Enable continuous syncpt */
 		TEGRA_VI_SYNCPT_CSI_B);
 
@@ -857,7 +857,8 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 	 * wait on VIP VSYNC syncpt.
 	 */
 	if (port == TEGRA_CAMERA_PORT_CSI_A) {
-		pcdev->syncpt_csi_a++;
+		pcdev->syncpt_csi_a = nvhost_syncpt_incr_max_ext(pcdev->ndev,
+						TEGRA_VI_SYNCPT_CSI_A, 1);
 		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND,
 				pdata->continuous_capture?0x0000f001 :0x0000f005);
 
@@ -867,7 +868,8 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
 				NULL);
 	} else if (port == TEGRA_CAMERA_PORT_CSI_B) {
-		pcdev->syncpt_csi_b++;
+		pcdev->syncpt_csi_b = nvhost_syncpt_incr_max_ext(pcdev->ndev,
+						TEGRA_VI_SYNCPT_CSI_B, 1);
 		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
 				pdata->continuous_capture? 0x0000f001: 0x0000f005);
 
@@ -877,7 +879,8 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
 				NULL);
 	} else {
-		pcdev->syncpt_vi++;
+		pcdev->syncpt_vi = nvhost_syncpt_incr_max_ext(pcdev->ndev,
+						TEGRA_VI_SYNCPT_VI, 1);
 		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
 				0x00000001);
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
@@ -946,6 +949,8 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev, int port)
 		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
 			     0x00000005);
 
+	pcdev->syncpt_vi = nvhost_syncpt_incr_max_ext(pcdev->ndev,
+					TEGRA_VI_SYNCPT_VI, 1);
 	if (tegra_camera_port_is_csi(port))
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
 			TEGRA_VI_SYNCPT_VI,
