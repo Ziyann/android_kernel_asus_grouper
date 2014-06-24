@@ -1765,6 +1765,10 @@ static int probe(struct spi_device *spi)
 		goto platform_failure;
 
 	/* power-up and reset-high */
+	pdata->reset(pdata, 0);
+	ret = regulator_set_voltage(dd->reg_avdd, 3000000, 3000000);
+	if (ret < 0)
+		INFO("Touch avdd regulator not set: %d", ret);
 	ret = regulator_control(dd, true);
 	if (ret < 0)
 		goto platform_failure;
@@ -1834,6 +1838,26 @@ static int probe(struct spi_device *spi)
 	/* start up Touch Fusion */
 	dd->start_fusion = true;
 	wake_up_process(dd->thread);
+
+	msleep(2250);
+	ret = regulator_set_voltage(dd->reg_avdd, 3300000, 3300000);
+	if (ret < 0)
+		INFO("Touch avdd regulator not set 3.3V: %d", ret);
+	usleep_range(15000, 20000);
+
+	/* reset-low and power-down */
+	pdata->reset(pdata, 0);
+	usleep_range(100, 120);
+	ret = regulator_control(dd, false);
+
+	msleep(750);
+
+	/* power-up and reset-high */
+	pdata->reset(pdata, 0);
+	ret = regulator_control(dd, true);
+	usleep_range(300, 400);
+	pdata->reset(pdata, 1);
+
 	INFO("driver loaded; version %s; release date %s", DRIVER_VERSION,
 	     DRIVER_RELEASE);
 
