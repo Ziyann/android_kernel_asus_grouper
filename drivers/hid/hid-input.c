@@ -208,7 +208,7 @@ static int hidinput_setkeycode(struct input_dev *dev,
  * Only exponent 1 length units are processed. Centimeters and inches are
  * converted to millimeters. Degrees are converted to radians.
  */
-__s32 hidinput_calc_abs_res(const struct hid_field *field, __u16 code)
+static __s32 hidinput_calc_abs_res(const struct hid_field *field, __u16 code)
 {
 	__s32 unit_exponent = field->unit_exponent;
 	__s32 logical_extents = field->logical_maximum -
@@ -272,7 +272,6 @@ __s32 hidinput_calc_abs_res(const struct hid_field *field, __u16 code)
 	/* Calculate resolution */
 	return logical_extents / physical_extents;
 }
-EXPORT_SYMBOL_GPL(hidinput_calc_abs_res);
 
 #ifdef CONFIG_HID_BATTERY_STRENGTH
 static enum power_supply_property hidinput_battery_props[] = {
