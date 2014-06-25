@@ -192,7 +192,6 @@ static struct oz_pd *oz_connect_req(struct oz_pd *cur_pd, struct oz_elt *elt,
 	}
 	if (pd->net_dev != net_dev) {
 		old_net_dev = pd->net_dev;
-		oz_trace_msg(M, "dev_hold(%p)\n", net_dev);
 		dev_hold(net_dev);
 		pd->net_dev = net_dev;
 	}
@@ -281,10 +280,8 @@ done:
 		oz_pd_put(pd);
 		pd = NULL;
 	}
-	if (old_net_dev) {
-		oz_trace_msg(M, "dev_put(%p)", old_net_dev);
+	if (old_net_dev)
 		dev_put(old_net_dev);
-	}
 	if (free_pd)
 		oz_pd_destroy(free_pd);
 	return pd;
@@ -459,10 +456,8 @@ void oz_protocol_term(void)
 		list_del(&b->link);
 		spin_unlock_bh(&g_binding_lock);
 		dev_remove_pack(&b->ptype);
-		if (b->ptype.dev) {
-			oz_trace_msg(M, "dev_put(%p)\n", b->ptype.dev);
+		if (b->ptype.dev)
 			dev_put(b->ptype.dev);
-		}
 		kfree(b);
 		spin_lock_bh(&g_binding_lock);
 	}
@@ -497,7 +492,7 @@ void oz_pd_heartbeat_handler(unsigned long data)
 	spin_unlock_bh(&g_polling_lock);
 	if (apps)
 		oz_pd_heartbeat(pd, apps);
-	clear_bit(OZ_TASKLET_SCHED_HEARTBEAT, &pd->tasklet_sched);
+
 	oz_pd_put(pd);
 }
 /*------------------------------------------------------------------------------
@@ -521,7 +516,6 @@ void oz_pd_timeout_handler(unsigned long data)
 		oz_pd_stop(pd);
 		break;
 	}
-	clear_bit(OZ_TASKLET_SCHED_TIMEOUT, &pd->tasklet_sched);
 	oz_pd_put(pd);
 }
 /*------------------------------------------------------------------------------
@@ -535,15 +529,7 @@ enum hrtimer_restart oz_pd_heartbeat_event(struct hrtimer *timer)
 	hrtimer_forward(timer,
 		hrtimer_get_expires(timer), pd->pulse_period);
 	oz_pd_get(pd);
-	if (!test_and_set_bit(OZ_TASKLET_SCHED_HEARTBEAT, &pd->tasklet_sched)) {
-		/* schedule tasklet! */
-		tasklet_schedule(&pd->heartbeat_tasklet);
-	} else {
-		/* oz_pd_heartbeat_handler is already scheduled or running.
-		 * decrement pd counter.
-		 */
-		oz_pd_put(pd);
-	}
+	tasklet_schedule(&pd->heartbeat_tasklet);
 	return HRTIMER_RESTART;
 }
 /*------------------------------------------------------------------------------
@@ -555,15 +541,7 @@ enum hrtimer_restart oz_pd_timeout_event(struct hrtimer *timer)
 
 	pd = container_of(timer, struct oz_pd, timeout);
 	oz_pd_get(pd);
-	if (!test_and_set_bit(OZ_TASKLET_SCHED_TIMEOUT, &pd->tasklet_sched)) {
-		/* Schedule tasklet! */
-		tasklet_schedule(&pd->timeout_tasklet);
-	} else {
-		/* oz_pd_timeout_handler is already scheduled or running.
-		 * decrement pd counter.
-		*/
-		oz_pd_put(pd);
-	}
+	tasklet_schedule(&pd->timeout_tasklet);
 	return HRTIMER_NORESTART;
 }
 /*------------------------------------------------------------------------------
@@ -763,7 +741,6 @@ void oz_binding_remove(const char *net_dev)
 	if (found) {
 		dev_remove_pack(&binding->ptype);
 		if (binding->ptype.dev) {
-			oz_trace_msg(M, "dev_put(%s)\n", binding->name);
 			dev_put(binding->ptype.dev);
 			pd_stop_all_for_device(binding->ptype.dev);
 		}

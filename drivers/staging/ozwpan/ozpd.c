@@ -208,7 +208,7 @@ static void oz_pd_free(struct work_struct *work)
 	struct oz_isoc_stream *st;
 	struct oz_farewell *fwell;
 	pd = container_of(work, struct oz_pd, workitem);
-	oz_trace_msg(M, "Destroying PD:%p\n", pd);
+	oz_trace("Destroying PD\n");
 	tasklet_kill(&pd->heartbeat_tasklet);
 	tasklet_kill(&pd->timeout_tasklet);
 	/* Delete any streams.
@@ -245,10 +245,8 @@ static void oz_pd_free(struct work_struct *work)
 		pd->tx_pool = e->next;
 		kfree(container_of(e, struct oz_tx_frame, link));
 	}
-	if (pd->net_dev) {
-		oz_trace_msg(M, "dev_put(%p)\n", pd->net_dev);
+	if (pd->net_dev)
 		dev_put(pd->net_dev);
-	}
 	kfree(pd);
 }
 
@@ -349,7 +347,7 @@ void oz_pd_heartbeat(struct oz_pd *pd, u16 apps)
 void oz_pd_stop(struct oz_pd *pd)
 {
 	u16 stop_apps = 0;
-	oz_trace_msg(M, "oz_pd_stop() State = 0x%x\n", pd->state);
+	oz_trace("%s: State = 0x%x\n", __func__, pd->state);
 	oz_polling_lock_bh();
 	oz_pd_indicate_farewells(pd);
 	stop_apps = pd->total_apps;
@@ -364,7 +362,6 @@ void oz_pd_stop(struct oz_pd *pd)
 
 
 	oz_polling_unlock_bh();
-	oz_trace_msg(M, "pd ref count = %d\n", atomic_read(&pd->ref_count));
 	oz_pd_put(pd);
 }
 /*------------------------------------------------------------------------------
