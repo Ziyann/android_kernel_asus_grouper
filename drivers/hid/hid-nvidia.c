@@ -77,19 +77,7 @@ static struct hid_driver nvidia_driver = {
 	.id_table = nvidia_devices,
 	.input_mapped = nvidia_input_mapped,
 };
-
-static int __init hid_nvidia_shield_init(void)
-{
-	return hid_register_driver(&nvidia_driver);
-}
-
-static void __exit hid_nvidia_shield_exit(void)
-{
-	hid_unregister_driver(&nvidia_driver);
-}
-
-module_init(hid_nvidia_shield_init);
-module_exit(hid_nvidia_shield_exit)
+module_hid_driver(nvidia_driver);
 
 MODULE_AUTHOR("Jun Yan <juyan@nvidia.com>");
 MODULE_LICENSE("GPL");
