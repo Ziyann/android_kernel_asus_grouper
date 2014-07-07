@@ -128,4 +128,5 @@ enum tegra_bb_type {
 #define HSIC1_PORT_OWNER_XUSB	0x4
 
 #define TEGRATAB_BATTERY_MAX_CURRENT	4500
+#define UART_FROM_SDCARD 0x5
 #endif
