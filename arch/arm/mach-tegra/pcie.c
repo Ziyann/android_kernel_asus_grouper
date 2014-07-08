@@ -342,6 +342,15 @@ static bool is_dock_conn_at_boot = true;
 void __iomem *tegra_pcie_io_base;
 EXPORT_SYMBOL(tegra_pcie_io_base);
 
+/* Array of PCIe Controller Register offsets */
+static u32 pex_controller_registers[] = {
+	AFI_PEX0_CTRL,
+	AFI_PEX1_CTRL,
+#if MAX_PCIE_SUPPORTED_PORTS == 3
+	AFI_PEX2_CTRL,
+#endif
+};
+
 static inline void afi_writel(u32 value, unsigned long offset)
 {
 	writel(value, offset + AFI_OFFSET + tegra_pcie.regs);
@@ -797,15 +806,13 @@ static void tegra_pcie_enable_controller(void)
 	reg |= 1 << MSELECT_CONFIG_0_ENABLE_PCIE_APERTURE;
 	writel(reg, reg_mselect_base);
 
-	/* Enable slot clock and pulse the reset signals */
-	for (i = 0, reg = AFI_PEX0_CTRL; i < MAX_PCIE_SUPPORTED_PORTS;
-			i++, reg += (i*8)) {
-		val = afi_readl(reg) | AFI_PEX_CTRL_CLKREQ_EN | AFI_PEX_CTRL_REFCLK_EN;
-		afi_writel(val, reg);
+	/* Enable slot clock and ensure reset signals is assert */
+	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
+		reg = pex_controller_registers[i];
+		val = afi_readl(reg) | AFI_PEX_CTRL_REFCLK_EN |
+				AFI_PEX_CTRL_CLKREQ_EN;
 		val &= ~AFI_PEX_CTRL_RST;
-		afi_writel(val, reg);
 
-		val = afi_readl(reg) | AFI_PEX_CTRL_RST;
 		afi_writel(val, reg);
 	}
 	afi_writel(0, AFI_PEXBIAS_CTRL_0);
@@ -864,6 +871,18 @@ static void tegra_pcie_enable_controller(void)
 	do {
 		val = pads_readl(PADS_PLL_CTL);
 	} while (!(val & PADS_PLL_CTL_LOCKDET));
+
+	/* Wait for clock to latch (min of 100us) */
+	udelay(100);
+
+	/* deassert PEX reset signal */
+	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
+		reg = pex_controller_registers[i];
+		val = afi_readl(reg);
+		val |= AFI_PEX_CTRL_RST;
+		afi_writel(val, reg);
+	}
+
 
 	/* turn off IDDQ override */
 	val = pads_readl(PADS_CTL) & ~PADS_CTL_IDDQ_1L;
