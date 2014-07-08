@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host nvmap memory manager
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,5 +23,6 @@
 
 struct nvhost_chip_support;
 int nvhost_init_nvmap_support(struct nvhost_chip_support *op);
-
+struct mem_handle *nvhost_nvmap_validate_ref(struct mem_mgr *mgr,
+				struct mem_handle *handle);
 #endif

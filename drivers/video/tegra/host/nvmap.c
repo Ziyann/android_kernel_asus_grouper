@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Nvmap support
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -80,6 +80,15 @@ struct mem_handle *nvhost_nvmap_get(struct mem_mgr *mgr, u32 id)
 {
 	return (struct mem_handle *)
 		nvmap_duplicate_handle_id((struct nvmap_client *)mgr, id);
+}
+
+struct mem_handle *nvhost_nvmap_validate_ref(struct mem_mgr *mgr,
+				struct mem_handle *handle)
+{
+	unsigned long ref;
+	ref = nvmap_validate_ref((struct nvmap_client *)mgr,
+			(struct nvmap_handle_ref *)handle);
+	return (struct mem_handle *)ref;
 }
 
 int nvhost_init_nvmap_support(struct nvhost_chip_support *chip)

@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Job
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -30,6 +30,7 @@
 #include "dev.h"
 #include "nvhost_memmgr.h"
 #include "chip_support.h"
+#include "nvmap.h"
 
 /* Magic to use to fill freed handle slots */
 #define BAD_MAGIC 0xdeadbeef
@@ -327,8 +328,10 @@ void nvhost_job_unpin(struct nvhost_job *job)
 	int i;
 
 	for (i = 0; i < job->num_unpins; i++) {
-		mem_op().unpin(job->memmgr, job->unpins[i]);
-		mem_op().put(job->memmgr, job->unpins[i]);
+		struct mem_handle *handle;
+		handle = nvhost_nvmap_validate_ref(job->memmgr, job->unpins[i]);
+		mem_op().unpin(job->memmgr, handle);
+		mem_op().put(job->memmgr, handle);
 	}
 
 	memset(job->unpins, BAD_MAGIC,

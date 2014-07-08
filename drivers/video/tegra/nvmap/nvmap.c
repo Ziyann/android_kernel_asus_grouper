@@ -3,7 +3,7 @@
  *
  * Memory manager for Tegra GPU
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2009-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -366,7 +366,6 @@ phys_addr_t nvmap_pin(struct nvmap_client *client,
 	h = nvmap_handle_get(ref->handle);
 	if (WARN_ON(!h))
 		return -EINVAL;
-
 	atomic_inc(&ref->pin);
 
 	if (WARN_ON(mutex_lock_interruptible(&client->share->pin_lock))) {
@@ -384,7 +383,6 @@ phys_addr_t nvmap_pin(struct nvmap_client *client,
 			map_iovmm_area(h);
 		phys = handle_phys(h);
 	}
-
 	return ret ?: phys;
 }
 
@@ -617,4 +615,16 @@ int nvmap_mark_global(struct nvmap_client *client, struct nvmap_handle_ref *r)
 	nvmap_handle_put(h);
 
 	return 0;
+}
+
+unsigned long nvmap_validate_ref(struct nvmap_client *client,
+				struct nvmap_handle_ref *r)
+{
+	struct nvmap_handle_ref *ref;
+	unsigned long id = nvmap_ref_to_id(r);
+
+	nvmap_ref_lock(client);
+	ref = _nvmap_validate_id_locked(client, id);
+	nvmap_ref_unlock(client);
+	return (unsigned long)ref;
 }
