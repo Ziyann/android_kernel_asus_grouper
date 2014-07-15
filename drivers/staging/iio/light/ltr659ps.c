@@ -27,7 +27,7 @@
 #include <linux/gpio.h>
 #include <linux/tegra_audio.h>
 #include <linux/regulator/consumer.h>
-
+#include <linux/wakelock.h>
 
 #include <linux/ltr659ps.h>
 
@@ -173,6 +173,7 @@ struct ltr659ps_data {
 	int near;
 
 	struct mutex prox_mtx;
+	struct wake_lock prox_wake_lock;
 };
 
 
@@ -1158,6 +1159,8 @@ static void ltr659ps_work_function(struct work_struct *work)
 	if (!data->enable)
 		return;
 
+	wake_lock_timeout(&data->prox_wake_lock, 1 * HZ);
+
 	status = i2c_smbus_read_byte_data(client, LTR659PS_REG_PS_STATUS);
 	if ((status & 0x03) == 0x03)
 		ltr659ps_report_input_event(data);
@@ -1446,6 +1449,9 @@ static int __devinit ltr659ps_probe(struct i2c_client *client
 		goto err_iio_device_register;
 	}
 
+	wake_lock_init(&prox_data->prox_wake_lock, WAKE_LOCK_SUSPEND,
+				"prox_wake_lock");
+
 	queue_delayed_work(prox_data->prox_wq
 		, &prox_data->work, msecs_to_jiffies(200));
 
@@ -1478,6 +1484,7 @@ static int __devexit ltr659ps_remove(struct i2c_client *client)
 	struct ltr659ps_data *data = iio_priv(indio_dev);
 
 	PROX_DEBUG("\n");
+	wake_lock_destroy(&data->prox_wake_lock);
 	iio_device_unregister(indio_dev);
 	free_irq(client->irq, client);
 	input_unregister_device(data->ps_input_dev);
