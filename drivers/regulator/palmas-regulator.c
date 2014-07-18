@@ -590,7 +590,7 @@ static int palmas_is_enabled_smps10(struct regulator_dev *dev)
 	if (EXT_PWR_REQ & pmic->roof_floor[id])
 		return true;
 
-	ret = palmas_smps_read(pmic->palmas, PALMAS_SMPS10_STATUS, &reg);
+	ret = palmas_smps_read(pmic->palmas, PALMAS_SMPS10_CTRL, &reg);
 	if (ret < 0) {
 		dev_err(pmic->palmas->dev,
 			"Error in reading smps10 status reg\n");
