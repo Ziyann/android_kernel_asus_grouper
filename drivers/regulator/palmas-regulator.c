@@ -2,7 +2,7 @@
  * Driver for Regulator part of Palmas PMIC Chips
  *
  * Copyright 2011-2012 Texas Instruments Inc.
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Graeme Gregory <gg@slimlogic.co.uk>
  *
@@ -239,10 +239,15 @@ static int palmas_smps_read(struct palmas *palmas, unsigned int reg,
 		unsigned int *dest)
 {
 	unsigned int addr;
+	int err;
 
 	addr = PALMAS_BASE_TO_REG(PALMAS_SMPS_BASE, reg);
 
-	return regmap_read(palmas->regmap[REGULATOR_SLAVE], addr, dest);
+	err = regmap_read(palmas->regmap[REGULATOR_SLAVE], addr, dest);
+	if (reg == PALMAS_SMPS10_CTRL || reg == PALMAS_SMPS10_STATUS)
+		dev_info(palmas->dev, "%s reg=0x%x,value=0x%x\n", __func__, reg, *dest);
+
+	return err;
 }
 
 static int palmas_smps_write(struct palmas *palmas, unsigned int reg,
@@ -251,6 +256,9 @@ static int palmas_smps_write(struct palmas *palmas, unsigned int reg,
 	unsigned int addr;
 
 	addr = PALMAS_BASE_TO_REG(PALMAS_SMPS_BASE, reg);
+
+	if (reg == PALMAS_SMPS10_CTRL || reg == PALMAS_SMPS10_STATUS)
+		dev_info(palmas->dev, "%s reg=0x%x,value=0x%x\n", __func__, reg, value);
 
 	return regmap_write(palmas->regmap[REGULATOR_SLAVE], addr, value);
 }
