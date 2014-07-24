@@ -1098,6 +1098,7 @@ static int dc_hdmi_hotplug_init(struct device *dev)
 	struct device_node *np_hdmi =
 		of_find_compatible_node(NULL, NULL, "nvidia,tegra114-hdmi");
 
+	pr_info("%s: init\n", __func__);
 	if (!np_hdmi) {
 		pr_info("%s: no hdmi node\n", __func__);
 		return 0;
@@ -1116,6 +1117,7 @@ static int dc_hdmi_hotplug_init(struct device *dev)
 				of_regulators_dc1[i] = NULL;
 				return PTR_ERR(of_regulators_dc1[i]);
 			} else {
+				pr_info("%s: enable HDMI_5V0\n", __func__);
 				err = regulator_enable(of_regulators_dc1[i]);
 			}
 		}
@@ -1129,7 +1131,9 @@ static int dc_hdmi_hotplug_init(struct device *dev)
 
 static int dc_hdmi_postsuspend(void)
 {
+	pr_info("%s: suspend\n", __func__);
 	if (of_regulators_dc1[HDMI_REGS_TOTAL - 1]) {
+		pr_info("%s: disalbe HDMI_5V0\n", __func__);
 		regulator_disable(of_regulators_dc1[HDMI_REGS_TOTAL - 1]);
 		regulator_put(of_regulators_dc1[HDMI_REGS_TOTAL - 1]);
 		of_regulators_dc1[HDMI_REGS_TOTAL - 1] = NULL;
