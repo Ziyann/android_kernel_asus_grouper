@@ -904,7 +904,7 @@ void nvmap_free_handle_id(struct nvmap_client *client, unsigned long id)
 		nvmap_err(client, "%s freeing pinned handle %p\n",
 			  current->group_leader->comm, h);
 
-	while (pins--)
+	while (pins-- > 0)
 		nvmap_unpin_handles(client, &ref->handle, 1);
 
 	if (h->owner == client)
