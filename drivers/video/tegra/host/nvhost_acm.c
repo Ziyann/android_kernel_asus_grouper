@@ -219,9 +219,7 @@ void nvhost_module_busy(struct nvhost_device *dev)
 	cancel_delayed_work(&dev->powerstate_down);
 
 	dev->refcount++;
-	if (unlikely(dev->refcount <= 0))
-		pr_err("unbalanced refcount %d\n", dev->refcount);
-	if (!nvhost_module_powered(dev))
+	if (dev->refcount > 0 && !nvhost_module_powered(dev))
 		to_state_running_locked(dev);
 
 	mutex_unlock(&dev->lock);
