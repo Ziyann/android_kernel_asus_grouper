@@ -709,7 +709,10 @@ int tegra_unpowergate_partition(int id)
 	mc_flush_done(id);
 
 	/* Disable all clks enabled earlier. Drivers should enable clks */
-	partition_clk_disable(id);
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	if (id != TEGRA_POWERGATE_PCIE)
+#endif
+		partition_clk_disable(id);
 
 	return 0;
 
@@ -743,9 +746,14 @@ int tegra_unpowergate_partition_with_clk_on(int id)
 		goto err_unpowergating;
 
 	/* Enable clks for the partition */
-	ret = partition_clk_enable(id);
-	if (ret)
-		goto err_unpowergate_clk;
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	if (id != TEGRA_POWERGATE_PCIE)
+#endif
+	{
+		ret = partition_clk_enable(id);
+		if (ret)
+			goto err_unpowergate_clk;
+	}
 
 	return ret;
 
