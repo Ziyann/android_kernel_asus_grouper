@@ -816,7 +816,7 @@ static void __init tegra_tegratab_early_init(void)
 	struct board_info board_info;
 
 	tegra_clk_init_from_table(tegratab_clk_init_table);
-	/* enable wifi 32K clk according to board revision */
+	/* Enable wifi 32K clk according to board revision */
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1569)
 		tegra_clk_init_from_table(e1569_wifi_clk_init_table);
