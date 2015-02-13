@@ -276,6 +276,20 @@ static int __init grouper_wifi_init(void)
 	return 0;
 }
 
+#ifdef TEGRA_PREPOWER_WIFI
+static int __init grouper_wifi_prepower(void)
+{
+	if (!machine_is_grouper())
+		return 0;
+
+	grouper_wifi_power(1);
+
+	return 0;
+}
+
+subsys_initcall_sync(grouper_wifi_prepower);
+#endif
+
 int __init grouper_sdhci_init(void)
 {
 	platform_device_register(&tegra_sdhci_device3);
