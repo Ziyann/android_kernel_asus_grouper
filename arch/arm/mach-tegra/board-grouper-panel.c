@@ -111,32 +111,8 @@ static int grouper_backlight_init(struct device *dev)
 	if (WARN_ON(ARRAY_SIZE(grouper_bl_output_measured) != 256))
 		pr_err("bl_output array does not have 256 elements\n");
 
-      /*
-	ret = gpio_request(grouper_bl_enb, "backlight_enb");
-	if (ret < 0)
-		return ret;
-
-	ret = gpio_direction_output(grouper_bl_enb, 1);
-	if (ret < 0)
-		gpio_free(grouper_bl_enb);
-	else
-		tegra_gpio_enable(grouper_bl_enb);
-	*/
-
 	return ret;
 };
-
-static void grouper_backlight_exit(struct device *dev)
-{
-	/* int ret; */
-	/*ret = gpio_request(grouper_bl_enb, "backlight_enb");*/
-	/*
-	gpio_set_value(grouper_bl_enb, 0);
-	gpio_free(grouper_bl_enb);
-	tegra_gpio_disable(grouper_bl_enb);
-	*/
-	return;
-}
 
 static int grouper_backlight_notify(struct device *unused, int brightness)
 {
@@ -165,7 +141,6 @@ static struct platform_pwm_backlight_data grouper_backlight_data = {
 	.dft_brightness	= 40,
 	.pwm_period_ns	= 50000,
 	.init		= grouper_backlight_init,
-	.exit		= grouper_backlight_exit,
 	.notify		= grouper_backlight_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= grouper_disp1_check_fb,
@@ -192,13 +167,7 @@ static int grouper_panel_postpoweron(void)
 
 	mdelay(200);
 
-//	gpio_set_value(grouper_lvds_avdd_en, 1);
-//	mdelay(5);
-
-	//gpio_set_value(grouper_lvds_stdby, 1);
-//	gpio_set_value(grouper_lvds_rst, 1);
 	gpio_set_value(grouper_lvds_shutdown, 1);
-//	gpio_set_value(grouper_lvds_lr, 1);
 
 	mdelay(50);
 
@@ -207,7 +176,6 @@ static int grouper_panel_postpoweron(void)
 
 static int grouper_panel_enable(void)
 {
-
 	if (grouper_lvds_vdd_panel == NULL) {
 		grouper_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
 		if (WARN_ON(IS_ERR(grouper_lvds_vdd_panel)))
@@ -227,14 +195,6 @@ static int grouper_panel_enable(void)
 
 static int grouper_panel_disable(void)
 {
-//	gpio_set_value(grouper_lvds_lr, 0);
-//	mdelay(200);
-//	gpio_set_value(grouper_lvds_shutdown, 0);
-//	gpio_set_value(grouper_lvds_rst, 0);
-	//gpio_set_value(grouper_lvds_stdby, 0);
-
-//	gpio_set_value(grouper_lvds_avdd_en, 0);
-
 	mdelay(5);
 	if (grouper_lvds_reg) {
 		regulator_disable(grouper_lvds_reg);
@@ -689,38 +649,6 @@ int __init grouper_panel_init(void)
 	grouper_carveouts[1].base = tegra_carveout_start;
 	grouper_carveouts[1].size = tegra_carveout_size;
 #endif
-/*
-	gpio_request(grouper_lvds_avdd_en, "lvds_avdd_en");
-	gpio_direction_output(grouper_lvds_avdd_en, 1);
-	tegra_gpio_enable(grouper_lvds_avdd_en);
-
-	//gpio_request(grouper_lvds_stdby, "lvds_stdby");
-	//gpio_direction_output(grouper_lvds_stdby, 1);
-	//tegra_gpio_enable(grouper_lvds_stdby);
-
-	gpio_request(grouper_lvds_rst, "lvds_rst");
-	gpio_direction_output(grouper_lvds_rst, 1);
-	tegra_gpio_enable(grouper_lvds_rst);
-
-	if (board_info.fab == BOARD_FAB_A00) {
-		gpio_request(grouper_lvds_rs_a00, "lvds_rs");
-		gpio_direction_output(grouper_lvds_rs_a00, 0);
-		tegra_gpio_enable(grouper_lvds_rs_a00);
-	} else {
-		gpio_request(grouper_lvds_rs, "lvds_rs");
-		gpio_direction_output(grouper_lvds_rs, 0);
-		tegra_gpio_enable(grouper_lvds_rs);
-	}
-
-	gpio_request(grouper_lvds_lr, "lvds_lr");
-	gpio_direction_output(grouper_lvds_lr, 1);
-	tegra_gpio_enable(grouper_lvds_lr);
-*/
-/*
-	gpio_request(grouper_lvds_shutdown, "lvds_shutdown");
-	gpio_direction_output(grouper_lvds_shutdown, 1);
-	tegra_gpio_enable(grouper_lvds_shutdown);
-*/
 
 	if( grouper_get_project_id() == GROUPER_PROJECT_BACH)
 	{

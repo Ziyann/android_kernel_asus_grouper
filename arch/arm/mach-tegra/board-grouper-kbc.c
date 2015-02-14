@@ -68,7 +68,6 @@ static struct platform_device grouper_keys_device = {
 
 int __init grouper_keys_init(void)
 {
-	int i;
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);

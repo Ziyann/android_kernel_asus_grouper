@@ -26,9 +26,6 @@
 #include <linux/regulator/consumer.h>
 #include <asm/mach-types.h>
 #include <mach/gpio.h>
-#ifdef CONFIG_VIDEO_OV2710
-#include <media/ov2710.h>
-#endif
 #include <media/yuv_sensor.h>
 #include "board.h"
 #include "board-grouper.h"
@@ -45,8 +42,6 @@
 static int front_yuv_sensor_rst_gpio = FRONT_YUV_SENSOR_RST_GPIO;
 
 static struct regulator *grouper_1v8_ldo5;
-static struct regulator *grouper_1v8_cam3;
-static struct regulator *grouper_vdd_cam3;
 
 static unsigned int pmic_id;
 
@@ -96,75 +91,6 @@ static int grouper_camera_init(void)
 #endif
 	return 0;
 }
-
-#ifdef CONFIG_VIDEO_OV2710
-static int grouper_ov2710_power_on(void)
-{
-	gpio_direction_output(CAM2_POWER_DWN_GPIO, 0);
-	mdelay(10);
-
-	if (grouper_vdd_cam3 == NULL) {
-		grouper_vdd_cam3 = regulator_get(NULL, "vdd_cam3");
-		if (WARN_ON(IS_ERR(grouper_vdd_cam3))) {
-			pr_err("%s: couldn't get regulator vdd_cam3: %d\n",
-				__func__, PTR_ERR(grouper_vdd_cam3));
-			goto reg_get_vdd_cam3_fail;
-		}
-	}
-	regulator_enable(grouper_vdd_cam3);
-
-	if (grouper_1v8_cam3 == NULL) {
-		grouper_1v8_cam3 = regulator_get(NULL, "vdd_1v8_cam3");
-		if (WARN_ON(IS_ERR(grouper_1v8_cam3))) {
-			pr_err("%s: couldn't get regulator vdd_1v8_cam3: %d\n",
-				__func__, PTR_ERR(grouper_1v8_cam3));
-			goto reg_get_vdd_1v8_cam3_fail;
-		}
-	}
-	regulator_enable(grouper_1v8_cam3);
-	mdelay(5);
-
-	gpio_direction_output(CAM2_RST_GPIO, 1);
-	mdelay(10);
-
-	return 0;
-
-reg_get_vdd_1v8_cam3_fail:
-	grouper_1v8_cam3 = NULL;
-	regulator_put(grouper_vdd_cam3);
-
-reg_get_vdd_cam3_fail:
-	grouper_vdd_cam3 = NULL;
-
-	return -ENODEV;
-}
-
-static int grouper_ov2710_power_off(void)
-{
-	gpio_direction_output(CAM2_POWER_DWN_GPIO, 1);
-
-	gpio_direction_output(CAM2_RST_GPIO, 0);
-
-	if (grouper_1v8_cam3)
-		regulator_disable(grouper_1v8_cam3);
-	if (grouper_vdd_cam3)
-		regulator_disable(grouper_vdd_cam3);
-
-	return 0;
-}
-
-struct ov2710_platform_data grouper_ov2710_data = {
-	.power_on = grouper_ov2710_power_on,
-	.power_off = grouper_ov2710_power_off,
-};
-
-static struct i2c_board_info grouper_i2c2_board_info[] = {
-	{
-		I2C_BOARD_INFO("ov2710", 0x36),
-		.platform_data = &grouper_ov2710_data,
-	},
-};
-#endif
 
 static int yuv_front_sensor_power_on(void)
 {
@@ -403,12 +329,6 @@ static struct nct1008_platform_data grouper_nct1008_pdata = {
 #endif
 };
 
-static struct i2c_board_info cardhu_i2c4_bq27541_board_info[] = {
-	{
-		I2C_BOARD_INFO("bq27541-battery", 0x55),
-	}
-};
-
 static struct i2c_board_info grouper_i2c4_nct1008_board_info[] = {
 	{
 		I2C_BOARD_INFO("nct1008", 0x4C),
@@ -444,11 +364,6 @@ int __init grouper_sensors_init(void)
 	int err;
 	grouper_camera_init();
 
-#ifdef CONFIG_VIDEO_OV2710
-	i2c_register_board_info(2, grouper_i2c2_board_info,
-		ARRAY_SIZE(grouper_i2c2_board_info));
-
-#endif
 /* Front Camera mi1040 + */
     pr_info("mi1040 i2c_register_board_info");
 	i2c_register_board_info(2, front_sensor_i2c2_board_info,

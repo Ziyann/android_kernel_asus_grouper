@@ -39,8 +39,6 @@
 #include <linux/skbuff.h>
 #include <linux/regulator/consumer.h>
 #include <linux/smb347-charger.h>
-#include <linux/max17048_battery.h>
-#include <linux/leds.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -258,28 +256,6 @@ static struct tegra_i2c_platform_data grouper_i2c5_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-struct max17048_battery_model max17048_mdata = {
-	.rcomp          = 170,
-	.soccheck_A     = 252,
-	.soccheck_B     = 254,
-	.bits           = 19,
-	.alert_threshold = 0x00,
-	.one_percent_alerts = 0x40,
-	.alert_on_reset = 0x40,
-	.rcomp_seg      = 0x0800,
-	.hibernate      = 0x3080,
-	.vreset         = 0x9696,
-	.valert         = 0xD4AA,
-	.ocvtest        = 55600,
-};
-
-static struct i2c_board_info grouper_i2c4_max17048_board_info[] = {
-	{
-		I2C_BOARD_INFO("max17048", 0x36),
-		.platform_data = &max17048_mdata,
-	},
-};
-
 static struct i2c_board_info cardhu_i2c4_bq27541_board_info[] = {
 	{
 		I2C_BOARD_INFO("bq27541-battery", 0x55),
@@ -294,11 +270,6 @@ static struct i2c_board_info grouper_i2c4_smb347_board_info[] = {
 
 static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
-};
-
-static struct i2c_board_info __initdata rt5639_board_info = {
-	I2C_BOARD_INFO("rt5639", 0x1c),
 	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 };
 
@@ -328,9 +299,6 @@ static void grouper_i2c_init(void)
 
 	i2c_register_board_info(4, cardhu_i2c4_bq27541_board_info,
 		ARRAY_SIZE(cardhu_i2c4_bq27541_board_info));
-
-	i2c_register_board_info(4, grouper_i2c4_max17048_board_info,
-		ARRAY_SIZE(grouper_i2c4_max17048_board_info));
 
 	if (project_info == GROUPER_PROJECT_NAKASI_3G) {
 		nfc_pdata.irq_gpio = TEGRA_GPIO_PS7;
@@ -544,30 +512,6 @@ static struct platform_device grouper_audio_device = {
 	},
 };
 
-static struct gpio_led grouper_led_info[] = {
-	{
-		.name			= "statled",
-		.default_trigger	= "default-on",
-		.gpio			= TEGRA_GPIO_STAT_LED,
-		.active_low		= 1,
-		.retain_state_suspended	= 0,
-		.default_state		= LEDS_GPIO_DEFSTATE_OFF,
-	},
-};
-
-static struct gpio_led_platform_data grouper_leds_pdata = {
-	.leds		= grouper_led_info,
-	.num_leds	= ARRAY_SIZE(grouper_led_info),
-};
-
-static struct platform_device grouper_leds_gpio_device = {
-	.name	= "leds-gpio",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &grouper_leds_pdata,
-	},
-};
-
 static struct platform_device *grouper_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
@@ -596,7 +540,6 @@ static struct platform_device *grouper_devices[] __initdata = {
 	&grouper_bcm4330_rfkill_device,
 	&tegra_pcm_device,
 	&grouper_audio_device,
-	&grouper_leds_gpio_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
@@ -994,10 +937,6 @@ static void grouper_modem_init(void) { }
 
 static void grouper_audio_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
 	grouper_audio_pdata.codec_name = "rt5640.4-001c";
 	grouper_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
@@ -1008,16 +947,16 @@ void grouper_booting_info(void )
 	static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned int reg;
 	#define PMC_RST_STATUS_WDT (1)
-	#define PMC_RST_STATUS_SW   (3)
+	#define PMC_RST_STATUS_SW (3)
 
-	reg = readl(pmc +0x1b4);
+	reg = readl(pmc + 0x1b4);
 	printk("grouper_booting_info reg=%x\n",reg );
 
-	if (reg ==PMC_RST_STATUS_SW){
-		boot_reason=PMC_RST_STATUS_SW;
+	if (reg == PMC_RST_STATUS_SW){
+		boot_reason = PMC_RST_STATUS_SW;
 		printk("grouper_booting_info-SW reboot\n");
-	} else if (reg ==PMC_RST_STATUS_WDT){
-		boot_reason=PMC_RST_STATUS_WDT;
+	} else if (reg == PMC_RST_STATUS_WDT){
+		boot_reason = PMC_RST_STATUS_WDT;
 		printk("grouper_booting_info-watchdog reboot\n");
 	} else{
 		boot_reason=0;
@@ -1062,7 +1001,6 @@ static void __init tegra_grouper_init(void)
 	grouper_setup_bluesleep();
 	grouper_pins_state_init();
 	grouper_emc_init();
-//	tegra_release_bootloader_fb();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif

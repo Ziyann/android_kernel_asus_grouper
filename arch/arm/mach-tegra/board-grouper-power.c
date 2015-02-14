@@ -382,10 +382,6 @@ static struct regulator_consumer_supply fixed_reg_en_vddio_vid_supply[] = {
 	REGULATOR_SUPPLY("vdd_hdmi_con", NULL),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_3v3_modem_supply[] = {
-	REGULATOR_SUPPLY("vdd_mini_card", NULL),
-};
-
 static struct regulator_consumer_supply fixed_reg_en_vdd_pnl_supply[] = {
 	REGULATOR_SUPPLY("vdd_lvds", NULL),
 	REGULATOR_SUPPLY("vdd_lcd_panel", NULL),
@@ -393,16 +389,8 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_pnl_supply[] = {
 	REGULATOR_SUPPLY("vddio_ts", NULL),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_cam3_ldo_supply[] = {
-	REGULATOR_SUPPLY("vdd_cam3", NULL),
-};
-
 static struct regulator_consumer_supply fixed_reg_en_vdd_com_supply[] = {
 	REGULATOR_SUPPLY("vdd_com_bd", NULL),
-};
-
-static struct regulator_consumer_supply fixed_reg_en_vdd_sdmmc1_supply[] = {
-	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.0"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_3v3_fuse_supply[] = {
