@@ -139,7 +139,7 @@ static bool syncpt_update_min_is_expired(
 	u32 id,
 	u32 thresh)
 {
-	syncpt_op(sp).update_min(sp, id);
+	syncpt_op().update_min(sp, id);
 	return nvhost_syncpt_is_expired(sp, id, thresh);
 }
 
