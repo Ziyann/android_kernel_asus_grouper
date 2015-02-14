@@ -2922,42 +2922,40 @@ static const struct tegra_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
 
 int grouper_emc_init(void)
 {
-	int ret=0;
-	int mem_bootstrap_ad4=0,mem_bootstrap_ad5=0;
+	int ret = 0;
+	int mem_bootstrap_ad4 = 0, mem_bootstrap_ad5 = 0;
 	#define MEMORY_BOOSTRAP_PIN_AD4 TEGRA_GPIO_PG4
 	#define MEMORY_BOOSTRAP_PIN_AD5 TEGRA_GPIO_PG5
 
-	tegra_gpio_enable( MEMORY_BOOSTRAP_PIN_AD4);
-       ret = gpio_request( MEMORY_BOOSTRAP_PIN_AD4, "memory_bootstrap_ad4");
+	ret = gpio_request(MEMORY_BOOSTRAP_PIN_AD4, "memory_bootstrap_ad4");
 	if (ret < 0) {
 		printk("grouper_emc_init: request MEMORY_BOOSTRAP_PIN_AD4 failed\n");
 		WARN_ON(1);
 		return 0;
 	}
 
-	ret= gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD4);
+	ret = gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD4);
 	if (ret < 0) {
 		printk("grouper_emc_init: failed to configure MEMORY_BOOSTRAP_PIN_AD4\n");
 		WARN_ON(1);
 		return 0;
 	}
-	mem_bootstrap_ad4=gpio_get_value(MEMORY_BOOSTRAP_PIN_AD4);
+	mem_bootstrap_ad4 = gpio_get_value(MEMORY_BOOSTRAP_PIN_AD4);
 
-	tegra_gpio_enable( MEMORY_BOOSTRAP_PIN_AD5);
-       ret = gpio_request( MEMORY_BOOSTRAP_PIN_AD5, "memory_bootstrap_ad5");
+	ret = gpio_request(MEMORY_BOOSTRAP_PIN_AD5, "memory_bootstrap_ad5");
 	if (ret < 0) {
 		printk("grouper_emc_init: request MEMORY_BOOSTRAP_PIN_AD5 failed\n");
 		WARN_ON(1);
 		return 0;
 	}
 
-	ret= gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD5);
+	ret = gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD5);
 	if (ret < 0) {
 		printk("grouper_emc_init: failed to configure MEMORY_BOOSTRAP_PIN_AD4\n");
 		WARN_ON(1);
 		return 0;
 	}
-	mem_bootstrap_ad5=gpio_get_value(MEMORY_BOOSTRAP_PIN_AD5);
+	mem_bootstrap_ad5 = gpio_get_value(MEMORY_BOOSTRAP_PIN_AD5);
 
 	printk("grouper_emc_init:mem_bootstrap_ad4=%u mem_bootstrap_ad5=%u \n",mem_bootstrap_ad4,mem_bootstrap_ad5);
 

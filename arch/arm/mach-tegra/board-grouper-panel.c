@@ -111,8 +111,6 @@ static int grouper_backlight_init(struct device *dev)
 	if (WARN_ON(ARRAY_SIZE(grouper_bl_output_measured) != 256))
 		pr_err("bl_output array does not have 256 elements\n");
 
-	tegra_gpio_disable(grouper_bl_pwm);
-
       /*
 	ret = gpio_request(grouper_bl_enb, "backlight_enb");
 	if (ret < 0)
@@ -734,10 +732,8 @@ int __init grouper_panel_init(void)
 		printk("Bach: Set LCD pclk as %d Hz\n", grouper_disp1_out.modes->pclk);
 
 		gpio_request(TEGRA_GPIO_PV6, "gpio_v6");
-		tegra_gpio_enable(TEGRA_GPIO_PV6);
 	}
 
-	tegra_gpio_enable(grouper_hdmi_hpd);
 	gpio_request(grouper_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(grouper_hdmi_hpd);
 

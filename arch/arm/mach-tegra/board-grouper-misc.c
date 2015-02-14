@@ -187,7 +187,6 @@ static int board_pins_init(
 			}
 			return ret;
 		}
-		tegra_gpio_enable(board_pins[i].gpio);
 		gpio_direction_input(board_pins[i].gpio);
 		*pin_value |= gpio_get_value(board_pins[i].gpio) << i;
 	}
@@ -212,7 +211,6 @@ static void board_pins_reset(
 				tegra_pinmux_set_io(board_pins[i].pingroup,
 				TEGRA_PIN_OUTPUT);
 				/* mask GPIO_CNF */
-				tegra_gpio_disable(board_pins[i].gpio);
 				gpio_free(board_pins[i].gpio);
 			}
 		}

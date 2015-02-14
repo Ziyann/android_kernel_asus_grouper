@@ -169,8 +169,6 @@ static noinline void __init grouper_setup_bluesleep(void)
 {
 	platform_device_register(&grouper_bluesleep_device);
 	bluesleep_setup_uart_port(&tegra_uartc_device);
-	tegra_gpio_enable(TEGRA_GPIO_PU6);
-	tegra_gpio_enable(TEGRA_GPIO_PU1);
 	return;
 }
 
@@ -650,11 +648,8 @@ static int elan_touch_init(void)
 {
 	struct board_info BoardInfo;
 #if defined(CONFIG_TOUCHSCREEN_ELAN_TF_3K)
-      struct elan_ktf3k_i2c_platform_data *platform;
+	struct elan_ktf3k_i2c_platform_data *platform;
 #endif
-	tegra_gpio_enable(TEGRA_GPIO_PH3);
-	tegra_gpio_enable(TEGRA_GPIO_PH4);
-	tegra_gpio_enable(TEGRA_GPIO_PH6);
 
 	gpio_request(TEGRA_GPIO_PH3, "elan-pwn");
 	gpio_direction_output(TEGRA_GPIO_PH3, 1);
@@ -692,8 +687,6 @@ static int __init grouper_touch_init(void)
 	int touch_id;
 
     return elan_touch_init();	
-	tegra_gpio_enable(GROUPER_TS_ID1);
-	tegra_gpio_enable(GROUPER_TS_ID2);
 
 	gpio_request(GROUPER_TS_ID1, "touch-id1");
 	gpio_direction_input(GROUPER_TS_ID1);
@@ -982,30 +975,6 @@ static void grouper_modem_init(void)
         printk(KERN_INFO"%s\n",__func__);
 
 	if (project_info == GROUPER_PROJECT_NAKASI_3G) {
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.bb_rst);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.bb_on);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.bb_vbat);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_bb_rst_ind);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.bb_vbus);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.bb_sw_sel);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.sim_card_det);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_bb_wake);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_ap_wake);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_hsic_active);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_hsic_sus_req);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_bb_force_crash);
 		tegra_baseband_power_data.hsic_register =
 			&tegra_usb_hsic_host_register;
 		tegra_baseband_power_data.hsic_unregister =
@@ -1031,27 +1000,6 @@ static void grouper_audio_init(void)
 
 	grouper_audio_pdata.codec_name = "rt5640.4-001c";
 	grouper_audio_pdata.codec_dai_name = "rt5640-aif1";
-}
-
-static void grouper_gps_init(void)
-{
-	tegra_gpio_enable(TEGRA_GPIO_PU2);
-	tegra_gpio_enable(TEGRA_GPIO_PU3);
-}
-
-static void grouper_nfc_init(void)
-{
-	u32 project_info = grouper_get_project_id();
-
-	if (project_info == GROUPER_PROJECT_NAKASI) {
-		tegra_gpio_enable(TEGRA_GPIO_PX0);
-		tegra_gpio_enable(TEGRA_GPIO_PS7);
-		tegra_gpio_enable(TEGRA_GPIO_PR3);
-	} else if (project_info == GROUPER_PROJECT_NAKASI_3G) {
-		tegra_gpio_enable(TEGRA_GPIO_PS7);
-		tegra_gpio_enable(TEGRA_GPIO_PP0);
-		tegra_gpio_enable(TEGRA_GPIO_PP3);
-	}
 }
 
 unsigned int boot_reason=0;
@@ -1107,11 +1055,9 @@ static void __init tegra_grouper_init(void)
 		grouper_suspend_init();
 	}
 	grouper_touch_init();
-	grouper_gps_init();
 	grouper_modem_init();
 	grouper_keys_init();
 	grouper_panel_init();
-	grouper_nfc_init();
 	grouper_sensors_init();
 	grouper_setup_bluesleep();
 	grouper_pins_state_init();

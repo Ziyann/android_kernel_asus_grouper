@@ -76,11 +76,6 @@ int __init grouper_keys_init(void)
 
 	pr_info("Registering gpio keys\n");
 
-	/* Enable gpio mode for other pins */
-	for (i = 0; i < grouper_keys_platform_data.nbuttons; i++)
-		tegra_gpio_enable(grouper_keys_platform_data.
-					buttons[i].gpio);
-
 	platform_device_register(&grouper_keys_device);
 
 	return 0;

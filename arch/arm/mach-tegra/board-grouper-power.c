@@ -539,7 +539,6 @@ static struct platform_device *fixed_reg_devs_a01[] = {
 
 static int __init grouper_fixed_regulator_init(void)
 {
-	int i;
 	struct board_info board_info;
 	struct platform_device **fixed_reg_devs;
 	int nfixreg_devs;
@@ -558,16 +557,6 @@ static int __init grouper_fixed_regulator_init(void)
 
 	if (!machine_is_grouper())
 		return 0;
-
-	for (i = 0; i < nfixreg_devs; ++i) {
-		int gpio_nr;
-		struct fixed_voltage_config *fixed_reg_pdata =
-			fixed_reg_devs[i]->dev.platform_data;
-		gpio_nr = fixed_reg_pdata->gpio;
-
-		if (gpio_nr < TEGRA_NR_GPIOS)
-			tegra_gpio_enable(gpio_nr);
-	}
 
 	return platform_add_devices(fixed_reg_devs, nfixreg_devs);
 }

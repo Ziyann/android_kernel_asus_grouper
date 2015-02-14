@@ -76,7 +76,6 @@ static int grouper_camera_init(void)
 #if 0
 	int ret;
 
-	tegra_gpio_enable(CAM2_POWER_DWN_GPIO);
 	ret = gpio_request(CAM2_POWER_DWN_GPIO, "cam2_power_en");
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed for gpio %s\n",
@@ -86,7 +85,6 @@ static int grouper_camera_init(void)
 	gpio_direction_output(CAM2_POWER_DWN_GPIO, 1);
 	mdelay(10);
 
-	tegra_gpio_enable(CAM2_RST_GPIO);
 	ret = gpio_request(CAM2_RST_GPIO, "cam2_reset");
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed for gpio %s\n",
@@ -195,7 +193,6 @@ static int yuv_front_sensor_power_on(void)
 
 	/* AVDD_CAM1, 2.85V, controlled by CAM1_LDO_EN */
 	pr_info("gpio %d read as %d\n",CAM1_LDO_EN_GPIO, gpio_get_value(CAM1_LDO_EN_GPIO));
-	tegra_gpio_enable(CAM1_LDO_EN_GPIO);
 	ret = gpio_request(CAM1_LDO_EN_GPIO, "cam1_ldo_en");
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s, ret= %d\n",
@@ -210,7 +207,6 @@ static int yuv_front_sensor_power_on(void)
 	msleep(10);
 
 	/* yuv_sensor_rst_lo*/
-	tegra_gpio_enable(front_yuv_sensor_rst_gpio);
 	ret = gpio_request(front_yuv_sensor_rst_gpio, "yuv_sensor_rst_lo");
 
 	if (ret < 0)
@@ -318,7 +314,6 @@ static void mpuirq_init(void)
 	pr_info("*** MPU START *** mpuirq_init...\n");
 
 	/* MPU-IRQ assignment */
-	tegra_gpio_enable(MPU_GYRO_IRQ_GPIO);
 	ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
@@ -439,8 +434,6 @@ static int grouper_nct1008_init(void)
 		ret = gpio_direction_input(nct1008_port);
 		if (ret < 0)
 			gpio_free(nct1008_port);
-		else
-			tegra_gpio_enable(nct1008_port);
 	}
 
 	return ret;
