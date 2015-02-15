@@ -40,7 +40,6 @@
 #include "board.h"
 #include "board-grouper.h"
 #include "pm.h"
-#include "wakeups-t3.h"
 #include "tegra3_tsensor.h"
 #include <mach/board-grouper-misc.h>
 
