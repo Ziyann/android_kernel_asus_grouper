@@ -505,7 +505,6 @@ static ssize_t store_sensor_recal(struct device *dev, struct device_attribute *a
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct cap1106_data *data = i2c_get_clientdata(client);
-    long value;
 
     PROX_DEBUG("\n");
 
@@ -768,7 +767,7 @@ static int cap1106_init_sensor(struct i2c_client *client)
     return rc;
 }
 
-static void cap1106_checking_work_function(struct delayed_work *work) {
+static void cap1106_checking_work_function(struct work_struct *work) {
     int status;
     int value_delta_2;
     int value_delta_6;
@@ -817,7 +816,7 @@ static int __devinit cap1106_probe(struct i2c_client *client, const struct i2c_d
 
     /* Touch data processing workqueue initialization */
     INIT_DELAYED_WORK(&prox_data->work, cap1106_work_function);
-    INIT_DELAYED_WORK(&prox_data->checking_work,cap1106_checking_work_function);
+    INIT_DELAYED_WORK(&prox_data->checking_work, cap1106_checking_work_function);
 
     i2c_set_clientdata(client, prox_data);
     prox_data->client->flags = 0;
@@ -908,7 +907,7 @@ static int __init cap1106_init(void)
     PROX_DEBUG("\n");
 
     if (GROUPER_PROJECT_BACH != grouper_get_project_id()) {
-        PROX_ERROR("Cap1106 driver doesn't support this project\n");
+        PROX_INFO("Cap1106 driver doesn't support this project\n");
         return -1;
     }
 
