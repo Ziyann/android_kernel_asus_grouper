@@ -113,7 +113,6 @@
 
 /* Functions declaration */
 static int smb347_configure_charger(struct i2c_client *client, int value);
-static int smb347_configure_interrupts(struct i2c_client *client);
 extern int battery_callback(unsigned usb_cable_state);
 /* Enable or disable the callback for the battery driver. */
 #define TOUCH_CALLBACK_ENABLED 1
@@ -806,44 +805,7 @@ error:
 	return ret;
 }
 
-static int smb347_configure_interrupts(struct i2c_client *client)
-{
-	int ret = 0;
-
-	/* Enable volatile writes to registers */
-	ret = smb347_volatile_writes(client, smb347_ENABLE_WRITE);
-	if (ret < 0) {
-		dev_err(&client->dev, "%s() error in configuring charger..\n",
-								__func__);
-		goto error;
-	}
-	/* Setting: Fault assert STAT IRQ */
-	ret = smb347_update_reg(client, smb347_FAULT_INTR, 0x00);
-	if (ret < 0) {
-		dev_err(&client->dev, "%s(): Failed in writing register"
-				"0x%02x\n", __func__, smb347_CMD_REG);
-		goto error;
-	}
-	/* Setting: Status assert STAT IRQ */
-	ret = smb347_update_reg(client, smb347_STS_INTR_1, 0x14);
-	if (ret < 0) {
-		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
-		goto error;
-	}
-
-	 /* Disable volatile writes to registers */
-	ret = smb347_volatile_writes(client, smb347_DISABLE_WRITE);
-	if (ret < 0) {
-		dev_err(&client->dev, "%s() error in configuring charger..\n",
-								__func__);
-		goto error;
-	}
-
-error:
-	return ret;
-}
-
-static void smb347_otg_status(enum usb_otg_state to, enum usb_otg_state from, void *data)
+static void smb347_otg_status(enum usb_otg_state to, enum usb_otg_state from, void *args)
 {
 	struct i2c_client *client = charger->client;
 	int ret;
@@ -875,22 +837,14 @@ static void smb347_otg_status(enum usb_otg_state to, enum usb_otg_state from, vo
 		if (ret < 0)
 			dev_err(&client->dev, "%s() error in configuring"
 				"otg..\n", __func__);
-
-		/*
-		ret = smb347_configure_interrupts(client);
-		if (ret < 0)
-			dev_err(&client->dev, "%s() error in configuring"
-						"otg..\n", __func__);
-		*/
 	}
 }
 
 /* workqueue function */
-static int cable_type_detect(void)
+static void cable_type_detect(struct work_struct *dat)
 {
 	struct i2c_client *client = charger->client;
 	u8 retval;
-	int  success = 0;
 	int ac_ok = GPIO_AC_OK;
 	int dock_in = gpio_dock_in;
 
@@ -905,7 +859,7 @@ static int cable_type_detect(void)
 	*/
 
 	if((pcba_ver <= GROUPER_PCBA_ER2) && (project_id == GROUPER_PROJECT_NAKASI))
-		return 0;
+		return;
 
 	mutex_lock(&charger->cable_lock);
 
@@ -923,7 +877,6 @@ static int cable_type_detect(void)
 		printk(KERN_INFO "INOK=H\n");
 		charger->cur_cable_type = non_cable;
 		smb347_set_InputCurrentlimit(client, 900);
-		success = battery_callback(non_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
                touch_callback(non_cable);
 #endif
@@ -934,7 +887,6 @@ static int cable_type_detect(void)
 		SMB_NOTICE("Reg39 : 0x%02x\n", retval);
 		if (!(retval & DCIN_OV_UV_STS) && !gpio_get_value(dock_in)) {
 			SMB_NOTICE("DC_IN\n");
-			success = battery_callback(ac_cable);
 		} else {
 
 			/* cable type dection */
@@ -949,20 +901,17 @@ static int cable_type_detect(void)
 					if (retval == APSD_CDP) {
 						printk(KERN_INFO "Cable: CDP\n");
 						charger->cur_cable_type = ac_cable;
-						success = battery_callback(ac_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
 	                                    touch_callback(ac_cable);
 #endif
 					} else if (retval == APSD_DCP) {
 						printk(KERN_INFO "Cable: DCP\n");
 						charger->cur_cable_type = ac_cable;
-						success = battery_callback(ac_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
 	                                    touch_callback(ac_cable);
 #endif
 					} else if (retval == APSD_OTHER) {
 						charger->cur_cable_type = ac_cable;
-						success = battery_callback(ac_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
 	                                   touch_callback(ac_cable);
 #endif
@@ -970,7 +919,6 @@ static int cable_type_detect(void)
 					} else if (retval == APSD_SDP) {
 						printk(KERN_INFO "Cable: SDP\n");
 						charger->cur_cable_type = usb_cable;
-						success = battery_callback(usb_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
 	                                    touch_callback(usb_cable);
 #endif
@@ -982,7 +930,6 @@ static int cable_type_detect(void)
 							printk(KERN_INFO "Use usb det %s cable to report\n",
 								(usb_det_cable_type == ac_cable) ? "ac" : "usb");
 							charger->cur_cable_type = usb_det_cable_type;
-							success = battery_callback(usb_det_cable_type);
 						}
 					}
 				} else {
@@ -1006,7 +953,6 @@ static int cable_type_detect(void)
 	charger->old_cable_type = charger->cur_cable_type;
 
 	mutex_unlock(&charger->cable_lock);
-	return success;
 }
 
 void usb_det_cable_callback(unsigned cable_type)
@@ -1015,7 +961,7 @@ void usb_det_cable_callback(unsigned cable_type)
 	SMB_NOTICE("usb_det_cable_type=%d\n", usb_det_cable_type);
 
 	if(unknow_cable == charger->cur_cable_type) {
-		cable_type_detect();
+		cable_type_detect(NULL);
 	}
 }
 
@@ -1026,14 +972,13 @@ static void inok_isr_work_function(struct work_struct *dat)
 	cancel_delayed_work(&charger->curr_limit_work);
 	cancel_delayed_work(&charger->inok_isr_work);
 
-	cable_type_detect();
+	cable_type_detect(NULL);
 
 	smb347_clear_interrupts(client);
 }
 
 static void dockin_isr_work_function(struct work_struct *dat)
 {
-	struct i2c_client *client = charger->client;
 
 	int dock_in = gpio_dock_in;
 	int ac_ok = GPIO_AC_OK;
@@ -1044,13 +989,13 @@ static void dockin_isr_work_function(struct work_struct *dat)
 	if (gpio_get_value(dock_in)) {
 		if (!gpio_get_value(ac_ok)) {
 			SMB_NOTICE("dc_in=H & ac_ok=L\n");
-			cable_type_detect();
+			cable_type_detect(NULL);
 		}
 	} else {
 		if (!gpio_get_value(ac_ok)) {
 			SMB_NOTICE("dc_in=L & ac_ok=L\n");
 			msleep(40);
-			cable_type_detect();
+			cable_type_detect(NULL);
 		}
 	}
 
@@ -1062,7 +1007,7 @@ static void dockin_isr_work_function(struct work_struct *dat)
 static ssize_t smb347_reg_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct i2c_client *client = charger->client;
-	uint8_t config_reg[15], cmd_reg[1], status_reg[10];
+	uint8_t config_reg[15], cmd_reg[2], status_reg[11];
 	char tmp_buf[64];
 	int i, cfg_ret, cmd_ret, sts_ret = 0;
 
@@ -1075,19 +1020,19 @@ static ssize_t smb347_reg_show(struct device *dev, struct device_attribute *attr
 	strcpy(buf, tmp_buf);
 
 	if (cfg_ret > 0) {
-		for(i=0;i<=14;i++) {
+		for(i=0; i < 15; i++) {
 			sprintf(tmp_buf, "Reg%02xh:\t0x%02x\n", i, config_reg[i]);
 			strcat(buf, tmp_buf);
 		}
 	}
 	if (cmd_ret > 0) {
-		for(i=0;i<=1;i++) {
+		for(i=0; i < 2; i++) {
 			sprintf(tmp_buf, "Reg%02xh:\t0x%02x\n", 48+i, cmd_reg[i]);
 			strcat(buf, tmp_buf);
 		}
 	}
 	if (sts_ret > 0) {
-		for(i=0;i<=10;i++) {
+		for(i=0; i < 11; i++) {
 			sprintf(tmp_buf, "Reg%02xh:\t0x%02x\n", 53+i, status_reg[i]);
 			strcat(buf, tmp_buf);
 		}
@@ -1123,7 +1068,7 @@ static void smb347_default_setback(void)
 static int smb347_temp_limit_setting(void)
 {
 	struct i2c_client *client = charger->client;
-	int ret = 0, retval, val;
+	int ret = 0, val;
 
 	/* Enable volatile writes to registers */
 	ret = smb347_volatile_writes(client, smb347_ENABLE_WRITE);
@@ -1209,8 +1154,7 @@ static int __devinit smb347_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
-	int ret, irq_num;
-	uint8_t buf[15];
+	int ret;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE))
 		return -EIO;
@@ -1289,7 +1233,7 @@ static int __devexit smb347_remove(struct i2c_client *client)
 	return 0;
 }
 
-static int smb347_suspend(struct i2c_client *client)
+static int smb347_suspend(struct i2c_client *client, pm_message_t state)
 {
 	charger->suspend_ongoing = 1;
 
@@ -1304,13 +1248,13 @@ static int smb347_resume(struct i2c_client *client)
 	charger->suspend_ongoing = 0;
 
 	printk("smb347_resume+\n");
-	cable_type_detect();
+	cable_type_detect(NULL);
 	printk("smb347_resume-\n");
 	return 0;
 }
 
 
-static int smb347_shutdown(struct i2c_client *client)
+static void smb347_shutdown(struct i2c_client *client)
 {
 	int ret;
 	printk("smb347_shutdown+\n");
@@ -1328,7 +1272,6 @@ static int smb347_shutdown(struct i2c_client *client)
 			"otg..\n", __func__);
 
 	printk("smb347_shutdown-\n");
-	return 0;
 }
 
 static const struct i2c_device_id smb347_id[] = {
@@ -1353,9 +1296,8 @@ static int __init smb347_init(void)
 {
 	project_id = grouper_get_project_id();
 	pcba_ver = grouper_query_pcba_revision();
-	u32 project_info = grouper_get_project_id();
 
-	if (project_info == GROUPER_PROJECT_NAKASI_3G)
+	if (project_id == GROUPER_PROJECT_NAKASI_3G)
 		gpio_dock_in = TEGRA_GPIO_PO5;
 	else
 		gpio_dock_in = TEGRA_GPIO_PU4;
