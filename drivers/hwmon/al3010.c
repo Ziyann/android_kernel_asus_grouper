@@ -333,8 +333,6 @@ static int al3010_chip_resume(struct al3010_data *data)
 		ret = al3010_set_power_state(data->client, 1);
 		is_poweron_after_resume = true;
 		do_gettimeofday(&t_poweron_timestamp);
-	} else {
-		printk("al3010 debug log: light sensor chip is resumed\n");
 	}
 
 	return ret;
@@ -345,34 +343,22 @@ static void al3010_early_suspend(struct early_suspend *h)
 {
 	struct al3010_data *data = container_of(h, struct al3010_data, light_sensor_early_suspender);
 
-	if (al3010_hardware_fail) {
-		printk("al3010_early_suspend\n");
+	if (al3010_hardware_fail)
 		return;
-	}
-
-	printk("al3010_early_suspend+\n");
 
 	al3010_chip_suspend(data);
-
-	printk("al3010_early_suspend-\n");
 }
 
 static void al3010_late_resume(struct early_suspend *h)
 {
 	struct al3010_data *data = container_of(h, struct al3010_data, light_sensor_early_suspender);
 
-	if (al3010_hardware_fail) {
-		printk("al3010_late_resume\n");
+	if (al3010_hardware_fail)
 		return;
-	}
 
-	printk("al3010_late_resume+\n");
-
-	//delay to avoid al3010_early_suspend and al3010_late_resume too close when it would cause power on fail
+	// delay to avoid early_suspend and late_resume too close as it could cause power on fail
 	mdelay(5);
 	al3010_chip_resume(data);
-
-	printk("al3010_late_resume-\n");
 }
 #endif
 
@@ -380,10 +366,9 @@ static int al3010_init_client(struct i2c_client *client)
 {
 	int err = 0;
 
-	/* set defaults */
 	err = al3010_set_power_state(client, 1);
 	if (err) {
-		printk("light sensor err: al3010 set power up err\n");
+		dev_err(&client->dev, "%s: al3010_set_power_state returned error %d\n", __func__, err);
 		return err;
 	}
 
@@ -391,7 +376,7 @@ static int al3010_init_client(struct i2c_client *client)
 	//(If panel luminousness is 10% , the range of pad is 0 ~ 48630 lux.)
 	err = al3010_set_range(client, 2);
 	if (err) {
-		printk("light sensor err: al3010 set range err\n");
+		dev_err(&client->dev, "%s: al3010_set_range returned error %d\n", __func__, err);
 		return err;
 	}
 
@@ -403,13 +388,13 @@ static int al3010_init_client(struct i2c_client *client)
  */
 int al3010_open(struct inode *inode, struct file *filp)
 {
-	printk("light sensor info: %s\n", __func__);
+	printk("%s\n", __func__);
 	return 0;
 }
 
 int al3010_release(struct inode *inode, struct file *filp)
 {
-	printk("light sensor info: %s\n", __func__);
+	printk("%s\n", __func__);
 	return 0;
 }
 
@@ -430,17 +415,17 @@ long al3010_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (arg) {
 		case AL3010_IOCTL_START_HEAVY:
-			printk("light sensor info: ioctl heavy\n");
+			printk("%s: ioctl heavy\n", __func__);
 			poll_mode = START_HEAVY;
 			queue_delayed_work(sensor_work_queue, &al3010_poll_data_work, poll_mode);
 			break;
 		case AL3010_IOCTL_START_NORMAL:
-			printk("light sensor info: ioctl normal\n");
+			printk("%s: ioctl normal\n", __func__);
 			poll_mode = START_NORMAL;
 			queue_delayed_work(sensor_work_queue, &al3010_poll_data_work, poll_mode);
 			break;
 		case AL3010_IOCTL_END:
-			printk("light sensor info: ioctl end\n");
+			printk("%s: ioctl end\n", __func__);
 			cancel_delayed_work_sync(&al3010_poll_data_work);
 			break;
 		default:
@@ -489,8 +474,8 @@ static int __devinit al3010_probe(struct i2c_client *client,
 	/* initialize the AL3010 chip */
 	err = al3010_init_client(client);
 	if (err) {
-		printk("light sensor info: al3010 hardware fail\n");
-		printk("light sensor info: keep al3010 driver alive\n");
+		dev_err(&client->dev, "%s: hardware fail\n", __func__);
+		dev_err(&client->dev, "%s: keep al3010 driver alive\n", __func__);
 		err = 0;
 		al3010_hardware_fail = true;
 	}
@@ -498,10 +483,10 @@ static int __devinit al3010_probe(struct i2c_client *client,
 	if (al3010_hardware_fail) {
 		err = al3010_init_client(client);
 		if (err) {
-			printk("light sensor info: al3010 re-init fail\n");
-			printk("light sensor info: keep al3010 driver alive\n");
+			dev_err(&client->dev, "%s: re-init fail\n", __func__);
+			dev_err(&client->dev, "%s: keep al3010 driver alive\n", __func__);
 		} else {
-			printk("light sensor info: al3010 re-init success\n");
+			dev_info(&client->dev, "%s: re-init success\n", __func__);
 			al3010_hardware_fail = false;
 		}
 		err = 0;
@@ -509,18 +494,18 @@ static int __devinit al3010_probe(struct i2c_client *client,
 	/* register sysfs hooks */
 	err = sysfs_create_group(&client->dev.kobj, &al3010_attr_group);
 	if (err) {
-		printk("light sensor err: al3010 init sysfs fail\n");
+		dev_err(&client->dev, "%s: sysfs_create_group returned error %d\n", __func__, err);
 		goto exit_kfree;
 	}
 
 	/* register device node */
-	printk("light sensor info: al3010 probe successed\n");
+	dev_info(&client->dev, "%s: initialized\n", __func__);
 	dev_info(&client->dev, "driver version %s enabled\n", DRIVER_VERSION);
 
 	/* init for i2c stress test */
 	sensor_work_queue = create_singlethread_workqueue("i2c_lightsensor_wq");
 	if (!sensor_work_queue) {
-		printk("al3010_probe: Unable to create workqueue");
+		dev_err(&client->dev, "%s: create_singlethread_workqueue failed\n", __func__);
 		goto exit_kfree;
 	}
 	INIT_DELAYED_WORK(&al3010_poll_data_work, al3010_poll_data);
@@ -530,8 +515,7 @@ static int __devinit al3010_probe(struct i2c_client *client,
 	data->misc_dev.fops = &al3010_fops;
 	err = misc_register(&data->misc_dev);
 	if (err) {
-		printk("light sensor err: Unable to register %s misc device\n",
-				data->misc_dev.name);
+		dev_err(&client->dev, "%s: unable to register misc device %s\n", __func__, data->misc_dev.name);
 		goto exit_kfree;
 	}
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -555,7 +539,7 @@ static int __devexit al3010_remove(struct i2c_client *client)
 	sysfs_remove_group(&client->dev.kobj, &al3010_attr_group);
 	al3010_set_power_state(client, 0);
 	kfree(i2c_get_clientdata(client));
-	printk("light sensor info: al3010 remove successed\n");
+	dev_info(&client->dev, "%s: remove succeeded\n", __func__);
 
 	return 0;
 }
@@ -564,37 +548,21 @@ static int __devexit al3010_remove(struct i2c_client *client)
 static int al3010_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct al3010_data *data = i2c_get_clientdata(client);
-	int ret = 0;
 
-	if (al3010_hardware_fail) {
-		printk("al3010_suspend\n");
+	if (al3010_hardware_fail)
 		return 0;
-	}
 
-	printk("al3010_suspend+\n");
-	
-	ret = al3010_chip_suspend(data);
-
-	printk("al3010_suspend-\n");
-	return ret;
+	return al3010_chip_suspend(data);
 }
 
 static int al3010_resume(struct i2c_client *client)
 {
 	struct al3010_data *data = i2c_get_clientdata(client);
-	int ret = 0;
 
-	if (al3010_hardware_fail) {
-		printk("al3010_resume\n");
+	if (al3010_hardware_fail)
 		return 0;
-	}
 
-	printk("al3010_resume+\n");
-
-	ret = al3010_chip_resume(data);
-
-	printk("al3010_resume-\n");
-	return ret;
+	return al3010_chip_resume(data);
 }
 
 #else
@@ -622,19 +590,12 @@ static struct i2c_driver al3010_driver = {
 
 static int __init al3010_init(void)
 {
-	int ret = i2c_add_driver(&al3010_driver);
-
-	printk(KERN_INFO "%s+ #####\n", __func__);
-	printk("light sensor info: al3010 init \n");
-	printk("light sensor info: al3010 init \n");
-	printk(KERN_INFO "%s- #####\n", __func__);
-
-	return ret;
+	return i2c_add_driver(&al3010_driver);
 }
 
 static void __exit al3010_exit(void)
 {
-	printk("light sensor info: al3010 exit \n");
+	printk("%s\n", __func__);
 	i2c_del_driver(&al3010_driver);
 }
 
