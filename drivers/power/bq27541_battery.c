@@ -79,7 +79,6 @@ unsigned int bq27541_i2c_error;
 static unsigned int ota_flag = 0;
 static unsigned int 	battery_current;
 static unsigned int  battery_remaining_capacity;
-static atomic_t device_count;
 static unsigned int bat_check_interval = BATTERY_POLLING_RATE;
 struct workqueue_struct *battery_work_queue = NULL;
 
@@ -510,8 +509,8 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 	union power_supply_propval *val)
 {
 	s32 ret;
-	int smb_retry=0;
 	int rt_value=0;
+	static char *status_text[] = {"Unknown", "Charging", "Discharging", "Not charging", "Full"};
 
 	bq27541_device->smbus_status = bq27541_smbus_read_data(reg_offset, 0, &rt_value);
 
@@ -552,7 +551,6 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 	}
 	if (psp == POWER_SUPPLY_PROP_STATUS) {
 		ret = bq27541_device->bat_status = rt_value;
-		static char *status_text[] = {"Unknown", "Charging", "Discharging", "Not charging", "Full"};
 
 		if (ac_on || usb_on) {            /* Charging detected */
 			if (bq27541_device->old_capacity == 100)
@@ -915,12 +913,11 @@ static int bq27541_resume(struct i2c_client *client)
 }
 #endif
 
-static int bq27541_shutdown(struct i2c_client *client)
+static void bq27541_shutdown(struct i2c_client *client)
 {
 	BAT_NOTICE("+\n");
 	bq27541_device->shutdown_disable = 0;
 	BAT_NOTICE("-\n");
-	return 0;
 }
 
 static const struct i2c_device_id bq27541_id[] = {

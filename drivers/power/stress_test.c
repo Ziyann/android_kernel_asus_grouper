@@ -34,8 +34,6 @@ static void battery_strees_test(struct work_struct *work)
 
 long battery_ioctl(struct file *filp,unsigned int cmd, unsigned long arg)
 {
-       int fc=0;
-	int battery_status=0;
 	if (_IOC_TYPE(cmd) == BATTERY_IOC_MAGIC ){
 	     //printk("  battery_ioctl vaild magic \n");
 	}
