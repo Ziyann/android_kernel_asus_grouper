@@ -33,14 +33,8 @@
 #define SENSOR_640_WIDTH_VAL 0x0280
 #define MI1040_SENSOR_NAME "mi1040"
 
-#define SEQUENCE_WAIT_MS  SENSOR_WAIT_MS
-#define SEQUENCE_END      SENSOR_TABLE_END
-#define SENSOR_BYTE_WRITE    (SEQUENCE_END+1)
-#define SENSOR_WORD_WRITE    (SEQUENCE_END+2)
-#define SENSOR_MASK_BYTE_WRITE  (SEQUENCE_END+3)
-#define SENSOR_MASK_WORD_WRITE  (SEQUENCE_END+4)
-#define SENSOR_BYTE_READ  (SEQUENCE_END+5)
-#define SENSOR_WORD_READ  (SEQUENCE_END+6)
+#define SENSOR_BYTE_READ  (SENSOR_TABLE_END+5)
+#define SENSOR_WORD_READ  (SENSOR_TABLE_END+6)
 
 /* Store what you got in previous dbg_get_mi1040_reg_write(). */
 static int g_under_the_table = 0;
@@ -69,9 +63,9 @@ static struct sensor_reg_ex mode_1280x960[] =
 // LOAD = Step1-Reset 			//Reset
 
 {SENSOR_WORD_WRITE, 0x001A, 0x0001},
-{SEQUENCE_WAIT_MS, 0, 10}, 	//delay=10
+{SENSOR_WAIT_MS, 0, 10}, 	//delay=10
 {SENSOR_WORD_WRITE, 0x001A, 0x0000},
-{SEQUENCE_WAIT_MS, 0, 50}, 	//delay=50
+{SENSOR_WAIT_MS, 0, 50}, 	//delay=50
 {SENSOR_WORD_WRITE,0x301A, 0x0234} , // RESET_REGISTER
 // LOAD=PLL_settings
 {SENSOR_WORD_WRITE,0x098E, 0x0000} , 	// LOGICAL_ADDRESS_ACCESS
@@ -492,7 +486,7 @@ static struct sensor_reg_ex mode_1280x960[] =
 {SENSOR_WAIT_MS, 0,50} ,
 
 
-{SEQUENCE_END, 0x0000}
+{SENSOR_TABLE_END, 0x0000}
 };
 
 static struct sensor_reg_ex mode_1280x720[] =
@@ -506,15 +500,15 @@ static struct sensor_reg_ex mode_1280x720[] =
 // LOAD = Step1-Reset 			//Reset
 
 {SENSOR_WORD_WRITE, 0x001A, 0x0001},
-{SEQUENCE_WAIT_MS, 0, 10}, 	//delay=10
+{SENSOR_WAIT_MS, 0, 10}, 	//delay=10
 {SENSOR_WORD_WRITE, 0x001A, 0x0000},
-{SEQUENCE_WAIT_MS, 0, 50}, 	//delay=50
+{SENSOR_WAIT_MS, 0, 50}, 	//delay=50
 {SENSOR_WORD_WRITE, 0x301A, 0x0234},   		// MASK BAD FRAME
 				//LOAD = Step2-{SENSOR_WORD_WRITE, 0x098E, 0x0000}, 		// set XDMA to logical addressing
 {SENSOR_WORD_WRITE, 0xC97E, 0x01ba},		//cam_sysctl_pll_enable = 1
 {SENSOR_WORD_WRITE, 0xC980, 0x0120},		//cam_sysctl_pll_divider_m_n = 288
 {SENSOR_WORD_WRITE, 0xC982, 0x0700},		//cam_sysctl_pll_divider_p = 1792
-{SEQUENCE_WAIT_MS, 0, 100}, 	//delay=50
+{SENSOR_WAIT_MS, 0, 100}, 	//delay=50
 {SENSOR_WORD_WRITE, 0xC988, 0x0F00},		//cam_port_mipi_timing_t_hs_zero = 3840
 {SENSOR_WORD_WRITE, 0xC98A, 0x0B07},		//cam_port_mipi_timing_t_hs_exit_hs_trail = 2823
 {SENSOR_WORD_WRITE, 0xC98C, 0x0D01},		//cam_port_mipi_timing_t_clk_post_clk_pre = 3329
@@ -543,7 +537,7 @@ static struct sensor_reg_ex mode_1280x720[] =
 {SENSOR_WORD_WRITE, 0xC85C, 0x0342},		//cam_crop_cropmode = 3
 {SENSOR_WORD_WRITE, 0xC868, 0x0500},		//cam_output_width = 1280
 {SENSOR_WORD_WRITE, 0xC86A, 0x02D0},		//cam_output_height = 720
-{SEQUENCE_WAIT_MS, 0, 100}, 	//delay=100
+{SENSOR_WAIT_MS, 0, 100}, 	//delay=100
 
 {SENSOR_WORD_WRITE, 0xC878, 0x0f01},		//cam_aet_aemode = 0
 {SENSOR_WORD_WRITE, 0xC88C, 0x1E00},		//cam_aet_max_frame_rate = 7680
@@ -578,9 +572,9 @@ static struct sensor_reg_ex mode_1280x720[] =
 
 {SENSOR_WORD_WRITE, 0x098E, 0xDC00}, 	// LOGICAL_ADDRESS_ACCESS [SYSMGR_NEXT_STATE]
 {SENSOR_WORD_WRITE, 0xDC00, 0x2800}, 	// SYSMGR_NEXT_STATE
-{SEQUENCE_WAIT_MS, 0, 50}, //delay=50
+{SENSOR_WAIT_MS, 0, 50}, //delay=50
 {SENSOR_WORD_WRITE, 0x0080, 0x8002}, 	// COMMAND_REGISTER
-{SEQUENCE_END, 0x0000}
+{SENSOR_TABLE_END, 0x0000}
 };
 
 static struct sensor_reg_ex ColorEffect_None[] = {
@@ -955,12 +949,10 @@ static int sensor_write_table_ex(struct i2c_client *client,
 	int err;
 	const struct sensor_reg_ex *next;
 	u16 val;
-  int i=0;
 
 	pr_info("yuv %s\n",__func__);
 
 	for (next = table; next->cmd != SENSOR_TABLE_END; next++) {
-//    printk("%d: cmd,addr,value= %d, 0x%X, 0x%X\n", i, next->cmd, next->addr, next->val);
 		if (next->cmd == SENSOR_WAIT_MS) {
 			msleep(next->val);
 			continue;
@@ -1005,7 +997,7 @@ static ssize_t dbg_mi1040_chip_id_read(struct file *file, char __user *buf, size
 	u16 chip_id = 0x0;
 	int err = 0;
 
-	printk("%s: buf=%p, count=%d, ppos=%p; *ppos= %d\n", __FUNCTION__, buf, count, ppos, *ppos);
+	printk("%s: buf=%p, count=%d, ppos=%p; *ppos= %lld\n", __FUNCTION__, buf, count, ppos, *ppos);
 
 	if (*ppos)
 		return 0;	/* the end */
@@ -1031,7 +1023,7 @@ static ssize_t dbg_mi1040_chip_id_read(struct file *file, char __user *buf, size
 			info->pdata->power_off();
 		} else {
 			len = snprintf(bp, dlen, "mi1040 info isn't enough for power_off.\n");
-			tot += len; bp += len; dlen -= len;
+			tot += len; bp += len;
 		}
 	}
 
@@ -1055,14 +1047,14 @@ static ssize_t dbg_get_mi1040_reg_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static ssize_t dbg_get_mi1040_reg_write(struct file *file, char __user *buf, size_t count,
+static ssize_t dbg_get_mi1040_reg_write(struct file *file, const char __user *buf, size_t count,
 				loff_t *ppos)
 {
 	char debug_buf[256];
-	int cnt, byte_num = 0;
+	int byte_num = 0;
 	char ofst_str[7];
 	unsigned int ofst = 0;
-	unsigned int val = 0;
+	u16 val = 0;
 
 	printk("%s: buf=%p, count=%d, ppos=%p\n", __FUNCTION__, buf, count, ppos);
 	if (count > sizeof(debug_buf))
@@ -1070,7 +1062,7 @@ static ssize_t dbg_get_mi1040_reg_write(struct file *file, char __user *buf, siz
 	if (copy_from_user(debug_buf, buf, count))
 		return -EFAULT;
 	debug_buf[count] = '\0';	/* end of string */
-	cnt = sscanf(debug_buf, "%s %d", ofst_str, &byte_num);
+	sscanf(debug_buf, "%s %d", ofst_str, &byte_num);
 
 	if (sensor_opened == false) {
 			printk("%s: Please open mi1040 first.\n", __FUNCTION__);
@@ -1100,7 +1092,7 @@ static ssize_t dbg_get_mi1040_reg_write(struct file *file, char __user *buf, siz
 			else if (byte_num == 2)
 				err = sensor_read_reg_word(info->i2c_client, ofst, &val);
 			else if (byte_num == 4)
-				err = sensor_read_reg_dword(info->i2c_client, ofst, &val);
+				err = sensor_read_reg_dword(info->i2c_client, ofst, (u32 *)&val);
 			else {
 				printk("%s: Byte Num should be 1, 2 or 4.\n", __FUNCTION__);
 				err = -1;
@@ -1135,7 +1127,7 @@ static ssize_t dbg_set_mi1040_reg_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static ssize_t dbg_set_mi1040_reg_write(struct file *file, char __user *buf, size_t count,
+static ssize_t dbg_set_mi1040_reg_write(struct file *file, const char __user *buf, size_t count,
 				loff_t *ppos)
 {
 	char debug_buf[256];
@@ -1231,22 +1223,6 @@ static const struct file_operations dbg_set_mi1040_reg_fops = {
 	.write		= dbg_set_mi1040_reg_write,
 };
 /* debugfs- */
-
-static int get_sensor_current_width(struct i2c_client *client, u16 *val)
-{
-        int err;
-
-        err = sensor_write_reg_word(client, 0x098c, 0x2703);
-        if (err)
-          return err;
-
-        err = sensor_read_reg(client, 0x0990, val);
-
-        if (err)
-          return err;
-
-        return 0;
-}
 
 static int sensor_set_mode(struct sensor_info *info, struct sensor_mode *mode)
 {
@@ -1432,7 +1408,7 @@ static long sensor_ioctl(struct file *file,
 			ev=1;
 		else if (val > 0x42)
 			ev=2;
-		if (copy_to_user((const void __user *)arg, &ev, sizeof(short))) {
+		if (copy_to_user((void __user *)arg, &ev, sizeof(short))) {
 			return -EFAULT;
 		}
 		if (err)
@@ -1465,7 +1441,7 @@ static long sensor_ioctl(struct file *file,
 		}else
 			printk("AELOCK Unknown State: 0x%x???\n", val);
 
-		if (copy_to_user((const void __user *)arg, &aelock, sizeof(u32)))
+		if (copy_to_user((void __user *)arg, &aelock, sizeof(u32)))
 		{
 			return -EFAULT;
 		}
@@ -1523,7 +1499,7 @@ static long sensor_ioctl(struct file *file,
 		}else
 			printk("AWBLOCK Unknown State???\n");
 
-		if (copy_to_user((const void __user *)arg, &awblock, sizeof(u32)))
+		if (copy_to_user((void __user *)arg, &awblock, sizeof(u32)))
 		{
 			return -EFAULT;
 		}
