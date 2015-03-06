@@ -402,24 +402,10 @@ static struct attribute *nct1008_attributes[] = {
 static const struct attribute_group nct1008_attr_group = {
 	.attrs = nct1008_attributes,
 };
-static void dump_reg(const char *reg_name, int offset)
-{
-
-	int ret;
-
-	ret = i2c_smbus_read_byte_data(pnct1008_data->client,
-		offset);
-	if (ret >= 0)
-		printk( "Reg %s  Reg 0x%02x "
-		"Value 0x%02x\n", reg_name,offset, ret);
-	else
-		printk( "%s: line=%d, i2c read error=%d\n",
-		__func__, __LINE__, ret);
-}
 void nct1008_read_stress_test(struct work_struct *work)
 {
 	long temperature=0;
-	nct1008_get_temp(&pnct1008_data->client->dev, &temperature);
+	nct1008_get_temp(&pnct1008_data->client->dev, &temperature, NULL);
        queue_delayed_work(nct1008_stress_work_queue, &pnct1008_data->stress_test, 5*HZ);
 	return ;
 }
