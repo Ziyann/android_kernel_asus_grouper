@@ -39,6 +39,7 @@
 #include <linux/skbuff.h>
 #include <linux/regulator/consumer.h>
 #include <linux/smb347-charger.h>
+#include <linux/rfkill-gpio.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -118,20 +119,21 @@ static struct tegra_utmip_config utmi_phy_config[] = {
 	},
 };
 
-static struct resource grouper_bcm4330_rfkill_resources[] = {
+static struct rfkill_gpio_platform_data grouper_bt_rfkill_pdata[] = {
 	{
-		.name   = "bcm4330_nshutdown_gpio",
-		.start  = TEGRA_GPIO_PU0,
-		.end    = TEGRA_GPIO_PU0,
-		.flags  = IORESOURCE_IO,
+		.name   = "bt_rfkill",
+		.shutdown_gpio  = TEGRA_GPIO_PU0,
+		.reset_gpio     = TEGRA_GPIO_INVALID,
+		.type           = RFKILL_TYPE_BLUETOOTH,
 	},
 };
 
-static struct platform_device grouper_bcm4330_rfkill_device = {
-	.name = "bcm4330_rfkill",
+static struct platform_device grouper_bt_rfkill_device = {
+	.name = "rfkill_gpio",
 	.id             = -1,
-	.num_resources  = ARRAY_SIZE(grouper_bcm4330_rfkill_resources),
-	.resource       = grouper_bcm4330_rfkill_resources,
+	.dev = {
+		.platform_data = &grouper_bt_rfkill_pdata,
+	},
 };
 
 static struct resource grouper_bluesleep_resources[] = {
@@ -537,7 +539,7 @@ static struct platform_device *grouper_devices[] __initdata = {
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
-	&grouper_bcm4330_rfkill_device,
+	&grouper_bt_rfkill_device,
 	&tegra_pcm_device,
 	&grouper_audio_device,
 	&tegra_hda_device,
