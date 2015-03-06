@@ -1084,6 +1084,15 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 
 	tegra_dc_writel(dc, update_mask << 8, DC_CMD_STATE_CONTROL);
 
+	tegra_dc_writel(dc, FRAME_END_INT | V_BLANK_INT, DC_CMD_INT_STATUS);
+	if (!no_vsync) {
+		set_bit(V_BLANK_FLIP, &dc->vblank_ref_count);
+		tegra_dc_unmask_interrupt(dc, FRAME_END_INT | V_BLANK_INT | ALL_UF_INT);
+	} else {
+		clear_bit(V_BLANK_FLIP, &dc->vblank_ref_count);
+		tegra_dc_mask_interrupt(dc, FRAME_END_INT | V_BLANK_INT | ALL_UF_INT);
+	}
+
 	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE)
 		schedule_delayed_work(&dc->one_shot_work,
 				msecs_to_jiffies(dc->one_shot_delay_ms));
@@ -1096,16 +1105,6 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 
 	tegra_dc_writel(dc, update_mask, DC_CMD_STATE_CONTROL);
 	trace_printk("%s:update_mask=%#lx\n", dc->ndev->name, update_mask);
-
-	/* clean & enable DC interrupts */
-	tegra_dc_writel(dc, FRAME_END_INT | V_BLANK_INT, DC_CMD_INT_STATUS);
-	if (!no_vsync) {
-		set_bit(V_BLANK_FLIP, &dc->vblank_ref_count);
-		tegra_dc_unmask_interrupt(dc, FRAME_END_INT | V_BLANK_INT | ALL_UF_INT);
-	} else {
-		clear_bit(V_BLANK_FLIP, &dc->vblank_ref_count);
-		tegra_dc_mask_interrupt(dc, FRAME_END_INT | V_BLANK_INT | ALL_UF_INT);
-	}
 
 	mutex_unlock(&dc->lock);
 	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE)
@@ -1612,7 +1611,7 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 				"Display timing doesn't meet restrictions.\n");
 		return -EINVAL;
 	}
-	dev_dbg(&dc->ndev->dev, "Using mode %dx%d pclk=%d href=%d vref=%d\n",
+	dev_info(&dc->ndev->dev, "Using mode %dx%d pclk=%d href=%d vref=%d\n",
 		mode.h_active, mode.v_active, mode.pclk,
 		mode.h_ref_to_sync, mode.v_ref_to_sync
 	);
@@ -1866,15 +1865,16 @@ static void tegra_dc_vblank(struct work_struct *work)
 	bool nvsd_updated = false;
 
 	mutex_lock(&dc->lock);
-	/* use the new frame's bandwidth setting instead of max(current, new),
-	 * skip this if we're using tegra_dc_one_shot_worker() */
-	if (!(dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE))
-		tegra_dc_program_bandwidth(dc, true);
 
 	if (!dc->enabled) {
 		mutex_unlock(&dc->lock);
 		return;
 	}
+
+	/* use the new frame's bandwidth setting instead of max(current, new),
+	 * skip this if we're using tegra_dc_one_shot_worker() */
+	if (!(dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE))
+		tegra_dc_program_bandwidth(dc, true);
 
 	/* Clear the V_BLANK_FLIP bit of vblank ref-count if update is clean. */
 	if (!tegra_dc_windows_are_dirty(dc))
@@ -2381,6 +2381,9 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 	if (dc->out_ops && dc->out_ops->enable)
 		dc->out_ops->enable(dc);
 
+	if (dc->out->postpoweron)
+		dc->out->postpoweron();
+
 	/* force a full blending update */
 	dc->blend.z[0] = -1;
 
@@ -2388,13 +2391,7 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 
 	tegra_dc_writel(dc, GENERAL_UPDATE, DC_CMD_STATE_CONTROL);
 	tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
-
-
-	if (dc->out->postpoweron)
-		dc->out->postpoweron();
-
 	trace_printk("%s:enable\n", dc->ndev->name);
-
 	return true;
 }
 

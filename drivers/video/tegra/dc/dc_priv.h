@@ -211,10 +211,6 @@ static inline unsigned long tegra_dc_get_default_emc_clk_rate(
 	return dc->pdata->emc_clk_rate ? dc->pdata->emc_clk_rate : ULONG_MAX;
 }
 
-static inline void tegra_dc_unmask_interrupt(struct tegra_dc *dc, u32 int_val);
-static inline void tegra_dc_mask_interrupt(struct tegra_dc *dc, u32 int_val);
-static bool tegra_dc_windows_are_dirty(struct tegra_dc *dc);
-
 static inline int tegra_dc_fmt_bpp(int fmt)
 {
 	switch (fmt) {
@@ -294,6 +290,10 @@ static inline bool tegra_dc_is_yuv_planar(int fmt)
 	}
 	return false;
 }
+
+static inline void tegra_dc_unmask_interrupt(struct tegra_dc *dc, u32 int_val);
+static inline void tegra_dc_mask_interrupt(struct tegra_dc *dc, u32 int_val);
+static bool tegra_dc_windows_are_dirty(struct tegra_dc *dc);
 
 void tegra_dc_setup_clk(struct tegra_dc *dc, struct clk *clk);
 
