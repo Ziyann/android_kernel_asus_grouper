@@ -244,6 +244,15 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 		const bool filter_h = win_use_h_filter(dc, win);
 		const bool filter_v = win_use_v_filter(dc, win);
 
+#ifdef CONFIG_MACH_GROUPER
+		if (win->dc->ndev->id == 0) {
+			invert_h = !invert_h;
+			invert_v = !invert_v;
+			win->out_x = win->dc->pdata->fb->xres - (win->out_x + win->out_w);
+			win->out_y = win->dc->pdata->fb->yres - (win->out_y + win->out_h);
+		}
+#endif
+
 		if (win->z != dc->blend.z[win->idx]) {
 			dc->blend.z[win->idx] = win->z;
 			update_blend = true;
@@ -263,7 +272,11 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 
 		if (!WIN_IS_ENABLED(win)) {
 			dc->windows[i].dirty = 1;
+#ifdef CONFIG_MACH_GROUPER
+			tegra_dc_writel(dc, TEGRA_WIN_FLAG_INVERT_H|TEGRA_WIN_FLAG_INVERT_V, DC_WIN_WIN_OPTIONS);
+#else
 			tegra_dc_writel(dc, 0, DC_WIN_WIN_OPTIONS);
+#endif
 			continue;
 		}
 
