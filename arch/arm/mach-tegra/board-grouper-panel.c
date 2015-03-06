@@ -37,6 +37,7 @@
 #include "board-grouper.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "tegra3_host1x_devices.h"
 #include <mach/board-grouper-misc.h>
 
 /* grouper default display board pins */
@@ -673,7 +674,7 @@ int __init grouper_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra3_register_host1x_devices();
 	if (err)
 		return err;
 #endif
