@@ -469,7 +469,7 @@ unsigned int tegra_getspeed(unsigned int cpu)
 	rate = clk_get_rate(cpu_clk) / 1000;
 	return rate;
 }
-extern bool stress_test_enable;
+
 int tegra_update_cpu_speed(unsigned long rate)
 {
 	int ret = 0;
@@ -507,9 +507,10 @@ int tegra_update_cpu_speed(unsigned long rate)
 	for_each_online_cpu(freqs.cpu)
 		cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
-	if(stress_test_enable)
-		printk(KERN_DEBUG "cpufreq-tegra: transition: %u --> %u\n",
-			freqs.old, freqs.new);
+#ifdef CONFIG_CPU_FREQ_DEBUG
+	printk(KERN_DEBUG "cpufreq-tegra: transition: %u --> %u\n",
+	       freqs.old, freqs.new);
+#endif
 
 	ret = clk_set_rate(cpu_clk, freqs.new * 1000);
 	if (ret) {
