@@ -424,6 +424,45 @@ static __initdata struct tegra_pingroup_config grouper_pinmux_common[] = {
 	DEFAULT_PINMUX(ULPI_DATA3,      ULPI,            NORMAL,    NORMAL,     INPUT),
 };
 
+static __initdata struct tegra_pingroup_config grouper_pcbid_pinmux[] = {
+	/* PCB_ID0 */
+	DEFAULT_PINMUX(KB_ROW4, KBC, NORMAL, TRISTATE, INPUT),
+	/* PCB_ID1 */
+	DEFAULT_PINMUX(KB_ROW5, KBC, NORMAL, TRISTATE, INPUT),
+	/* PCB_ID2 */
+	DEFAULT_PINMUX(KB_COL4, KBC, NORMAL, TRISTATE, INPUT),
+	/* PCB_ID3 */
+	DEFAULT_PINMUX(KB_COL7, KBC, NORMAL, TRISTATE, INPUT),
+	/* PCB_ID4 */
+	DEFAULT_PINMUX(KB_ROW2, KBC, NORMAL, TRISTATE, INPUT),
+	/* PCB_ID5 */
+	DEFAULT_PINMUX(KB_COL5, KBC, NORMAL, TRISTATE, INPUT),
+	/* PCB_ID6 */
+	DEFAULT_PINMUX(GMI_CS0_N, RSVD1, NORMAL, TRISTATE, INPUT),
+	/* PCB_ID7 */
+	DEFAULT_PINMUX(GMI_CS1_N, RSVD1, NORMAL, TRISTATE, INPUT),
+	/* PCB_ID8 */
+	DEFAULT_PINMUX(GMI_CS2_N, RSVD1, NORMAL, TRISTATE, INPUT),
+
+	/* Need to reset the following pins after reading for power saving
+	 * On nakasi device, pin should be restored with no-pull and
+	 * input/output buffer disabled.
+	 * On other devices, pin is set to no-pull and output buffer disabled
+	 * because it should be configured with desired state externally.
+	 */
+
+	/* PCB_ID9 */
+	DEFAULT_PINMUX(GMI_WP_N, RSVD1, PULL_DOWN, TRISTATE, INPUT),
+	/* PROJECT_ID0 (aka PCB_ID10) */
+	DEFAULT_PINMUX(GMI_CS4_N, RSVD1, PULL_DOWN, TRISTATE, INPUT),
+	/* PROJECT_ID1 (aka PCB_ID11) */
+	DEFAULT_PINMUX(GMI_CS6_N, GMI, PULL_DOWN, TRISTATE, INPUT),
+	/* PROJECT_ID2 (aka PCB_ID12) */
+	DEFAULT_PINMUX(GMI_WAIT, RSVD1, PULL_DOWN, TRISTATE, INPUT),
+	/* PROJECT_ID3 (aka PCB_ID13) */
+	DEFAULT_PINMUX(GMI_CS3_N, RSVD1, PULL_DOWN, TRISTATE, INPUT),
+};
+
 static __initdata struct tegra_pingroup_config pinmux_grouper3g[] = {
 	DEFAULT_PINMUX(LCD_DC1,         DISPLAYA,        PULL_DOWN,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(LCD_PWR2,        DISPLAYA,        PULL_DOWN,    NORMAL,     OUTPUT),
@@ -449,7 +488,6 @@ static __initdata struct tegra_pingroup_config pinmux_grouper3g[] = {
 	DEFAULT_PINMUX(KB_ROW3,         KBC,             PULL_UP,      NORMAL,     INPUT), // SAR_DET#_3G
 	DEFAULT_PINMUX(KB_ROW13,        KBC,             PULL_UP,      NORMAL,     INPUT), // SAR_DET#_3G
 };
-
 
 /*Do not use for now*/
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
@@ -603,6 +641,9 @@ int __init grouper_pinmux_init(void)
 	tegra_get_board_info(&board_info);
 	BUG_ON(board_info.board_id != BOARD_E1565);
 	grouper_gpio_init_configure();
+
+	tegra_pinmux_config_table(grouper_pcbid_pinmux,
+					ARRAY_SIZE(grouper_pcbid_pinmux));
 
 	tegra_pinmux_config_table(grouper_pinmux_common, ARRAY_SIZE(grouper_pinmux_common));
 	tegra_drive_pinmux_config_table(grouper_drive_pinmux,
