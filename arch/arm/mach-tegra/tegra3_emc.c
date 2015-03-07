@@ -1164,8 +1164,6 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 
 	register_pm_notifier(&tegra_emc_suspend_nb);
 	register_pm_notifier(&tegra_emc_resume_nb);
-
-	return;
 }
 
 void tegra_emc_timing_invalidate(void)
@@ -1280,10 +1278,8 @@ int tegra_emc_set_over_temp_state(unsigned long state)
 			emc_writel(EMC_REF_FORCE_CMD, EMC_REF);
 		dram_over_temp_state = state;
 	}
-
 	spin_unlock_irqrestore(&emc_access_lock, flags);
 	return 0;
-
 }
 
 /* non-zero state value will reduce eack_disable_refcnt */
@@ -1334,7 +1330,6 @@ int tegra_emc_disable_eack(void) {
 #ifdef CONFIG_DEBUG_FS
 
 static struct dentry *emc_debugfs_root;
-static bool eack_state = true;
 
 static int emc_stats_show(struct seq_file *s, void *data)
 {
@@ -1407,7 +1402,6 @@ static int eack_state_get(void *data, u64 *val)
 static int eack_state_set(void *data, u64 val)
 {
 	tegra_emc_set_eack_state(val);
-	eack_state = val;
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(eack_state_fops, eack_state_get,
