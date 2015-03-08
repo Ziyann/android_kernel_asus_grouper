@@ -32,8 +32,6 @@
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 
-#include <../gpio-names.h>
-
 /* Register Addresses */
 #define LOCAL_TEMP_RD			0x00
 #define EXT_TEMP_RD_HI			0x01
@@ -79,6 +77,7 @@
 #define MAX_CONV_TIME_ONESHOT_MS (52)
 #define CELSIUS_TO_MILLICELSIUS(x) ((x)*1000)
 #define MILLICELSIUS_TO_CELSIUS(x) ((x)/1000)
+
 
 static int conv_period_ms_table[] =
 	{16000, 8000, 4000, 2000, 1000, 500, 250, 125, 63, 32, 16};
@@ -370,28 +369,8 @@ static DEVICE_ATTR(temperature_overheat, (S_IRUGO | (S_IWUSR | S_IWGRP)),
 static DEVICE_ATTR(temperature_alert, (S_IRUGO | (S_IWUSR | S_IWGRP)),
 		nct1008_show_temp_alert, nct1008_set_temp_alert);
 static DEVICE_ATTR(ext_temperature, S_IRUGO, nct1008_show_ext_temp, NULL);
-//===============stress test start ================
-struct nct1008_data *pnct1008_data=NULL;
-#define NCT1008_IOC_MAGIC	0xFA
-#define NCT1008_IOC_MAXNR	5
-#define NCT1008_POLLING_DATA _IOR(NCT1008_IOC_MAGIC, 1,int)
 
-#define TEST_END (0)
-#define START_NORMAL (1)
-#define START_HEAVY (2)
-#define IOCTL_ERROR (-1)
- struct workqueue_struct *nct1008_stress_work_queue=NULL;
-static ssize_t show_nct1008_i2c_status(struct device *dev, struct device_attribute *devattr, char *buf)
-{
-	if(pnct1008_data)
-		return sprintf(buf, "%d\n", pnct1008_data->i2c_status);
-	else
-		return sprintf(buf, "%d\n", 0);
-}
-
-static DEVICE_ATTR(nct1008_i2c_status, S_IWUSR | S_IRUGO,show_nct1008_i2c_status,NULL);
 static struct attribute *nct1008_attributes[] = {
-	&dev_attr_nct1008_i2c_status.attr,
 	&dev_attr_temperature.attr,
 	&dev_attr_temperature_overheat.attr,
 	&dev_attr_temperature_alert.attr,
@@ -402,51 +381,6 @@ static struct attribute *nct1008_attributes[] = {
 static const struct attribute_group nct1008_attr_group = {
 	.attrs = nct1008_attributes,
 };
-void nct1008_read_stress_test(struct work_struct *work)
-{
-	long temperature=0;
-	nct1008_get_temp(&pnct1008_data->client->dev, &temperature, NULL);
-       queue_delayed_work(nct1008_stress_work_queue, &pnct1008_data->stress_test, 5*HZ);
-	return ;
-}
-long  nct1008_ioctl(struct file *filp,  unsigned int cmd, unsigned long arg)
-{
-	if (_IOC_TYPE(cmd) ==NCT1008_IOC_MAGIC){
-	     printk("nct1008_ioctl vaild magic \n");
-		}
-	else	{
-		printk("nct1008_ioctl invaild magic \n");
-		return -ENOTTY;
-		}
-	switch(cmd)
-	{
-		 case NCT1008_POLLING_DATA :
-		    if ((arg==START_NORMAL)||(arg==START_HEAVY)){
-				 printk(" nct1008 stress test start (%s)\n",(arg==START_NORMAL)?"normal":"heavy");
-				 queue_delayed_work(nct1008_stress_work_queue, &pnct1008_data->stress_test, 2*HZ);
-			}
-		else{
-				 printk("nct1008 tress test end\n");
-				 cancel_delayed_work_sync(&pnct1008_data->stress_test);
-	               }
-		break;
-	  default:  /* redundant, as cmd was checked against MAXNR */
-	           printk("nct1008: unknow i2c  stress test  command cmd=%x arg=%lu\n",cmd,arg);
-		return -ENOTTY;
-		}
-   return 0;
-}
-int nct1008_open(struct inode *inode, struct file *filp)
-{
-	return 0;
-}
-struct file_operations nct1008_fops = {
-	.owner =    THIS_MODULE,
-	.unlocked_ioctl =   nct1008_ioctl,
-	.open =  nct1008_open,
-};
-
-//===================stress test end=====================
 
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
@@ -892,7 +826,6 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 	struct nct1008_data *data;
 	int err;
 
-	printk("nct1008_probe+\n");
 	data = kzalloc(sizeof(struct nct1008_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -902,11 +835,7 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 	memcpy(&data->plat_data, client->dev.platform_data,
 		sizeof(struct nct1008_platform_data));
 	i2c_set_clientdata(client, data);
-	mutex_init(&data->mutex);
-	//===================stress test start=====================
-	pnct1008_data=data;
-       pnct1008_data->i2c_status=0;
-	//===================stress test end=====================
+
 	nct1008_power_control(data, true);
 	/* extended range recommended steps 1 through 4 taken care
 	 * in nct1008_configure_sensor function */
@@ -916,17 +845,7 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 			__FILE__, __func__, __LINE__);
 		goto error;
 	}
-	 //===================stress test start=====================
-       //err = sysfs_create_group(&client->dev.kobj, &nct1008_attr_group);
-	INIT_DELAYED_WORK(&pnct1008_data->stress_test,  nct1008_read_stress_test) ;
-       nct1008_stress_work_queue = create_singlethread_workqueue("nct1008_strees_test_workqueue");
-       pnct1008_data->i2c_status=1;
-	pnct1008_data->nct1008_misc.minor	= MISC_DYNAMIC_MINOR;
-	pnct1008_data->nct1008_misc.name	= (data->chip == NCT72) ? "nct72" : "nct1008";
-	pnct1008_data->nct1008_misc.fops  	= &nct1008_fops;
-       err=misc_register(&pnct1008_data->nct1008_misc);
-	 printk(KERN_INFO "nct1008 register misc device for I2C stress test rc=%x\n", err);
-	 //===================stress test end=====================
+
 	err = nct1008_configure_irq(data);
 	if (err < 0) {
 		dev_err(&client->dev, "\n error file: %s : %s(), line=%d ",
@@ -951,7 +870,6 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 	if (data->plat_data.probe_callback)
 		data->plat_data.probe_callback(data);
 
-	printk("nct1008_probe-\n");
 	return 0;
 
 error:
@@ -1003,6 +921,7 @@ static int nct1008_resume(struct i2c_client *client)
 		return err;
 	}
 	enable_irq(client->irq);
+
 	return 0;
 }
 #endif
