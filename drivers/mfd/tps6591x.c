@@ -33,11 +33,6 @@
 #include <linux/mfd/core.h>
 #include <linux/mfd/tps6591x.h>
 
-//=================stree test=================
-#include <linux/miscdevice.h>
-#include <linux/ioctl.h>
-#include <linux/fs.h>
-//=================stree test end =================
 #include <linux/delay.h>
 #define TPS6591X_RETRY_LIMIT (3)
 #define TPS6591X_RETRY_DELAY (5)
@@ -136,11 +131,6 @@ struct tps6591x {
 	u32			irq_en;
 	u8			mask_cache[3];
 	u8			mask_reg[3];
-	//=================stree test=================
-	int			i2c_status;
-	struct delayed_work stress_test;
-	struct miscdevice tps6591x_misc;
-	//=================stree test end=================
 };
 
 static inline int __tps6591x_read(struct i2c_client *client,
@@ -385,17 +375,16 @@ static void tps6591x_power_off(void)
 	pr_err("%s(): Setting power off seq\n", __func__);
 	ret = tps6591x_set_bits(dev, TPS6591X_DEVCTRL, DEVCTRL_PWR_OFF_SEQ);
 	if (ret < 0)
-		return ret;
+		return;
 
 	pr_err("%s(): Clearing DEV_SLP\n", __func__);
 	ret = tps6591x_clr_bits(dev, TPS6591X_DEVCTRL, DEVCTRL_DEV_SLP);
 	if (ret < 0)
-		return ret;
+		return;
 
 	pr_err("%s(): Setting device off and clearing dev-on\n", __func__);
 	ret = tps6591x_update(dev, TPS6591X_DEVCTRL, DEVCTRL_DEV_OFF,
 					DEVCTRL_DEV_OFF | DEVCTRL_DEV_ON);
-	return ret;
 }
 
 static int tps6591x_gpio_get(struct gpio_chip *gc, unsigned offset)
@@ -895,91 +884,6 @@ disable_dev_slp:
 err_sleep_init:
 	return ret;
 }
-//=================stree test=================
-struct tps6591x *temp_tps6591x=NULL;
-
-static ssize_t show_tps6591x_i2c_status(struct device *dev, struct device_attribute *devattr, char *buf)
-{
-	if(temp_tps6591x)
-		return sprintf(buf, "%d\n", temp_tps6591x->i2c_status);
-	else
-		return sprintf(buf, "%d\n", 0);
-}
-static DEVICE_ATTR(tps6591x_i2c_status, S_IWUSR | S_IRUGO,show_tps6591x_i2c_status,NULL);
-
-static struct attribute *tps6591x_i2c_attributes[] = {
-
-	&dev_attr_tps6591x_i2c_status.attr,
-	NULL,
-};
-
-static const struct attribute_group tps6591x_i2c_group = {
-	.attrs = tps6591x_i2c_attributes,
-};
-
-
-#define TPS6591X_IOC_MAGIC	0xFB
-#define TPS6591X_IOC_MAXNR	5
-#define TPS6591X_POLLING_DATA _IOR(TPS6591X_IOC_MAGIC, 1,int)
-
-#define TEST_END (0)
-#define START_NORMAL (1)
-#define START_HEAVY (2)
-#define IOCTL_ERROR (-1)
- struct workqueue_struct *tps6591x_strees_work_queue=NULL;
-
-void tps6591x_read_stress_test(struct work_struct *work)
-{
-	uint8_t reg_val;
-	int ret = 0;
-
-	mutex_lock(&temp_tps6591x->lock);
-
-	ret = __tps6591x_read(temp_tps6591x->client, TPS6591X_VERNUM, &reg_val);
-	if (ret < 0) {
-		printk("failed ps6591x_read_stress_test \n");
-	}
-
-	mutex_unlock(&temp_tps6591x->lock);
-	queue_delayed_work(tps6591x_strees_work_queue, &temp_tps6591x->stress_test, 2*HZ);
-	return ;
-}
-long  tps6591x_ioctl(struct file *filp,  unsigned int cmd, unsigned long arg)
-{
-	if (_IOC_TYPE(cmd) ==TPS6591X_IOC_MAGIC)
-	     printk("  tps6591x_ioctl vaild magic \n");
-	else	{
-		printk("  tps65991x_ioctl invaild magic \n");
-		return -ENOTTY;
-	}
-
-	switch(cmd)
-	{
-		 case TPS6591X_POLLING_DATA :
-		 if ((arg==START_NORMAL)||(arg==START_HEAVY)){
-				 printk(" tps6591x stress test start (%s)\n",(arg==START_NORMAL)?"normal":"heavy");
-				 queue_delayed_work(tps6591x_strees_work_queue, &temp_tps6591x->stress_test, 2*HZ);
-		} else {
-				 printk(" t tps6591x tress test end\n");
-				 cancel_delayed_work_sync(&temp_tps6591x->stress_test);
-	      }
-		break;
-	  default:  /* redundant, as cmd was checked against MAXNR */
-	           printk("  TPS6591X: unknow i2c  stress test  command cmd=%x arg=%lu\n",cmd,arg);
-		return -ENOTTY;
-		}
-   return 0;
-}
-int tps6591x_open(struct inode *inode, struct file *filp)
-{
-	return 0;
-}
-struct file_operations tps6591x_fops = {
-	.owner =    THIS_MODULE,
-	.unlocked_ioctl =   tps6591x_ioctl,
-	.open =  tps6591x_open,
-};
-//=================stree test end=================
 
 static int __devinit tps6591x_i2c_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
@@ -987,9 +891,6 @@ static int __devinit tps6591x_i2c_probe(struct i2c_client *client,
 	struct tps6591x_platform_data *pdata = client->dev.platform_data;
 	struct tps6591x *tps6591x;
 	int ret;
-	//=================stree test ===================
-	int rc;
-	//=================stree test end=================
 	if (!pdata) {
 		dev_err(&client->dev, "tps6591x requires platform data\n");
 		return -ENOTSUPP;
@@ -1039,21 +940,6 @@ static int __devinit tps6591x_i2c_probe(struct i2c_client *client,
 		pm_power_off = tps6591x_power_off;
 
 	tps6591x_i2c_client = client;
-	//=================stree test=================
-	temp_tps6591x=tps6591x;
-       temp_tps6591x->i2c_status=1;
-	if (sysfs_create_group(&client->dev.kobj, &tps6591x_i2c_group)) {
-		dev_err(&client->dev, "tps6591x_i2c_probe:Not able to create the sysfs\n");
-	}
-       INIT_DELAYED_WORK(&temp_tps6591x->stress_test,  tps6591x_read_stress_test) ;
-       tps6591x_strees_work_queue = create_singlethread_workqueue("tps6591x_strees_test_workqueue");
-
-	temp_tps6591x->tps6591x_misc.minor	= MISC_DYNAMIC_MINOR;
-	temp_tps6591x->tps6591x_misc.name	= "tps6591x";
-	temp_tps6591x->tps6591x_misc.fops  	= &tps6591x_fops;
-       rc=misc_register(&temp_tps6591x->tps6591x_misc);
-	 printk(KERN_INFO "tps6591x register misc device for I2C stress test rc=%x\n", rc);
-	//=================stree test end=================
 	return 0;
 
 err_add_devs:
@@ -1061,24 +947,6 @@ err_add_devs:
 		free_irq(client->irq, tps6591x);
 err_irq_init:
 	kfree(tps6591x);
-	return ret;
-}
-
-int tps6591x_set_reg_enable_record(void)
-{
-	int ret = 0;
-
-	tps6591x_write(temp_tps6591x->dev, 0x3e, 0x11);
-	printk("%s : set 0x3e to 0x11 ret = %d\n", __func__, ret);
-	return ret;
-}
-
-int tps6591x_set_reg_disable_record(void)
-{
-	int ret = 0;
-
-	tps6591x_write(temp_tps6591x->dev, 0x3e, 0x39);
-	printk("%s : set 0x3e to 0x39 ret = %d\n", __func__, ret);
 	return ret;
 }
 
