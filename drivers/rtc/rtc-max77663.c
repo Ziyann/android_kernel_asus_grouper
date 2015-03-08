@@ -2,8 +2,8 @@
  * drivers/rtc/rtc-max77663.c
  * Max77663 RTC driver
  *
- * Copyright 2011 Maxim Integrated Products, Inc.
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright 2011-2012, Maxim Integrated Products, Inc.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -446,7 +446,8 @@ static int max77663_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	int ret;
 
 	if (rtc->shutdown_ongoing) {
-		dev_warn(rtc->dev, "rtc_set_alarm: Device shutdown on-going, skip alarm setting.\n");
+		dev_warn(rtc->dev, "rtc_set_alarm: "
+			 "Device shutdown on-going, skip alarm setting.\n");
 		return -ESHUTDOWN;
 	}
 	dev_dbg(rtc->dev, "rtc_set_alarm: "
