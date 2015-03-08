@@ -58,8 +58,6 @@
 #define MAX77663_REG_GPIO_ALT		0x40
 #define MAX77663_REG_ONOFF_CFG1		0x41
 #define MAX77663_REG_ONOFF_CFG2		0x42
-#define MAX77663_REG_CHIP_IDENT4	0x5C
-
 
 #define IRQ_TOP_GLBL_MASK		(1 << 7)
 #define IRQ_TOP_GLBL_SHIFT		7
@@ -1329,13 +1327,7 @@ static int max77663_probe(struct i2c_client *client,
 	chip->irq_base = pdata->irq_base;
 	chip->gpio_base = pdata->gpio_base;
 	mutex_init(&chip->io_lock);
-	/*read CID4 to know device revision */
-	ret = max77663_read(chip->dev,  MAX77663_REG_CHIP_IDENT4,
-			    &g_cid4, 1, 0);
-	if (ret < 0)
-		dev_err(&client->dev, "[Error][MAX77663]: read CID4 failed!\n");
-	else
-		printk("[MAX77663 probe]:CID4=%x!\n",g_cid4);
+
 	max77663_gpio_init(chip);
 	max77663_irq_init(chip);
 	max77663_debugfs_init(chip);
