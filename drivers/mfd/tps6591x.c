@@ -383,7 +383,7 @@ static void tps6591x_power_off(void)
 		return;
 
 	pr_err("%s(): Setting device off and clearing dev-on\n", __func__);
-	ret = tps6591x_update(dev, TPS6591X_DEVCTRL, DEVCTRL_DEV_OFF,
+	tps6591x_update(dev, TPS6591X_DEVCTRL, DEVCTRL_DEV_OFF,
 					DEVCTRL_DEV_OFF | DEVCTRL_DEV_ON);
 }
 
@@ -980,7 +980,7 @@ static int tps6591x_i2c_resume(struct i2c_client *client)
 }
 #endif
 
-static int tps6591x_i2c_shutdown(struct i2c_client *client)
+static void tps6591x_i2c_shutdown(struct i2c_client *client)
 {
 	int ret;
 
@@ -990,7 +990,6 @@ static int tps6591x_i2c_shutdown(struct i2c_client *client)
 	ret = tps6591x_set_bits(&client->dev, TPS6591X_INT_MSK, RTC_ALARM_IT_MSK);
 	if (ret < 0)
 		pr_err("%s(): Setting RTC_ALARM_IT_MSK fail.\n", __func__);
-	return ret;
 }
 
 
@@ -1011,7 +1010,7 @@ static struct i2c_driver tps6591x_driver = {
 	.suspend	= tps6591x_i2c_suspend,
 	.resume		= tps6591x_i2c_resume,
 #endif
-	.shutdown = tps6591x_i2c_shutdown,
+	.shutdown	= tps6591x_i2c_shutdown,
 	.id_table	= tps6591x_id_table,
 };
 
