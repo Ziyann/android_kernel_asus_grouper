@@ -52,7 +52,6 @@
 #include "dc_config.h"
 #include "dc_priv.h"
 #include "nvsd.h"
-#include <linux/gpio.h>
 
 #define TEGRA_CRC_LATCHED_DELAY		34
 
@@ -60,7 +59,6 @@
 #define DC_COM_PIN_OUTPUT_POLARITY3_INIT_VAL	0x0
 
 static struct timeval t_suspend;
-#define grouper_lvds_shutdown		110
 
 static struct tegra_dc_mode override_disp_mode[3];
 
@@ -1526,6 +1524,7 @@ void tegra_dc_enable(struct tegra_dc *dc)
 static void _tegra_dc_controller_disable(struct tegra_dc *dc)
 {
 	unsigned i;
+
 	// ensure prepoweroff called after backlight set to 0
 	if ( dc->ndev->id==0 && dc->out->sd_settings && dc->out->sd_settings->bl_device) {
 		struct platform_device *pdev = dc->out->sd_settings->bl_device;
@@ -1537,8 +1536,6 @@ static void _tegra_dc_controller_disable(struct tegra_dc *dc)
 			msleep(50);
 		}
 	}
-
-	gpio_set_value(grouper_lvds_shutdown, 0);
 
 	if (dc->out && dc->out->prepoweroff)
 		dc->out->prepoweroff();
