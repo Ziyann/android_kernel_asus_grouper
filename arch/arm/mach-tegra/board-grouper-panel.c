@@ -155,6 +155,13 @@ static struct platform_device grouper_backlight_device = {
 	},
 };
 
+static int grouper_panel_prepoweroff(void)
+{
+	gpio_set_value(grouper_lvds_shutdown, 0);
+
+	return 0;
+}
+
 static int grouper_panel_postpoweron(void)
 {
 	if (grouper_lvds_reg == NULL) {
@@ -513,6 +520,7 @@ static struct tegra_dc_out grouper_disp1_out = {
 	.modes		= grouper_panel_modes,
 	.n_modes	= ARRAY_SIZE(grouper_panel_modes),
 
+	.prepoweroff	= grouper_panel_prepoweroff,
 	.enable		= grouper_panel_enable,
 	.disable	= grouper_panel_disable,
 	.postpoweron	= grouper_panel_postpoweron,
