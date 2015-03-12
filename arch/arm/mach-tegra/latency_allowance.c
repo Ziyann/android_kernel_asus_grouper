@@ -15,6 +15,7 @@
  */
 
 #include <linux/types.h>
+#include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/debugfs.h>
@@ -337,8 +338,10 @@ static int __init tegra_latency_allowance_init(void)
 	la_scaling_enable_count = 0;
 	memset(&id_to_index[0], 0xFF, sizeof(id_to_index));
 
-	for (i = 0; i < ARRAY_SIZE(la_info_array); i++)
+	for (i = 0; i < ARRAY_SIZE(la_info_array); i++) {
 		id_to_index[la_info_array[i].id] = i;
+		usleep_range(1, 1);
+	}
 
 	tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
 	tegra_set_latency_allowance(TEGRA_LA_G2SR, 20);
