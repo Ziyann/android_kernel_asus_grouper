@@ -515,7 +515,9 @@ void tegra_io_dpd_enable(struct tegra_io_dpd *hnd)
 	unsigned int dpd_enable_lsb;
 
 	if ((!hnd)) {
+#ifndef CONFIG_MACH_GROUPER
 		pr_warn("SD IO DPD handle NULL in %s\n", __func__);
+#endif
 		return;
 	}
 	spin_lock(&tegra_io_dpd_lock);
@@ -545,7 +547,9 @@ void tegra_io_dpd_disable(struct tegra_io_dpd *hnd)
 	unsigned int dpd_enable_lsb;
 
 	if ((!hnd)) {
+#ifndef CONFIG_MACH_GROUPER
 		pr_warn("SD IO DPD handle NULL in %s\n", __func__);
+#endif
 		return;
 	}
 	spin_lock(&tegra_io_dpd_lock);
