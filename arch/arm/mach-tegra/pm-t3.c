@@ -477,10 +477,12 @@ void tegra_lp0_cpu_mode(bool enter)
 #define PMC_DPD_SAMPLE			0x20
 
 struct tegra_io_dpd tegra_list_io_dpd[] = {
+#ifndef CONFIG_MACH_GROUPER
 	/* sd dpd bits in dpd2 register */
 	IO_DPD_INFO("sdhci-tegra.0",	1,	1), /* SDMMC1 */
 	IO_DPD_INFO("sdhci-tegra.2",	1,	2), /* SDMMC3 */
 	IO_DPD_INFO("sdhci-tegra.3",	1,	3), /* SDMMC4 */
+#endif
 };
 
 /* we want to cleanup bootloader io dpd setting in kernel */
@@ -513,7 +515,9 @@ void tegra_io_dpd_enable(struct tegra_io_dpd *hnd)
 	unsigned int dpd_enable_lsb;
 
 	if ((!hnd)) {
+#ifndef CONFIG_MACH_GROUPER
 		pr_warn("SD IO DPD handle NULL in %s\n", __func__);
+#endif
 		return;
 	}
 	spin_lock(&tegra_io_dpd_lock);
@@ -543,7 +547,9 @@ void tegra_io_dpd_disable(struct tegra_io_dpd *hnd)
 	unsigned int dpd_enable_lsb;
 
 	if ((!hnd)) {
+#ifndef CONFIG_MACH_GROUPER
 		pr_warn("SD IO DPD handle NULL in %s\n", __func__);
+#endif
 		return;
 	}
 	spin_lock(&tegra_io_dpd_lock);
