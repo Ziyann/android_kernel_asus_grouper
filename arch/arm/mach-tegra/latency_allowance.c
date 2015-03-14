@@ -340,7 +340,9 @@ static int __init tegra_latency_allowance_init(void)
 
 	for (i = 0; i < ARRAY_SIZE(la_info_array); i++) {
 		id_to_index[la_info_array[i].id] = i;
+#ifdef CONFIG_MACH_GROUPER
 		usleep_range(1, 1);
+#endif
 	}
 
 	tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
