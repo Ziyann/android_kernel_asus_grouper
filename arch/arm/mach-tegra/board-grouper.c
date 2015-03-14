@@ -46,7 +46,6 @@
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
-#include <mach/io_dpd.h>
 #include <mach/io.h>
 #include <mach/i2s.h>
 #include <mach/tegra_asoc_pdata.h>
@@ -1041,7 +1040,6 @@ static void __init tegra_grouper_init(void)
 	grouper_audio_init();
 	platform_add_devices(grouper_devices, ARRAY_SIZE(grouper_devices));
 	tegra_ram_console_debug_init();
-	tegra_io_dpd_init();
 	grouper_sdhci_init();
 	if (grouper_query_pmic_id()) {
 		grouper_ti_regulator_init();
