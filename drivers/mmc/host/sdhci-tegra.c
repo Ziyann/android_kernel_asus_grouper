@@ -862,15 +862,6 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 	if (!strcmp(mmc_hostname(sdhci->mmc), "mmc0")) {
                 MMC_printk("%s: pull up data pin", mmc_hostname(sdhci->mmc));
 
-                tegra_gpio_enable(TEGRA_GPIO_PAA0);
-                tegra_gpio_enable(TEGRA_GPIO_PAA1);
-                tegra_gpio_enable(TEGRA_GPIO_PAA2);
-                tegra_gpio_enable(TEGRA_GPIO_PAA3);
-                tegra_gpio_enable(TEGRA_GPIO_PAA4);
-                tegra_gpio_enable(TEGRA_GPIO_PAA5);
-                tegra_gpio_enable(TEGRA_GPIO_PAA6);
-                tegra_gpio_enable(TEGRA_GPIO_PAA7);
-
                 gpio_request(TEGRA_GPIO_PAA0, "PAA0");
                 gpio_request(TEGRA_GPIO_PAA1, "PAA1");
                 gpio_request(TEGRA_GPIO_PAA2, "PAA2");
