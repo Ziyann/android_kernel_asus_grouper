@@ -359,6 +359,14 @@ config MACH_TEGRANOTE7C
        help
          Support for NVIDIA TEGRANOTE7C development platform
 
+config MACH_GROUPER
+       bool "grouper board"
+       depends on ARCH_TEGRA_3x_SOC
+       select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
+       select MACH_HAS_SND_SOC_TEGRA_RT5640 if SND_SOC
+       help
+         Support for NVIDIA grouper development platform
+
 config FAIRFAX_TSKIN
        bool "FAIRFAX TSKIN"
        depends on ARCH_TEGRA_11x_SOC
