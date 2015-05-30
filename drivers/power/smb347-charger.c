@@ -1116,7 +1116,7 @@ int smb347_config_thermal_charging(int temp)
 	int ret = 0, retval, setting = 0;
 
 	mdelay(150);
-	SMB_NOTICE("temp=%d\n", temp);
+	SMB_INFO("temp=%d\n", temp);
 
 	ret = smb347_volatile_writes(client, smb347_ENABLE_WRITE);
 		if (ret < 0) {
@@ -1134,6 +1134,7 @@ int smb347_config_thermal_charging(int temp)
 
 	setting = retval & ENABLE_PIN_CTRL_MASK;
 	if (temp > BAT_Hot_Limit) {
+		SMB_NOTICE("temp=%d\n", temp);
 		if (setting != 0x40) {
 			SMB_NOTICE("Charger disable\n");
 			smb347_charger_enable(false);
@@ -1144,7 +1145,7 @@ int smb347_config_thermal_charging(int temp)
 			SMB_NOTICE("Charger enable\n");
 			smb347_charger_enable(true);
 		} else
-			SMB_NOTICE("Bypass charger enable\n");
+			SMB_INFO("Bypass charger enable\n");
 	}
 
 	ret = smb347_volatile_writes(client, smb347_DISABLE_WRITE);
@@ -1244,9 +1245,9 @@ static int smb347_suspend(struct i2c_client *client, pm_message_t state)
 {
 	charger->suspend_ongoing = 1;
 
-	printk("smb347_suspend+\n");
+	dev_dbg(&client->dev, "smb347_suspend+\n");
 	flush_workqueue(smb347_wq);
-	printk("smb347_suspend-\n");
+	dev_dbg(&client->dev, "smb347_suspend-\n");
 	return 0;
 }
 
@@ -1254,12 +1255,11 @@ static int smb347_resume(struct i2c_client *client)
 {
 	charger->suspend_ongoing = 0;
 
-	printk("smb347_resume+\n");
+	dev_dbg(&client->dev, "smb347_resume+\n");
 	cable_type_detect(NULL);
-	printk("smb347_resume-\n");
+	dev_dbg(&client->dev, "smb347_resume-\n");
 	return 0;
 }
-
 
 static void smb347_shutdown(struct i2c_client *client)
 {
