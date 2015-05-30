@@ -319,6 +319,7 @@ static struct switch_dev tegra_rt5640_headset_switch = {
 	.name = "h2w",
 };
 
+#ifndef CONFIG_MACH_GROUPER
 static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 			      unsigned long action, void *dev)
 {
@@ -329,8 +330,8 @@ static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	enum headset_state state = BIT_NO_HEADSET;
 	unsigned char status_jack = 0;
-#if 0
-	if (jack == &tegra_rt5640_hp_jack) {
+
+	if (!machine_is_grouper() && jack == &tegra_rt5640_hp_jack) {
 		if (action) {
 			/* Enable ext mic; enable signal is active-low */
 			gpio_direction_output(pdata->gpio_ext_mic_en, 0);
@@ -366,7 +367,7 @@ static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 			machine->jack_status &= ~SND_JACK_MICROPHONE;
 		}
 	}
-#endif
+
 	switch (machine->jack_status) {
 	case SND_JACK_HEADPHONE:
 		state = BIT_HEADSET_NO_MIC;
@@ -388,6 +389,7 @@ static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 static struct notifier_block tegra_rt5640_jack_detect_nb = {
 	.notifier_call = tegra_rt5640_jack_notifier,
 };
+#endif
 #else
 static struct snd_soc_jack_pin tegra_rt5640_hp_jack_pins[] = {
 	{
@@ -398,6 +400,7 @@ static struct snd_soc_jack_pin tegra_rt5640_hp_jack_pins[] = {
 
 #endif
 
+#ifndef CONFIG_MACH_GROUPER
 static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 					struct snd_kcontrol *k, int event)
 {
@@ -479,6 +482,7 @@ static int tegra_rt5640_event_ext_mic(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
+#endif
 
 static const struct snd_soc_dapm_widget cardhu_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Int Spk", NULL),
@@ -517,18 +521,76 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_card *card = codec->card;
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
+#ifndef CONFIG_MACH_GROUPER
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+#endif
 	int ret;
 
+#ifndef CONFIG_MACH_GROUPER
+	if (gpio_is_valid(pdata->gpio_spkr_en)) {
+		ret = gpio_request(pdata->gpio_spkr_en, "spkr_en");
+		if (ret) {
+			dev_err(card->dev, "cannot get spkr_en gpio\n");
+			return ret;
+		}
+		machine->gpio_requested |= GPIO_SPKR_EN;
 
+		gpio_direction_output(pdata->gpio_spkr_en, 0);
+	}
 
+	if (gpio_is_valid(pdata->gpio_hp_mute)) {
+		ret = gpio_request(pdata->gpio_hp_mute, "hp_mute");
+		if (ret) {
+			dev_err(card->dev, "cannot get hp_mute gpio\n");
+			return ret;
+		}
+		machine->gpio_requested |= GPIO_HP_MUTE;
 
+		gpio_direction_output(pdata->gpio_hp_mute, 0);
+	}
 
+	if (gpio_is_valid(pdata->gpio_int_mic_en)) {
+		ret = gpio_request(pdata->gpio_int_mic_en, "int_mic_en");
+		if (ret) {
+			dev_err(card->dev, "cannot get int_mic_en gpio\n");
+			return ret;
+		}
+		machine->gpio_requested |= GPIO_INT_MIC_EN;
 
 		/* Disable int mic; enable signal is active-high */
+		gpio_direction_output(pdata->gpio_int_mic_en, 0);
+	}
 
+	if (gpio_is_valid(pdata->gpio_ext_mic_en)) {
+		ret = gpio_request(pdata->gpio_ext_mic_en, "ext_mic_en");
+		if (ret) {
+			dev_err(card->dev, "cannot get ext_mic_en gpio\n");
+			return ret;
+		}
+		machine->gpio_requested |= GPIO_EXT_MIC_EN;
 
+		/* Disable ext mic; enable signal is active-low */
+		gpio_direction_output(pdata->gpio_ext_mic_en, 1);
+	}
 
+	if (gpio_is_valid(pdata->gpio_hp_det)) {
+		tegra_rt5640_hp_jack_gpio.gpio = pdata->gpio_hp_det;
+		snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE,
+				&tegra_rt5640_hp_jack);
+#ifndef CONFIG_SWITCH
+		snd_soc_jack_add_pins(&tegra_rt5640_hp_jack,
+					ARRAY_SIZE(tegra_rt5640_hp_jack_pins),
+					tegra_rt5640_hp_jack_pins);
+#else
+		snd_soc_jack_notifier_register(&tegra_rt5640_hp_jack,
+					&tegra_rt5640_jack_detect_nb);
+#endif
+		snd_soc_jack_add_gpios(&tegra_rt5640_hp_jack,
+					1,
+					&tegra_rt5640_hp_jack_gpio);
+		machine->gpio_requested |= GPIO_HP_DET;
+	}
+#endif
 
 	machine->bias_level = SND_SOC_BIAS_STANDBY;
 	machine->clock_enabled = 1;
@@ -592,6 +654,20 @@ static struct snd_soc_dai_link tegra_rt5640_dai[] = {
 	},
 };
 
+static int tegra_rt5640_resume_pre(struct snd_soc_card *card)
+{
+	int val;
+	struct snd_soc_jack_gpio *gpio = &tegra_rt5640_hp_jack_gpio;
+
+	if (gpio_is_valid(gpio->gpio)) {
+		val = gpio_get_value(gpio->gpio);
+		val = gpio->invert ? !val : val;
+		snd_soc_jack_report(gpio->jack, val, gpio->report);
+	}
+
+	return 0;
+}
+
 static int tegra_rt5640_set_bias_level(struct snd_soc_card *card,
 	struct snd_soc_dapm_context *dapm, enum snd_soc_bias_level level)
 {
@@ -623,27 +699,13 @@ static int tegra_rt5640_set_bias_level_post(struct snd_soc_card *card,
 	return 0 ;
 }
 
-static int tegra_rt5640_resume_pre(struct snd_soc_card *card)
-{
-	int val;
-	struct snd_soc_jack_gpio *gpio = &tegra_rt5640_hp_jack_gpio;
-
-	if (gpio_is_valid(gpio->gpio)) {
-		val = gpio_get_value(gpio->gpio);
-		val = gpio->invert ? !val : val;
-		snd_soc_jack_report(gpio->jack, val, gpio->report);
-	}
-
-	return 0;
-}
-
 static struct snd_soc_card snd_soc_tegra_rt5640 = {
 	.name = "tegra-rt5640",
 	.dai_link = tegra_rt5640_dai,
 	.num_links = ARRAY_SIZE(tegra_rt5640_dai),
+	.resume_pre = tegra_rt5640_resume_pre,
 	.set_bias_level = tegra_rt5640_set_bias_level,
 	.set_bias_level_post = tegra_rt5640_set_bias_level_post,
-	.resume_pre = tegra_rt5640_resume_pre,
 };
 
 static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
