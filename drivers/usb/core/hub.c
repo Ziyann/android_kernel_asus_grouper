@@ -858,13 +858,15 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 		}
 	}
 
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
 	/* Override the debunce delay since we have to reset-resume
 	 * for modem L3 state.
 	 */
-	if (resume_from_l3 == true && use_hsic_controller(bus_to_hcd(hdev->bus)) == 1)
+	if (resume_from_l3 && use_hsic_controller(bus_to_hcd(hdev->bus)) == 1)
 	{
 		need_debounce_delay = false;
 	}
+#endif
 
 	/* If no port-status-change flags were set, we don't need any
 	 * debouncing.  If flags were set we can try to debounce the
@@ -2056,11 +2058,13 @@ static int hub_port_wait_reset(struct usb_hub *hub, int port1,
 	int delay_time, ret;
 	u16 portstatus;
 	u16 portchange;
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
 	struct usb_device *hdev = hub->hdev;
 	struct usb_hcd *hcd = bus_to_hcd(hdev->bus);
 
-	if (resume_from_l3 == true && use_hsic_controller(hcd) == 1)
+	if (resume_from_l3 && use_hsic_controller(hcd) == 1)
 		delay = 1;
+#endif
 
 	for (delay_time = 0;
 			delay_time < HUB_RESET_TIMEOUT;
@@ -2141,9 +2145,12 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 		switch (status) {
 		case 0:
 			/* TRSTRCY = 10 ms; plus some extra */
-			if (resume_from_l3 == true && use_hsic_controller(hcd) == 1) {
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+			if (resume_from_l3 && use_hsic_controller(hcd) == 1) {
 				msleep(10);
-			} else{
+			} else
+#endif
+			{
 				msleep(10 + 40);
 			}
 			update_devnum(udev, 0);
