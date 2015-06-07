@@ -8,5 +8,8 @@ obj-$(CONFIG_SENSORS_ISL29018)	+= isl29018.o
 obj-$(CONFIG_TSL2583)	+= tsl2583.o
 obj-$(CONFIG_SENSORS_ISL29028)	+= isl29028.o
 obj-$(CONFIG_SENSORS_LTR558)	+= ltr558als.o
+<<<<<<< HEAD
 obj-$(CONFIG_SENSORS_LTR659PS)	+= ltr659ps.o
 obj-$(CONFIG_SENSORS_CM3217)	+= cm3217.o
+=======
+>>>>>>> 7002b05... Sensors: forward-port Invensense v5.1.5 IIO driver
