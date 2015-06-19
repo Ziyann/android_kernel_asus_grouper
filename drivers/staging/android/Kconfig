@@ -77,6 +77,8 @@ config ANDROID_LOW_MEMORY_KILLER_AUTODETECT_OOM_ADJ_VALUES
 
 source "drivers/staging/android/switch/Kconfig"
 
+source "drivers/staging/android/switch/Kconfig"
+
 endif # if ANDROID
 
 endmenu
