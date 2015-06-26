@@ -49,26 +49,3 @@ config SENSORS_LTR558
 	help
 	  If you say yes here you get support for ambient light sensing and
 	  proximity ir sensing from Lite On Technology LTR558.
-<<<<<<< HEAD
-
-config SENSORS_LTR659PS
-	tristate "LTR659PS Proximity sensor"
-	depends on I2C
-	default n
-	help
-	  If you say yes here you get support for proximity sensor from
-	  Lite On Technology LTR659PS.
-	  This driver will provide the measurements of proximity
-	  infrared sensing.
-	  Data from sensor is accessible via sysfs.
-
-config SENSORS_CM3217
-	tristate "CM3217 light sensor"
-	depends on I2C
-	default n
-	help
-	  Say Y here to enable the CM3217 Ambient Light Sensor.
-
-endmenu
-=======
->>>>>>> 7002b05... Sensors: forward-port Invensense v5.1.5 IIO driver
