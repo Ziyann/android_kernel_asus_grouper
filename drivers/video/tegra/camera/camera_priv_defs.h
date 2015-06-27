@@ -55,18 +55,11 @@ enum {
 	CAMERA_ISP_CLK,
 	CAMERA_CSUS_CLK,
 	CAMERA_CSI_CLK,
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	CAMERA_CILAB_CLK,
 	CAMERA_CILCD_CLK,
 	CAMERA_CILE_CLK,
 	CAMERA_PLL_D2_CLK,
-	/*
-	 * We need pll_p and pll_c always defined together and
-	 * in the order below for the logic that selects the
-	 * lowest clock rate based on two clock sources.
-	 */
-	CAMERA_PLL_P_CLK,
-	CAMERA_PLL_C_CLK,
 #endif
 	CAMERA_SCLK,
 	CAMERA_CLK_MAX,
