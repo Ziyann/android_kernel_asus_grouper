@@ -138,7 +138,7 @@ static int grouper_panel_prepoweroff(void)
 	return 0;
 }
 
-static int grouper_panel_postpoweron(void)
+static int grouper_panel_postpoweron(struct device *dev)
 {
 	if (grouper_lvds_reg == NULL) {
 		grouper_lvds_reg = regulator_get(NULL, "vdd_lvds");
