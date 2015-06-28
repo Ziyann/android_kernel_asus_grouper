@@ -193,8 +193,8 @@ void tegra30_dam_set_biquad_fixed_coef(int ifc);
 void tegra30_dam_enable_coeff_ram(int ifc);
 void tegra30_dam_set_filter_stages(int ifc, int fsin, int fsout);
 void tegra30_dam_enable_stereo_mixing(int ifc);
+#endif
 void tegra30_dam_ch0_set_datasync(int ifc, int datasync);
 void tegra30_dam_ch1_set_datasync(int ifc, int datasync);
-#endif
 
 #endif

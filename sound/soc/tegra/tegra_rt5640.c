@@ -300,6 +300,7 @@ static int tegra_rt5640_set_dam_cif(int dam_ifc,
 	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHOUT,
 			out_channels, out_bit_size, out_channels, 32);
 
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
 	if (ch0_rate != out_rate) {
 		tegra30_dam_write_coeff_ram(dam_ifc, ch0_rate, out_rate);
 		tegra30_dam_set_farrow_param(dam_ifc, ch0_rate, out_rate);
@@ -309,6 +310,7 @@ static int tegra_rt5640_set_dam_cif(int dam_ifc,
 	} else {
 		tegra30_dam_enable_stereo_mixing(dam_ifc);
 	}
+#endif
 
 	return 0;
 }
