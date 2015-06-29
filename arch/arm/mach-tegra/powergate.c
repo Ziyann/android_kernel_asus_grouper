@@ -332,7 +332,9 @@ bool tegra_powergate_check_clamping(int id)
 int tegra_powergate_remove_clamping(int id)
 {
 	u32 mask;
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	int contention_timeout = 100;
+#endif
 
 	if (!pg_ops) {
 		pr_info("This SOC doesn't support powergating\n");
@@ -354,6 +356,7 @@ int tegra_powergate_remove_clamping(int id)
 		mask = (1 << id);
 
 	pmc_write(mask, REMOVE_CLAMPING);
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* Wait until clamp is removed */
 	do {
 		udelay(1);
@@ -362,6 +365,7 @@ int tegra_powergate_remove_clamping(int id)
 			&& (pmc_read(PWRGATE_CLAMP_STATUS) & BIT(id)));
 
 	WARN(contention_timeout <= 0, "Couldn't remove clamping");
+#endif
 
 	return 0;
 }
