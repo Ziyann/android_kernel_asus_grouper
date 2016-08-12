@@ -43,14 +43,6 @@
 
 #include "inv_ami306_iio.h"
 
-#define AMI30X_CALIBRATION_PATH "/per/sensors/AMI304_Config.ini"
-#define AMI306_CALIBRATION_PATH "/per/sensors/AMI306_Config.ini"
-enum Compass_cali_File {
-	AMI30X = 0,
-	AMI306,
-	AMICaliMax
-};
-
 /* function for loading compass calibration data. */
 static int access_cali_data(int *gain, char *calib_data)
 {

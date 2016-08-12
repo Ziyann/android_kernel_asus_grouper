@@ -106,14 +106,6 @@ void inv_yas53x_unconfigure_ring(struct iio_dev *indio_dev)
 static int inv_yas53x_postenable(struct iio_dev *indio_dev)
 {
 	struct inv_compass_state *st = iio_priv(indio_dev);
-	struct iio_buffer *ring = indio_dev->buffer;
-
-	/* when all the outputs are disabled, even though buffer/enable is on,
-	   do nothing */
-	if (!(iio_scan_mask_query(indio_dev, ring, INV_YAS53X_SCAN_MAGN_X) ||
-	    iio_scan_mask_query(indio_dev, ring, INV_YAS53X_SCAN_MAGN_Y) ||
-	    iio_scan_mask_query(indio_dev, ring, INV_YAS53X_SCAN_MAGN_Z)))
-		return 0;
 
 	set_yas53x_enable(indio_dev, true);
 	schedule_delayed_work(&st->work,
@@ -125,12 +117,7 @@ static int inv_yas53x_postenable(struct iio_dev *indio_dev)
 static int inv_yas53x_predisable(struct iio_dev *indio_dev)
 {
 	struct inv_compass_state *st = iio_priv(indio_dev);
-	struct iio_buffer *ring = indio_dev->buffer;
-
 	cancel_delayed_work_sync(&st->work);
-	clear_bit(INV_YAS53X_SCAN_MAGN_X, ring->scan_mask);
-	clear_bit(INV_YAS53X_SCAN_MAGN_Y, ring->scan_mask);
-	clear_bit(INV_YAS53X_SCAN_MAGN_Z, ring->scan_mask);
 
 	return 0;
 }

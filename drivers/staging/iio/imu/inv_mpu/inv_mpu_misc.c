@@ -40,11 +40,10 @@
 #include <linux/crc32.h>
 
 #include "inv_mpu_iio.h"
-#include "../../inv_test/inv_counters.h"
 
 /* DMP defines */
-#define DMP_ORIENTATION_TIME		500
-#define DMP_ORIENTATION_ANGLE		60
+#define DMP_ORIENTATION_TIME            500
+#define DMP_ORIENTATION_ANGLE           60
 #define DMP_DEFAULT_FIFO_RATE           200
 #define DMP_TAP_SCALE                   (767603923 / 5)
 #define DMP_MULTI_SHIFT                 30
@@ -56,58 +55,59 @@
 #define DMP_PRECISION                   1000
 #define DMP_MAX_DIVIDER                 4
 #define DMP_MAX_MIN_TAPS                4
-#define DMP_IMAGE_CRC_VALUE             0x665f5a73
-#define DMP_IMAGE_SIZE                  2913
+#define DMP_IMAGE_CRC_VALUE             0xd37d4599
+#define DMP_IMAGE_SIZE                  3065
 
 /*--- Test parameters defaults --- */
-#define DEF_OLDEST_SUPP_PROD_REV    8
-#define DEF_OLDEST_SUPP_SW_REV      2
+#define DEF_OLDEST_SUPP_PROD_REV        8
+#define DEF_OLDEST_SUPP_SW_REV          2
 
 /* sample rate */
-#define DEF_SELFTEST_SAMPLE_RATE             0
+#define DEF_SELFTEST_SAMPLE_RATE        0
+/* LPF parameter */
+#define DEF_SELFTEST_LPF_PARA           1
 /* full scale setting dps */
-#define DEF_SELFTEST_GYRO_FULL_SCALE         (0 << 3)
-#define DEF_SELFTEST_ACCL_FULL_SCALE         (2 << 3)
-#define DEF_SELFTEST_GYRO_SENS            (32768 / 250)
+#define DEF_SELFTEST_GYRO_FULL_SCALE    (0 << 3)
+#define DEF_SELFTEST_ACCL_FULL_SCALE    (2 << 3)
+#define DEF_SELFTEST_GYRO_SENS          (32768 / 250)
 /* wait time before collecting data */
-#define DEF_GYRO_WAIT_TIME          10
-#define DEF_ST_STABLE_TIME          200
-#define DEF_GYRO_SCALE              131
-#define DEF_ST_PRECISION            1000
-#define DEF_ST_ACCL_FULL_SCALE      8000UL
-#define DEF_ST_SCALE                (1L << 15)
-#define DEF_ST_TRY_TIMES            2
-#define DEF_ST_COMPASS_RESULT_SHIFT 2
-#define DEF_ST_ACCEL_RESULT_SHIFT   1
-#define DEF_ST_OTP0_THRESH          60
-#define DEF_ST_ABS_THRESH           20
-#define DEF_ST_TOR                  2
+#define DEF_GYRO_WAIT_TIME              50
+#define DEF_ST_STABLE_TIME              200
+#define DEF_GYRO_PACKET_THRESH          DEF_GYRO_WAIT_TIME
+#define DEF_GYRO_THRESH                 10
+#define DEF_GYRO_SCALE                  131
+#define DEF_ST_PRECISION                1000
+#define DEF_ST_ACCL_FULL_SCALE          8000UL
+#define DEF_ST_SCALE                    (1L << 15)
+#define DEF_ST_TRY_TIMES                2
+#define DEF_ST_COMPASS_RESULT_SHIFT     2
+#define DEF_ST_ACCEL_RESULT_SHIFT       1
 
-#define DEF_ST_COMPASS_WAIT_MIN     (10 * 1000)
-#define DEF_ST_COMPASS_WAIT_MAX     (15 * 1000)
-#define DEF_ST_COMPASS_TRY_TIMES    10
-#define DEF_ST_COMPASS_8963_SHIFT   2
+#define DEF_ST_COMPASS_WAIT_MIN         (10 * 1000)
+#define DEF_ST_COMPASS_WAIT_MAX         (15 * 1000)
+#define DEF_ST_COMPASS_TRY_TIMES        10
+#define DEF_ST_COMPASS_8963_SHIFT       2
 
-#define X                           0
-#define Y                           1
-#define Z                           2
+#define X                               0
+#define Y                               1
+#define Z                               2
 /*---- MPU6050 notable product revisions ----*/
-#define MPU_PRODUCT_KEY_B1_E1_5      105
-#define MPU_PRODUCT_KEY_B2_F1        431
+#define MPU_PRODUCT_KEY_B1_E1_5         105
+#define MPU_PRODUCT_KEY_B2_F1           431
 /* accelerometer Hw self test min and max bias shift (mg) */
-#define DEF_ACCEL_ST_SHIFT_MIN       300
-#define DEF_ACCEL_ST_SHIFT_MAX       950
+#define DEF_ACCEL_ST_SHIFT_MIN          300
+#define DEF_ACCEL_ST_SHIFT_MAX          950
 
-#define DEF_ACCEL_ST_SHIFT_DELTA     140
-#define DEF_GYRO_CT_SHIFT_DELTA      140
+#define DEF_ACCEL_ST_SHIFT_DELTA        140
+#define DEF_GYRO_CT_SHIFT_DELTA         140
 /* gyroscope Coriolis self test min and max bias shift (dps) */
-#define DEF_GYRO_CT_SHIFT_MIN        10
-#define DEF_GYRO_CT_SHIFT_MAX        105
+#define DEF_GYRO_CT_SHIFT_MIN           10
+#define DEF_GYRO_CT_SHIFT_MAX           105
 
 static struct test_setup_t test_setup = {
 	.gyro_sens     = DEF_SELFTEST_GYRO_SENS,
 	.sample_rate   = DEF_SELFTEST_SAMPLE_RATE,
-	.lpf           = INV_FILTER_188HZ,
+	.lpf           = DEF_SELFTEST_LPF_PARA,
 	.fsr           = DEF_SELFTEST_GYRO_FULL_SCALE,
 	.accl_fs      = DEF_SELFTEST_ACCL_FULL_SCALE
 };
@@ -120,57 +120,57 @@ static const struct prod_rev_map_t prod_rev_map[] = {
 	{MPL_PROD_KEY(0,   3), MPU_SILICON_REV_A2, 131, 16384},
 	{MPL_PROD_KEY(0,   4), MPU_SILICON_REV_A2, 131, 16384},
 	{MPL_PROD_KEY(0,   5), MPU_SILICON_REV_A2, 131, 16384},
-	{MPL_PROD_KEY(0,   6), MPU_SILICON_REV_A2, 131, 16384},
-	/* prod_ver = 1 */
+	{MPL_PROD_KEY(0,   6), MPU_SILICON_REV_A2, 131, 16384},	/* (A2/C2-1) */
+	/* prod_ver = 1, forced to 0 for MPU6050 A2 */
 	{MPL_PROD_KEY(0,   7), MPU_SILICON_REV_A2, 131, 16384},
 	{MPL_PROD_KEY(0,   8), MPU_SILICON_REV_A2, 131, 16384},
 	{MPL_PROD_KEY(0,   9), MPU_SILICON_REV_A2, 131, 16384},
 	{MPL_PROD_KEY(0,  10), MPU_SILICON_REV_A2, 131, 16384},
-	{MPL_PROD_KEY(0,  11), MPU_SILICON_REV_A2, 131, 16384},
+	{MPL_PROD_KEY(0,  11), MPU_SILICON_REV_A2, 131, 16384},	/* (A2/D2-1) */
 	{MPL_PROD_KEY(0,  12), MPU_SILICON_REV_A2, 131, 16384},
 	{MPL_PROD_KEY(0,  13), MPU_SILICON_REV_A2, 131, 16384},
 	{MPL_PROD_KEY(0,  14), MPU_SILICON_REV_A2, 131, 16384},
 	{MPL_PROD_KEY(0,  15), MPU_SILICON_REV_A2, 131, 16384},
-	{MPL_PROD_KEY(0,  27), MPU_SILICON_REV_A2, 131, 16384},
+	{MPL_PROD_KEY(0,  27), MPU_SILICON_REV_A2, 131, 16384},	/* (A2/D4)   */
 	/* prod_ver = 1 */
-	{MPL_PROD_KEY(1,  16), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,  17), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,  18), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,  19), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,  20), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,  28), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,   1), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,   2), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,   3), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,   4), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,   5), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(1,   6), MPU_SILICON_REV_B1, 131, 16384},
+	{MPL_PROD_KEY(1,  16), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/D2-1) */
+	{MPL_PROD_KEY(1,  17), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/D2-2) */
+	{MPL_PROD_KEY(1,  18), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/D2-3) */
+	{MPL_PROD_KEY(1,  19), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/D2-4) */
+	{MPL_PROD_KEY(1,  20), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/D2-5) */
+	{MPL_PROD_KEY(1,  28), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/D4)   */
+	{MPL_PROD_KEY(1,   1), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/E1-1) */
+	{MPL_PROD_KEY(1,   2), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/E1-2) */
+	{MPL_PROD_KEY(1,   3), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/E1-3) */
+	{MPL_PROD_KEY(1,   4), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/E1-4) */
+	{MPL_PROD_KEY(1,   5), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/E1-5) */
+	{MPL_PROD_KEY(1,   6), MPU_SILICON_REV_B1, 131, 16384},	/* (B1/E1-6) */
 	/* prod_ver = 2 */
-	{MPL_PROD_KEY(2,   7), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(2,   8), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(2,   9), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(2,  10), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(2,  11), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(2,  12), MPU_SILICON_REV_B1, 131, 16384},
-	{MPL_PROD_KEY(2,  29), MPU_SILICON_REV_B1, 131, 16384},
+	{MPL_PROD_KEY(2,   7), MPU_SILICON_REV_B1, 131, 16384},	/* (B2/E1-1) */
+	{MPL_PROD_KEY(2,   8), MPU_SILICON_REV_B1, 131, 16384},	/* (B2/E1-2) */
+	{MPL_PROD_KEY(2,   9), MPU_SILICON_REV_B1, 131, 16384},	/* (B2/E1-3) */
+	{MPL_PROD_KEY(2,  10), MPU_SILICON_REV_B1, 131, 16384},	/* (B2/E1-4) */
+	{MPL_PROD_KEY(2,  11), MPU_SILICON_REV_B1, 131, 16384},	/* (B2/E1-5) */
+	{MPL_PROD_KEY(2,  12), MPU_SILICON_REV_B1, 131, 16384},	/* (B2/E1-6) */
+	{MPL_PROD_KEY(2,  29), MPU_SILICON_REV_B1, 131, 16384},	/* (B2/D4)   */
 	/* prod_ver = 3 */
-	{MPL_PROD_KEY(3,  30), MPU_SILICON_REV_B1, 131, 16384},
+	{MPL_PROD_KEY(3,  30), MPU_SILICON_REV_B1, 131, 16384},	/* (B2/E2)   */
 	/* prod_ver = 4 */
-	{MPL_PROD_KEY(4,  31), MPU_SILICON_REV_B1, 131,  8192},
-	{MPL_PROD_KEY(4,   1), MPU_SILICON_REV_B1, 131,  8192},
-	{MPL_PROD_KEY(4,   3), MPU_SILICON_REV_B1, 131,  8192},
+	{MPL_PROD_KEY(4,  31), MPU_SILICON_REV_B1, 131,  8192},	/* (B2/F1)   */
+	{MPL_PROD_KEY(4,   1), MPU_SILICON_REV_B1, 131,  8192},	/* (B3/F1)   */
+	{MPL_PROD_KEY(4,   3), MPU_SILICON_REV_B1, 131,  8192},	/* (B4/F1)   */
 	/* prod_ver = 5 */
-	{MPL_PROD_KEY(5,   3), MPU_SILICON_REV_B1, 131, 16384},
+	{MPL_PROD_KEY(5,   3), MPU_SILICON_REV_B1, 131, 16384},	/* (B4/F1)   */
 	/* prod_ver = 6 */
-	{MPL_PROD_KEY(6,  19), MPU_SILICON_REV_B1, 131, 16384},
+	{MPL_PROD_KEY(6,  19), MPU_SILICON_REV_B1, 131, 16384},	/* (B5/E2)   */
 	/* prod_ver = 7 */
-	{MPL_PROD_KEY(7,  19), MPU_SILICON_REV_B1, 131, 16384},
+	{MPL_PROD_KEY(7,  19), MPU_SILICON_REV_B1, 131, 16384},	/* (B5/E2)   */
 	/* prod_ver = 8 */
-	{MPL_PROD_KEY(8,  19), MPU_SILICON_REV_B1, 131, 16384},
+	{MPL_PROD_KEY(8,  19), MPU_SILICON_REV_B1, 131, 16384},	/* (B5/E2)   */
 	/* prod_ver = 9 */
-	{MPL_PROD_KEY(9,  19), MPU_SILICON_REV_B1, 131, 16384},
+	{MPL_PROD_KEY(9,  19), MPU_SILICON_REV_B1, 131, 16384},	/* (B5/E2)   */
 	/* prod_ver = 10 */
-	{MPL_PROD_KEY(10, 19), MPU_SILICON_REV_B1, 131, 16384}
+	{MPL_PROD_KEY(10, 19), MPU_SILICON_REV_B1, 131, 16384}	/* (B5/E2)   */
 };
 
 /*
@@ -186,82 +186,12 @@ static const struct prod_rev_map_t sw_rev_map[] = {
 	{1, MPU_SILICON_REV_B1, 131,  8192},	/* rev C */
 	{2, MPU_SILICON_REV_B1, 131, 16384}	/* rev D */
 };
-static const u16 accl_6500_st_tb[256] = {
-655, 662, 669, 675, 682, 689, 696, 703,
-710, 717, 724, 731, 738, 746, 753, 761,
-768, 776, 784, 792, 800, 808, 816, 824,
-832, 840, 849, 857, 866, 875, 883, 892,
-901, 910, 919, 928, 938, 947, 957, 966,
-976, 985, 995, 1005, 1015, 1026, 1036, 1046,
-1057, 1067, 1078, 1089, 1099, 1110, 1122, 1133,
-1144, 1156, 1167, 1179, 1191, 1202, 1215, 1227,
-1239, 1251, 1264, 1276, 1289, 1302, 1315, 1328,
-1342, 1355, 1369, 1382, 1396, 1410, 1424, 1438,
-1453, 1467, 1482, 1497, 1512, 1527, 1542, 1558,
-1573, 1589, 1605, 1621, 1637, 1653, 1670, 1687,
-1703, 1720, 1738, 1755, 1773, 1790, 1808, 1826,
-1845, 1863, 1882, 1900, 1920, 1939, 1958, 1978,
-1997, 2017, 2038, 2058, 2079, 2099, 2120, 2142,
-2163, 2185, 2206, 2228, 2251, 2273, 2296, 2319,
-2342, 2366, 2389, 2413, 2437, 2462, 2486, 2511,
-2536, 2562, 2587, 2613, 2639, 2666, 2692, 2719,
-2746, 2774, 2802, 2830, 2858, 2886, 2915, 2944,
-2974, 3004, 3034, 3064, 3095, 3126, 3157, 3188,
-3220, 3253, 3285, 3318, 3351, 3385, 3418, 3453,
-3487, 3522, 3557, 3593, 3629, 3665, 3702, 3739,
-3776, 3814, 3852, 3891, 3929, 3969, 4008, 4048,
-4089, 4130, 4171, 4213, 4255, 4298, 4341, 4384,
-4428, 4472, 4517, 4562, 4608, 4654, 4700, 4747,
-4795, 4843, 4891, 4940, 4989, 5039, 5090, 5140,
-5192, 5244, 5296, 5349, 5403, 5457, 5511, 5566,
-5622, 5678, 5735, 5792, 5850, 5909, 5968, 6028,
-6088, 6149, 6210, 6272, 6335, 6398, 6462, 6527,
-6592, 6658, 6725, 6792, 6860, 6929, 6998, 7068,
-7139, 7210, 7282, 7355, 7428, 7503, 7578, 7653,
-7730, 7807, 7885, 7964, 8044, 8124, 8206, 8288,
-};
-
-static const u16 gyro_6500_st_tb[256] = {
-2621, 2648, 2674, 2701, 2728, 2755, 2783, 2811,
-2839, 2867, 2896, 2925, 2954, 2983, 3013, 3043,
-3074, 3105, 3136, 3167, 3199, 3231, 3263, 3296,
-3329, 3362, 3395, 3429, 3464, 3498, 3533, 3569,
-3604, 3640, 3677, 3714, 3751, 3788, 3826, 3864,
-3903, 3942, 3981, 4021, 4061, 4102, 4143, 4185,
-4226, 4269, 4311, 4354, 4398, 4442, 4486, 4531,
-4577, 4622, 4669, 4715, 4762, 4810, 4858, 4907,
-4956, 5005, 5055, 5106, 5157, 5209, 5261, 5313,
-5366, 5420, 5474, 5529, 5584, 5640, 5696, 5753,
-5811, 5869, 5928, 5987, 6047, 6107, 6168, 6230,
-6292, 6355, 6419, 6483, 6548, 6613, 6680, 6746,
-6814, 6882, 6951, 7020, 7091, 7161, 7233, 7305,
-7378, 7452, 7527, 7602, 7678, 7755, 7832, 7911,
-7990, 8070, 8150, 8232, 8314, 8397, 8481, 8566,
-8652, 8738, 8826, 8914, 9003, 9093, 9184, 9276,
-9369, 9462, 9557, 9653, 9749, 9847, 9945, 10044,
-10145, 10246, 10349, 10452, 10557, 10662, 10769, 10877,
-10985, 11095, 11206, 11318, 11432, 11546, 11661, 11778,
-11896, 12015, 12135, 12256, 12379, 12502, 12627, 12754,
-12881, 13010, 13140, 13272, 13404, 13538, 13674, 13810,
-13949, 14088, 14229, 14371, 14515, 14660, 14807, 14955,
-15104, 15255, 15408, 15562, 15718, 15875, 16034, 16194,
-16356, 16519, 16685, 16851, 17020, 17190, 17362, 17536,
-17711, 17888, 18067, 18248, 18430, 18614, 18801, 18989,
-19179, 19370, 19564, 19760, 19957, 20157, 20358, 20562,
-20768, 20975, 21185, 21397, 21611, 21827, 22045, 22266,
-22488, 22713, 22940, 23170, 23401, 23635, 23872, 24111,
-24352, 24595, 24841, 25089, 25340, 25594, 25850, 26108,
-26369, 26633, 26899, 27168, 27440, 27714, 27992, 28271,
-28554, 28840, 29128, 29419, 29714, 30011, 30311, 30614,
-30920, 31229, 31542, 31857, 32176, 32497, 32822, 33151,
-};
 
 static const int accl_st_tb[31] = {
 	340, 351, 363, 375, 388, 401, 414, 428,
 	443, 458, 473, 489, 506, 523, 541, 559,
 	578, 597, 617, 638, 660, 682, 705, 729,
 	753, 779, 805, 832, 860, 889, 919};
-
 static const int gyro_6050_st_tb[31] = {
 	3275, 3425, 3583, 3748, 3920, 4100, 4289, 4486,
 	4693, 4909, 5134, 5371, 5618, 5876, 6146, 6429,
@@ -301,24 +231,10 @@ static const int gyro_3500_st_tb[255] = {
 	28538, 28823, 29112, 29403, 29697, 29994, 30294, 30597,
 	30903, 31212, 31524, 31839, 32157, 32479, 32804};
 
-char *wr_pr_debug_begin(u8 const *data, u32 len, char *string)
-{
-	int ii;
-	string = kmalloc(len * 2 + 1, GFP_KERNEL);
-	for (ii = 0; ii < len; ii++)
-		sprintf(&string[ii * 2], "%02X", data[ii]);
-	string[len * 2] = 0;
-	return string;
-}
-
-char *wr_pr_debug_end(char *string)
-{
-	kfree(string);
-	return "";
-}
-
-int mpu_memory_write(struct inv_mpu_iio_s *st, u8 mpu_addr, u16 mem_addr,
-		     u32 len, u8 const *data)
+int mpu_memory_write(struct i2c_adapter *i2c_adap,
+			    u8 mpu_addr,
+			    u16 mem_addr,
+			    u32 len, u8 const *data)
 {
 	u8 bank[2];
 	u8 addr[2];
@@ -327,7 +243,7 @@ int mpu_memory_write(struct inv_mpu_iio_s *st, u8 mpu_addr, u16 mem_addr,
 	struct i2c_msg msgs[3];
 	int res;
 
-	if (!data || !st)
+	if (!data || !i2c_adap)
 		return -EINVAL;
 
 	if (len >= (sizeof(buf) - 1))
@@ -358,19 +274,7 @@ int mpu_memory_write(struct inv_mpu_iio_s *st, u8 mpu_addr, u16 mem_addr,
 	msgs[2].buf = (u8 *)buf;
 	msgs[2].len = len + 1;
 
-	INV_I2C_INC_MPUWRITE(3 + 3 + (2 + len));
-#if CONFIG_DYNAMIC_DEBUG
-	{
-		char *write = 0;
-		pr_debug("%s WM%02X%02X%02X%s%s - %d\n", st->hw->name,
-			 mpu_addr, bank[1], addr[1],
-			 wr_pr_debug_begin(data, len, write),
-			 wr_pr_debug_end(write),
-			 len);
-	}
-#endif
-
-	res = i2c_transfer(st->sl_handle, msgs, 3);
+	res = i2c_transfer(i2c_adap, msgs, 3);
 	if (res != 3) {
 		if (res >= 0)
 			res = -EIO;
@@ -380,8 +284,10 @@ int mpu_memory_write(struct inv_mpu_iio_s *st, u8 mpu_addr, u16 mem_addr,
 	}
 }
 
-int mpu_memory_read(struct inv_mpu_iio_s *st, u8 mpu_addr, u16 mem_addr,
-		    u32 len, u8 *data)
+int mpu_memory_read(struct i2c_adapter *i2c_adap,
+			   u8 mpu_addr,
+			   u16 mem_addr,
+			   u32 len, u8 *data)
 {
 	u8 bank[2];
 	u8 addr[2];
@@ -390,7 +296,7 @@ int mpu_memory_read(struct inv_mpu_iio_s *st, u8 mpu_addr, u16 mem_addr,
 	struct i2c_msg msgs[4];
 	int res;
 
-	if (!data || !st)
+	if (!data || !i2c_adap)
 		return -EINVAL;
 
 	bank[0] = REG_BANK_SEL;
@@ -422,54 +328,14 @@ int mpu_memory_read(struct inv_mpu_iio_s *st, u8 mpu_addr, u16 mem_addr,
 	msgs[3].buf = data;
 	msgs[3].len = len;
 
-	res = i2c_transfer(st->sl_handle, msgs, 4);
+	res = i2c_transfer(i2c_adap, msgs, 4);
 	if (res != 4) {
 		if (res >= 0)
 			res = -EIO;
-	} else
-		res = 0;
-
-	INV_I2C_INC_MPUWRITE(3 + 3 + 3);
-	INV_I2C_INC_MPUREAD(len);
-#if CONFIG_DYNAMIC_DEBUG
-	{
-		char *read = 0;
-		pr_debug("%s RM%02X%02X%02X%02X - %s%s\n", st->hw->name,
-			 mpu_addr, bank[1], addr[1], len,
-			 wr_pr_debug_begin(data, len, read),
-			 wr_pr_debug_end(read));
-	}
-#endif
-
-	return res;
-}
-
-int mpu_memory_write_unaligned(struct inv_mpu_iio_s *st, u16 key, int len,
-								u8 const *d)
-{
-	u32 addr;
-	int start, end;
-	int len1, len2;
-	int result = 0;
-	if (len > MPU_MEM_BANK_SIZE)
-		return -EINVAL;
-	addr = inv_dmp_get_address(key);
-	if (addr > MPU6XXX_MAX_MPU_MEM)
-		return -EINVAL;
-	start = (addr >> 8);
-	end   = ((addr + len - 1) >> 8);
-	if (start == end) {
-		result = mpu_memory_write(st, st->i2c_addr, addr, len, d);
+		return res;
 	} else {
-		end <<= 8;
-		len1 = end - addr;
-		len2 = len - len1;
-		result = mpu_memory_write(st, st->i2c_addr, addr, len1, d);
-		result |= mpu_memory_write(st, st->i2c_addr, end, len2,
-								d + len1);
+		return 0;
 	}
-
-	return result;
 }
 
 /**
@@ -489,32 +355,18 @@ int inv_get_silicon_rev_mpu6500(struct inv_mpu_iio_s *st)
 {
 	struct inv_chip_info_s *chip_info = &st->chip_info;
 	int result;
-	u8 whoami, sw_rev;
+	u8 whoami;
 
 	result = inv_i2c_read(st, REG_WHOAMI, 1, &whoami);
 	if (result)
 		return result;
 	if (whoami != MPU6500_ID && whoami != MPU9250_ID)
 		return -EINVAL;
-
-	/*memory read need more time after power up */
-	msleep(POWER_UP_TIME);
-	result = mpu_memory_read(st, st->i2c_addr,
-			MPU6500_MEM_REV_ADDR, 1, &sw_rev);
-	if (sw_rev == 0) {
-		pr_warning("Rev 0 of MPU6500\n");
-		pr_warning("can't sit with other devices in same I2C bus\n");
-	}
-	if (result)
-		return result;
-	if (sw_rev > MPU6500_REV)
-		return -EINVAL;
-
 	/* these values are place holders and not real values */
 	chip_info->product_id = MPU6500_PRODUCT_REVISION;
 	chip_info->product_revision = MPU6500_PRODUCT_REVISION;
 	chip_info->silicon_revision = MPU6500_PRODUCT_REVISION;
-	chip_info->software_revision = sw_rev;
+	chip_info->software_revision = MPU6500_PRODUCT_REVISION;
 	chip_info->gyro_sens_trim = DEFAULT_GYRO_TRIM;
 	chip_info->accl_sens_trim = DEFAULT_ACCL_TRIM;
 	chip_info->multi = 1;
@@ -544,7 +396,7 @@ int inv_get_silicon_rev_mpu6050(struct inv_mpu_iio_s *st)
 	prod_ver &= 0xf;
 	/*memory read need more time after power up */
 	msleep(POWER_UP_TIME);
-	result = mpu_memory_read(st, st->i2c_addr, mem_addr,
+	result = mpu_memory_read(st->sl_handle, st->i2c_addr, mem_addr,
 			1, &prod_rev);
 	if (result)
 		return result;
@@ -610,12 +462,10 @@ static int read_accel_hw_self_test_prod_shift(struct inv_mpu_iio_s *st,
 	u8 regs[4];
 	u8 shift_code[3];
 	int result, i;
-
 	st_prod[0] = 0;
 	st_prod[1] = 0;
 	st_prod[2] = 0;
 	result = inv_i2c_read(st, REG_ST_GCT_X, ARRAY_SIZE(regs), regs);
-
 	if (result)
 		return result;
 	if ((0 == regs[0])  && (0 == regs[1]) &&
@@ -632,7 +482,6 @@ static int read_accel_hw_self_test_prod_shift(struct inv_mpu_iio_s *st,
 
 	return 0;
 }
-
 /**
 * inv_check_accl_self_test()- check accel self test. this function returns
 *                              zero as success. A non-zero return value
@@ -647,7 +496,6 @@ static int inv_check_accl_self_test(struct inv_mpu_iio_s *st,
 	int tmp1;
 	int st_shift_prod[THREE_AXIS], st_shift_cust[THREE_AXIS];
 	int st_shift_ratio[THREE_AXIS];
-
 	if (st->chip_info.software_revision < DEF_OLDEST_SUPP_SW_REV &&
 	    st->chip_info.product_revision < DEF_OLDEST_SUPP_PROD_REV)
 		return 0;
@@ -673,32 +521,30 @@ static int inv_check_accl_self_test(struct inv_mpu_iio_s *st,
 		test_setup.accl_sens[Z] /= st->chip_info.multi;
 	}
 	gravity = test_setup.accl_sens[Z];
-	reg_z_avg = reg_avg[Z] - g_z_sign * gravity * DEF_ST_PRECISION;
-	ret_val = read_accel_hw_self_test_prod_shift(st, st_shift_prod);
-	if (ret_val)
-		return ret_val;
-
+	reg_z_avg = reg_avg[Z] - g_z_sign * gravity*DEF_ST_PRECISION;
+	read_accel_hw_self_test_prod_shift(st, st_shift_prod);
 	for (j = 0; j < 3; j++) {
 		st_shift_cust[j] = abs(reg_avg[j] - st_avg[j]);
 		if (st_shift_prod[j]) {
 			tmp1 = st_shift_prod[j]/DEF_ST_PRECISION;
-			st_shift_ratio[j] = abs(st_shift_cust[j]/tmp1
-				- DEF_ST_PRECISION);
+			st_shift_ratio[j] = st_shift_cust[j]/tmp1
+				- DEF_ST_PRECISION;
 			if (st_shift_ratio[j] > DEF_ACCEL_ST_SHIFT_DELTA)
+				ret_val |= 1 << j;
+			if (st_shift_ratio[j] < -DEF_ACCEL_ST_SHIFT_DELTA)
 				ret_val |= 1 << j;
 		} else {
 			if (st_shift_cust[j] <
-				DEF_ACCEL_ST_SHIFT_MIN * gravity)
+				DEF_ACCEL_ST_SHIFT_MIN*gravity)
 				ret_val |= 1 << j;
 			if (st_shift_cust[j] >
-				DEF_ACCEL_ST_SHIFT_MAX * gravity)
+				DEF_ACCEL_ST_SHIFT_MAX*gravity)
 				ret_val |= 1 << j;
 		}
 	}
 
 	return ret_val;
 }
-
 /**
 * inv_check_3500_gyro_self_test() check gyro self test. this function returns
 *                                 zero as success. A non-zero return value
@@ -728,13 +574,10 @@ static int inv_check_3500_gyro_self_test(struct inv_mpu_iio_s *st,
 		if (st_code[i] != 0)
 			gst_otp[i] = gyro_3500_st_tb[st_code[i] - 1];
 	}
-	/* check self test value passing criterion. Using the DEF_ST_TOR
-	 * for certain degree of tolerance */
 	for (i = 0; i < 3; i++) {
 		if (gst_otp[i] == 0) {
-			if (abs(gst[i]) * DEF_ST_TOR < DEF_ST_OTP0_THRESH *
-							DEF_ST_PRECISION *
-							DEF_GYRO_SCALE)
+			if (abs(gst[i]) * 4 < 60 * 2 * DEF_ST_PRECISION *
+					DEF_GYRO_SCALE)
 				ret_val |= (1 << i);
 		} else {
 			if (abs(gst[i]/gst_otp[i] - DEF_ST_PRECISION) >
@@ -742,11 +585,9 @@ static int inv_check_3500_gyro_self_test(struct inv_mpu_iio_s *st,
 				ret_val |= (1 << i);
 		}
 	}
-	/* check for absolute value passing criterion. Using DEF_ST_TOR
-	 * for certain degree of tolerance */
 	for (i = 0; i < 3; i++) {
-		if (abs(reg_avg[i]) > DEF_ST_TOR * DEF_ST_ABS_THRESH *
-		    DEF_ST_PRECISION * DEF_GYRO_SCALE)
+		if (abs(reg_avg[i]) * 4 > 20 * 2 *
+		    DEF_ST_PRECISION*DEF_GYRO_SCALE)
 			ret_val |= (1 << i);
 	}
 
@@ -767,7 +608,6 @@ static int inv_check_6050_gyro_self_test(struct inv_mpu_iio_s *st,
 	int ret_val;
 	int ct_shift_prod[3], st_shift_cust[3], st_shift_ratio[3], i;
 	u8 regs[3];
-
 	if (st->chip_info.software_revision < DEF_OLDEST_SUPP_SW_REV &&
 	    st->chip_info.product_revision < DEF_OLDEST_SUPP_PROD_REV)
 		return 0;
@@ -779,20 +619,21 @@ static int inv_check_6050_gyro_self_test(struct inv_mpu_iio_s *st,
 	regs[X] &= 0x1f;
 	regs[Y] &= 0x1f;
 	regs[Z] &= 0x1f;
+
 	for (i = 0; i < 3; i++) {
 		if (regs[i] != 0)
 			ct_shift_prod[i] = gyro_6050_st_tb[regs[i] - 1];
 		else
 			ct_shift_prod[i] = 0;
 	}
-
-
 	for (i = 0; i < 3; i++) {
 		st_shift_cust[i] = abs(reg_avg[i] - st_avg[i]);
 		if (ct_shift_prod[i]) {
-			st_shift_ratio[i] = abs(st_shift_cust[i] /
-				ct_shift_prod[i] - DEF_ST_PRECISION);
+			st_shift_ratio[i] = st_shift_cust[i] /
+				ct_shift_prod[i] - DEF_ST_PRECISION;
 			if (st_shift_ratio[i] > DEF_GYRO_CT_SHIFT_DELTA)
+				ret_val |= 1 << i;
+			if (st_shift_ratio[i] < -DEF_GYRO_CT_SHIFT_DELTA)
 				ret_val |= 1 << i;
 		} else {
 			if (st_shift_cust[i] < DEF_ST_PRECISION *
@@ -803,67 +644,10 @@ static int inv_check_6050_gyro_self_test(struct inv_mpu_iio_s *st,
 				ret_val |= 1 << i;
 		}
 	}
-	/* check for absolute value passing criterion. Using DEF_ST_TOR
-	 * for certain degree of tolerance */
 	for (i = 0; i < 3; i++) {
-		if (abs(reg_avg[i]) > DEF_ST_TOR * DEF_ST_ABS_THRESH *
+		if (abs(reg_avg[i]) * 4 > 20 * 2 *
 		    DEF_ST_PRECISION * DEF_GYRO_SCALE)
 			ret_val |= (1 << i);
-	}
-
-	return ret_val;
-}
-
-/**
-* inv_check_6500_self_test() - check 6050 gyro self test. this function
-*                                   returns zero as success. A non-zero return
-*                                   value indicates failure in self test.
-*  @*st: main data structure.
-*  @*reg_avg: average value of normal test.
-*  @*st_avg:  average value of self test
-*  @is_gyro: switch for gyro/accl.
-*/
-static int inv_check_6500_self_test(struct inv_mpu_iio_s *st,
-	int *reg_avg, int *st_avg, bool is_gyro)
-{
-	int ret_val, result;
-	int ct_shift_prod[3], st_shift_cust[3], st_shift_ratio[3], i;
-	u8 regs[3];
-	const u16 *st_tb;
-
-	ret_val = 0;
-	if (is_gyro) {
-		st_tb = gyro_6500_st_tb;
-		result = inv_i2c_read(st, REG_6500_XG_ST_DATA, 3, regs);
-	} else {
-		st_tb = accl_6500_st_tb;
-		result = inv_i2c_read(st, REG_6500_XA_ST_DATA, 3, regs);
-	}
-	pr_debug("isgyro=%d, OTP:%d, %d, %d\n", is_gyro, regs[0],
-			regs[1], regs[2]);
-
-	for (i = 0; i < 3; i++) {
-		if (regs[i] != 0)
-			ct_shift_prod[i] = st_tb[regs[i] - 1];
-		else
-			ct_shift_prod[i] = 0;
-	}
-
-	for (i = 0; i < 3; i++) {
-		st_shift_cust[i] = abs(reg_avg[i] - st_avg[i]);
-		pr_debug("isgyro:%d, shift_cust=%d, reg=%d, st=%d, prod=%d\n",
-			is_gyro, st_shift_cust[i], reg_avg[i],
-			st_avg[i], ct_shift_prod[i]);
-		if (ct_shift_prod[i]) {
-			st_shift_ratio[i] = abs(st_shift_cust[i] /
-				ct_shift_prod[i] - DEF_ST_PRECISION);
-			pr_debug("ratio=%d, threshold=%d\n", st_shift_ratio[i],
-						ST_THRESHOLD_MULTIPLIER *
-						st->self_test.threshold);
-			if (st_shift_ratio[i] > ST_THRESHOLD_MULTIPLIER *
-						st->self_test.threshold)
-				ret_val |= 1 << i;
-		}
 	}
 
 	return ret_val;
@@ -877,16 +661,12 @@ int inv_do_test(struct inv_mpu_iio_s *st, int self_test_flag,
 {
 	struct inv_reg_map_s *reg;
 	int result, i, j, packet_size;
-	u8 data[BYTES_PER_SENSOR * 2], d;
-	bool has_accl;
-	int fifo_count, packet_count, ind, s;
+	u8 data[BYTES_PER_SENSOR * 2], has_accl;
+	int fifo_count, packet_count, ind;
 
 	reg = &st->reg;
 	has_accl = (st->chip_type != INV_ITG3500);
-	if (has_accl)
-		packet_size = BYTES_PER_SENSOR * 2;
-	else
-		packet_size = BYTES_PER_SENSOR;
+	packet_size = BYTES_PER_SENSOR*(1 + has_accl);
 
 	result = inv_i2c_single_write(st, reg->int_enable, 0);
 	if (result)
@@ -930,67 +710,57 @@ int inv_do_test(struct inv_mpu_iio_s *st, int self_test_flag,
 	if (result)
 		return result;
 	/* enable sensor output to FIFO */
-	if (has_accl)
-		d = BITS_GYRO_OUT | BIT_ACCEL_OUT;
-	else
-		d = BITS_GYRO_OUT;
-	result = inv_i2c_single_write(st, reg->fifo_en, d);
+	result = inv_i2c_single_write(st, reg->fifo_en, BITS_GYRO_OUT
+		| (has_accl << 3));
 	if (result)
 		return result;
-
-	for (i = 0; i < THREE_AXIS; i++) {
-		gyro_result[i] = 0;
-		accl_result[i] = 0;
-	}
-	s = 0;
-	while (s < st->self_test.samples) {
-		mdelay(DEF_GYRO_WAIT_TIME);
-		result = inv_i2c_read(st, reg->fifo_count_h,
-					FIFO_COUNT_BYTE, data);
-		if (result)
-			return result;
-		fifo_count = be16_to_cpup((__be16 *)(&data[0]));
-		packet_count = fifo_count / packet_size;
-		result = inv_i2c_read(st, reg->fifo_r_w, packet_size, data);
-		if (result)
-			return result;
-		i = 0;
-		while ((i < packet_count) && (s < st->self_test.samples)) {
-			result = inv_i2c_read(st, reg->fifo_r_w,
-				packet_size, data);
-			if (result)
-				return result;
-			ind = 0;
-			if (has_accl) {
-				for (j = 0; j < THREE_AXIS; j++)
-					accl_result[j] +=
-					(short)be16_to_cpup(
-					(__be16 *)(&data[ind + 2 * j]));
-				ind += BYTES_PER_SENSOR;
-			}
-			for (j = 0; j < THREE_AXIS; j++)
-				gyro_result[j] +=
-					(short)be16_to_cpup(
-					(__be16 *)(&data[ind + 2 * j]));
-			s++;
-			i++;
-		}
-	}
-
+	mdelay(DEF_GYRO_WAIT_TIME);
 	/* stop sending data to FIFO */
 	result = inv_i2c_single_write(st, reg->fifo_en, 0);
 	if (result)
 		return result;
-	for (j = 0; j < THREE_AXIS; j++) {
-		gyro_result[j] = gyro_result[j]/s;
-		gyro_result[j] *= DEF_ST_PRECISION;
+	result = inv_i2c_read(st, reg->fifo_count_h, FIFO_COUNT_BYTE, data);
+	if (result)
+		return result;
+	fifo_count = be16_to_cpup((__be16 *)(&data[0]));
+	packet_count = fifo_count / packet_size;
+	for (i = 0; i < 3; i++) {
+		gyro_result[i] = 0;
+		accl_result[i] = 0;
+	}
+	if (abs(packet_count - DEF_GYRO_PACKET_THRESH) > DEF_GYRO_THRESH)
+		return -EAGAIN;
+
+	for (i = 0; i < packet_count; i++) {
+		/* getting FIFO data */
+		result = inv_i2c_read(st, reg->fifo_r_w,
+			packet_size, data);
+		if (result)
+			return result;
+		ind = 0;
+		if (has_accl) {
+			for (j = 0; j < THREE_AXIS; j++)
+				accl_result[j] +=
+					(short)be16_to_cpup(
+						(__be16 *)(&data[ind + 2 * j]));
+				ind += BYTES_PER_SENSOR;
+		}
+		for (j = 0; j < THREE_AXIS; j++)
+			gyro_result[j] +=
+				(short)be16_to_cpup(
+					(__be16 *)(&data[ind + 2 * j]));
 	}
 
+	gyro_result[0] = gyro_result[0] * DEF_ST_PRECISION / packet_count;
+	gyro_result[1] = gyro_result[1] * DEF_ST_PRECISION / packet_count;
+	gyro_result[2] = gyro_result[2] * DEF_ST_PRECISION / packet_count;
 	if (has_accl) {
-		for (j = 0; j < THREE_AXIS; j++) {
-			accl_result[j] = accl_result[j]/s;
-			accl_result[j] *= DEF_ST_PRECISION;
-		}
+		accl_result[0] =
+			accl_result[0] * DEF_ST_PRECISION / packet_count;
+		accl_result[1] =
+			accl_result[1] * DEF_ST_PRECISION / packet_count;
+		accl_result[2] =
+			accl_result[2] * DEF_ST_PRECISION / packet_count;
 	}
 
 	return 0;
@@ -1004,21 +774,21 @@ void inv_recover_setting(struct inv_mpu_iio_s *st)
 {
 	struct inv_reg_map_s *reg;
 	int data;
+	struct iio_dev *indio = iio_priv_to_dev(st);
 
 	reg = &st->reg;
+	set_inv_enable(indio, st->chip_config.enable);
 	inv_i2c_single_write(st, reg->gyro_config,
 			     st->chip_config.fsr << GYRO_CONFIG_FSR_SHIFT);
 	inv_i2c_single_write(st, reg->lpf, st->chip_config.lpf);
-	data = ONE_K_HZ/st->chip_config.new_fifo_rate - 1;
+	data = ONE_K_HZ/st->chip_config.fifo_rate - 1;
 	inv_i2c_single_write(st, reg->sample_rate_div, data);
 	if (INV_ITG3500 != st->chip_type) {
 		inv_i2c_single_write(st, reg->accl_config,
 				     (st->chip_config.accl_fs <<
 				     ACCL_CONFIG_FSR_SHIFT));
 	}
-	st->switch_gyro_engine(st, false);
-	st->switch_accl_engine(st, false);
-	st->set_power_state(st, false);
+	st->set_power_state(st, !st->chip_config.is_asleep);
 }
 
 static int inv_check_compass_self_test(struct inv_mpu_iio_s *st)
@@ -1106,19 +876,17 @@ AKM_fail:
 	return result;
 }
 
-int inv_power_up_self_test(struct inv_mpu_iio_s *st)
+static int inv_power_up_self_test(struct inv_mpu_iio_s *st)
 {
 	int result;
-
-	result = st->set_power_state(st, true);
+	result = inv_i2c_single_write(st, st->reg.pwr_mgmt_1, INV_CLK_PLL);
 	if (result)
 		return result;
-	result = st->switch_accl_engine(st, true);
+	msleep(POWER_UP_TIME);
+	result = inv_i2c_single_write(st, st->reg.pwr_mgmt_2, 0);
 	if (result)
 		return result;
-	result = st->switch_gyro_engine(st, true);
-	if (result)
-		return result;
+	msleep(SENSOR_UP_TIME);
 
 	return 0;
 }
@@ -1133,10 +901,14 @@ int inv_hw_self_test(struct inv_mpu_iio_s *st)
 	int accl_bias_st[THREE_AXIS], accl_bias_regular[THREE_AXIS];
 	int test_times;
 	char compass_result, accel_result, gyro_result;
-
-	result = inv_power_up_self_test(st);
-	if (result)
-		return result;
+	if (st->chip_config.is_asleep      ||
+	    st->chip_config.lpa_mode       ||
+	    (!st->chip_config.gyro_enable) ||
+	    (!st->chip_config.accl_enable)) {
+		result = inv_power_up_self_test(st);
+		if (result)
+			return result;
+	}
 	compass_result = 0;
 	accel_result   = 0;
 	gyro_result    = 0;
@@ -1169,18 +941,10 @@ int inv_hw_self_test(struct inv_mpu_iio_s *st)
 	} else {
 		if (st->chip_config.has_compass)
 			compass_result = !inv_check_compass_self_test(st);
-
-		 if (INV_MPU6050 == st->chip_type) {
-			accel_result = !inv_check_accl_self_test(st,
-				accl_bias_regular, accl_bias_st);
-			gyro_result = !inv_check_6050_gyro_self_test(st,
-				gyro_bias_regular, gyro_bias_st);
-		} else if (INV_MPU6500 == st->chip_type) {
-			accel_result = !inv_check_6500_self_test(st,
-				accl_bias_regular, accl_bias_st, false);
-			gyro_result = !inv_check_6500_self_test(st,
-				gyro_bias_regular, gyro_bias_st, true);
-		}
+		accel_result = !inv_check_accl_self_test(st,
+			accl_bias_regular, accl_bias_st);
+		gyro_result = !inv_check_6050_gyro_self_test(st,
+			gyro_bias_regular, gyro_bias_st);
 	}
 test_fail:
 	inv_recover_setting(st);
@@ -1242,7 +1006,7 @@ static int inv_verify_firmware(struct inv_mpu_iio_s *st,
 			write_size = size;
 
 		memaddr = ((bank << 8) | 0x00);
-		result = mpu_memory_read(st,
+		result = mpu_memory_read(st->sl_handle,
 			st->i2c_addr, memaddr, write_size, firmware);
 		if (result)
 			return result;
@@ -1258,7 +1022,7 @@ static int inv_set_fifo_div(struct inv_mpu_iio_s *st,
 	u8 regs[2];
 	int result = 0;
 	/*For some reason DINAC4 is defined as 0xb8, but DINBC4 is not*/
-	const u8 regs_end[] = {DINAFE, DINAF2, DINAAB, 0xc4,
+	const u8 regs_end[12] = {DINAFE, DINAF2, DINAAB, 0xc4,
 					DINAAA, DINAF1, DINADF, DINADF,
 					0xbb, 0xaf, DINADF, DINADF};
 
@@ -1335,6 +1099,24 @@ static int inv_set_tap_interrupt_dmp(struct inv_mpu_iio_s *st,
 	else
 		regs[0] = DINAD8;
 	result = mem_w_key(KEY_CFG_20, ARRAY_SIZE(regs), regs);
+	if (result)
+		return result;
+	return result;
+}
+
+static int inv_set_orientation_interrupt_dmp(struct inv_mpu_iio_s *st,
+			u8 on)
+{
+	int result;
+	u8  regs[2];
+	if (on) {
+		regs[0] = DINBF8;
+		regs[1] = DINBF8;
+	} else {
+		regs[0] = DINAD8;
+		regs[1] = DINAD8;
+	}
+	result = mem_w_key(KEY_CFG_ORIENT_IRQ_1, ARRAY_SIZE(regs), regs);
 	if (result)
 		return result;
 	return result;
@@ -1506,7 +1288,6 @@ int inv_q30_mult(int a, int b)
 {
 	u64 temp;
 	int result;
-
 	temp = (u64)a * b;
 	result = (int)(temp >> DMP_MULTI_SHIFT);
 
@@ -1560,18 +1341,6 @@ static u16 inv_orientation_matrix_to_scaler(const signed char *mtx)
 	return scalar;
 }
 
-#if 0
-static int inv_disable_gyro_cal(struct inv_mpu_iio_s *st)
-{
-	const u8 regs[] = {
-		0xb8, 0xaa, 0xaa, 0xaa,
-		0xb0, 0x88, 0xc3, 0xc5,
-		0xc7
-	};
-	return mem_w_key(KEY_CFG_MOTION_BIAS, ARRAY_SIZE(regs), regs);
-}
-#endif
-
 static int inv_gyro_dmp_cal(struct inv_mpu_iio_s *st)
 {
 	int inv_gyro_orient;
@@ -1604,7 +1373,7 @@ static int inv_gyro_dmp_cal(struct inv_mpu_iio_s *st)
 	else if ((inv_gyro_orient & 0xc0) == 0x80)
 		regs[2] = tmpF;
 
-	result = mem_w_key(KEY_FCFG_1, ARRAY_SIZE(regs), regs);
+	result = mem_w_key(KEY_FCFG_1, 3, regs);
 	if (result)
 		return result;
 
@@ -1638,7 +1407,7 @@ static int inv_accel_dmp_cal(struct inv_mpu_iio_s *st)
 	regs[0] = tmp[inv_accel_orient & 3];
 	regs[1] = tmp[(inv_accel_orient >> 3) & 3];
 	regs[2] = tmp[(inv_accel_orient >> 6) & 3];
-	result = mem_w_key(KEY_FCFG_2, ARRAY_SIZE(regs), regs);
+	result = mem_w_key(KEY_FCFG_2, 3, regs);
 	if (result)
 		return result;
 
@@ -1795,22 +1564,15 @@ static int inv_set_shake_reject_timeout_dmp(struct inv_mpu_iio_s *st,
 int inv_set_interrupt_on_gesture_event(struct inv_mpu_iio_s *st, bool on)
 {
 	u8 result;
-	const u8 regs_on[] = {DINADA, DINAB1, DINAB9,
+	const u8 regs_on[] = {DINADA, DINADA, DINAB1, DINAB9,
 					 DINAF3, DINA8B, DINAA3, DINA91,
 					 DINAB6, DINADA, DINAB4, DINADA};
-	const u8 regs_off[] = {0xd8, 0xb1, 0xb9, 0xf3, 0x8b,
+	const u8 regs_off[] = {0xd8, 0xd8, 0xb1, 0xb9, 0xf3, 0x8b,
 					  0xa3, 0x91, 0xb6, 0x09, 0xb4, 0xd9};
 	/*For some reason DINAC4 is defined as 0xb8,
 	but DINBC4 is not defined.*/
 	const u8 regs_end[] = {DINAFE, DINAF2, DINAAB, 0xc4,
-					DINAAA, DINAF1, DINADF, DINADF,
-					0xbb, 0xaf, DINADF, DINADF};
-	const u8 regs[] = {0, 0};
-	/* reset fifo count to zero */
-	result = mem_w_key(KEY_D_1_178, ARRAY_SIZE(regs), regs);
-	if (result)
-		return result;
-
+					DINAAA, DINAF1, DINADF, DINADF};
 	if (on)
 		/*Sets the DMP to send an interrupt and put a FIFO packet
 		in the FIFO if and only if a tap/orientation event
@@ -1827,7 +1589,6 @@ int inv_set_interrupt_on_gesture_event(struct inv_mpu_iio_s *st, bool on)
 		return result;
 
 	result = mem_w_key(KEY_CFG_6, ARRAY_SIZE(regs_end), regs_end);
-
 	return result;
 }
 
@@ -1887,7 +1648,90 @@ int inv_enable_tap_dmp(struct inv_mpu_iio_s *st, bool on)
 	return result;
 }
 
-int inv_send_sensor_data(struct inv_mpu_iio_s *st, u16 elements)
+static int inv_set_orientation_dmp(struct inv_mpu_iio_s *st,
+					int orientation)
+{
+	/*Set a mask in the DMP determining what orientations
+			will trigger interrupts*/
+	u8 regs[4];
+	u8 result;
+
+	/* check if any spurious bit other the ones expected are set */
+	if (orientation & (~(INV_ORIENTATION_ALL | INV_ORIENTATION_FLIP)))
+		return -EINVAL;
+
+	regs[0] = (u8)orientation;
+	result = mem_w_key(KEY_D_1_74, 1, regs);
+	return result;
+}
+
+static int inv_set_orientation_thresh_dmp(struct inv_mpu_iio_s *st,
+					int angle)
+{
+	/*Set an angle threshold in the DMP determining
+		when orientations change*/
+	u8 result;
+	u32 d;
+	const u32 threshold[] = {138952416, 268435455, 379625062,
+					  464943848, 518577479, 536870912};
+	/* The real calculation is
+	 * threshold = (long)((1 << 29) * sin((angle * M_PI) / 180.));
+	 * Here we have to use table lookup*/
+	d = angle / DMP_ANGLE_SCALE;
+	d -= 1;
+	if (d >= ARRAY_SIZE(threshold))
+		return -EPERM;
+	result = write_be32_key_to_mem(st, threshold[d], KEY_D_1_232);
+
+	return result;
+}
+
+static int inv_set_orientation_time_dmp(struct inv_mpu_iio_s *st,
+					u32 time)
+{
+	/*Determines the stability time required before a
+	new orientation can be adopted */
+	u16 dmpTime;
+	u8 data[2];
+	u8 sampleDivider;
+	u8 result;
+	/* First check if we are allowed to call this function here */
+	sampleDivider = st->sample_divider;
+	sampleDivider++;
+	/* 60 ms minimum time added */
+	dmpTime = ((time) / sampleDivider);
+	data[0] = dmpTime >> 8;
+	data[1] = dmpTime & 0xFF;
+	result = mem_w_key(KEY_D_1_250, 2, data);
+
+	return result;
+}
+
+/**
+ * inv_enable_orientation_dmp() -  calling this function will
+ *                  enable/disable orientation function.
+ */
+int inv_enable_orientation_dmp(struct inv_mpu_iio_s *st, bool on)
+{
+	int result;
+	result = inv_set_orientation_interrupt_dmp(st, on);
+	if (result)
+		return result;
+	result = inv_set_orientation_dmp(st, 0x40 | INV_ORIENTATION_ALL);
+	if (result)
+		return result;
+	result = inv_set_gyro_sf_dmp(st);
+	if (result)
+		return result;
+	result = inv_set_orientation_thresh_dmp(st, DMP_ORIENTATION_ANGLE);
+	if (result)
+		return result;
+	result = inv_set_orientation_time_dmp(st, DMP_ORIENTATION_TIME);
+	return result;
+}
+
+static int inv_send_sensor_data(struct inv_mpu_iio_s *st,
+				u16 elements)
 {
 	int result;
 	u8 regs[] = {DINAA0 + 3, DINAA0 + 3, DINAA0 + 3,
@@ -1913,17 +1757,12 @@ int inv_send_sensor_data(struct inv_mpu_iio_s *st, u16 elements)
 	return result;
 }
 
-int inv_send_interrupt_word(struct inv_mpu_iio_s *st, bool on)
+static int inv_send_interrupt_word(struct inv_mpu_iio_s *st)
 {
-	const u8 regs_on[] = { DINA20 };
-	const u8 regs_off[] = { DINAA3 };
+	const u8 regs[] = { DINA20 };
 	u8 result;
 
-	if (on)
-		result = mem_w_key(KEY_CFG_27, ARRAY_SIZE(regs_on), regs_on);
-	else
-		result = mem_w_key(KEY_CFG_27, ARRAY_SIZE(regs_off), regs_off);
-
+	result = mem_w_key(KEY_CFG_27, ARRAY_SIZE(regs), regs);
 	return result;
 }
 
@@ -1944,10 +1783,8 @@ ssize_t inv_dmp_firmware_write(struct file *fp, struct kobject *kobj,
 	indio_dev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	st = iio_priv(indio_dev);
 
-	if (st->chip_config.firmware_loaded)
+	if (st->chip_config.is_asleep || st->chip_config.firmware_loaded)
 		return -EINVAL;
-	if (st->chip_config.enable)
-		return -EBUSY;
 
 	reg = &st->reg;
 	if (DMP_IMAGE_SIZE != size) {
@@ -1959,8 +1796,6 @@ ssize_t inv_dmp_firmware_write(struct file *fp, struct kobject *kobj,
 	if (!firmware)
 		return -ENOMEM;
 
-	mutex_lock(&indio_dev->mlock);
-
 	memcpy(firmware, buf, size);
 	result = crc32(CRC_FIRMWARE_SEED, firmware, size);
 	if (DMP_IMAGE_CRC_VALUE != result) {
@@ -1969,10 +1804,6 @@ ssize_t inv_dmp_firmware_write(struct file *fp, struct kobject *kobj,
 		result = -EINVAL;
 		goto firmware_write_fail;
 	}
-
-	result = st->set_power_state(st, true);
-	if (result)
-		goto firmware_write_fail;
 
 	result = inv_load_firmware(st, firmware, size);
 	if (result)
@@ -1991,7 +1822,16 @@ ssize_t inv_dmp_firmware_write(struct file *fp, struct kobject *kobj,
 	if (result)
 		goto firmware_write_fail;
 
+	result = inv_verify_firmware(st, firmware, size);
+	if (result)
+		goto firmware_write_fail;
 	result = inv_set_fifo_rate(st, DMP_DEFAULT_FIFO_RATE);
+	if (result)
+		goto firmware_write_fail;
+	result = inv_send_sensor_data(st, INV_GYRO_ACC_MASK);
+	if (result)
+		goto firmware_write_fail;
+	result = inv_send_interrupt_word(st);
 	if (result)
 		goto firmware_write_fail;
 	result = inv_gyro_dmp_cal(st);
@@ -2000,19 +1840,12 @@ ssize_t inv_dmp_firmware_write(struct file *fp, struct kobject *kobj,
 	result = inv_accel_dmp_cal(st);
 	if (result)
 		goto firmware_write_fail;
-	/* result = inv_disable_gyro_cal(st); */
-	if (result)
-		goto firmware_write_fail;
-
 	st->chip_config.firmware_loaded = 1;
-
+	result = size;
 firmware_write_fail:
-	result |= st->set_power_state(st, false);
-	mutex_unlock(&indio_dev->mlock);
 	kfree(firmware);
-	if (result)
-		return result;
-	return size;
+
+	return result;
 }
 
 ssize_t inv_dmp_firmware_read(struct file *filp,
@@ -2024,20 +1857,11 @@ ssize_t inv_dmp_firmware_read(struct file *filp,
 	u16 memaddr;
 	struct iio_dev *indio_dev;
 	struct inv_mpu_iio_s *st;
-
 	size = count;
+
 	indio_dev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	st = iio_priv(indio_dev);
-
 	data = 0;
-	mutex_lock(&indio_dev->mlock);
-	if (!st->chip_config.enable) {
-		result = st->set_power_state(st, true);
-		if (result) {
-			mutex_unlock(&indio_dev->mlock);
-			return result;
-		}
-	}
 	for (bank = 0; size > 0; bank++, size -= write_size,
 					data += write_size) {
 		if (size > MPU_MEM_BANK_SIZE)
@@ -2046,21 +1870,15 @@ ssize_t inv_dmp_firmware_read(struct file *filp,
 			write_size = size;
 
 		memaddr = (bank << 8);
-		result = mpu_memory_read(st,
+		result = mpu_memory_read(st->sl_handle,
 			st->i2c_addr, memaddr, write_size, &buf[data]);
-		if (result) {
-			mutex_unlock(&indio_dev->mlock);
+		if (result)
 			return result;
-		}
 	}
-	if (!st->chip_config.enable)
-		result = st->set_power_state(st, false);
-	mutex_unlock(&indio_dev->mlock);
-	if (result)
-		return result;
 
-	return count;
+	return 0;
 }
 /**
  *  @}
  */
+

@@ -36,28 +36,6 @@
 #include "buffer.h"
 #include "trigger.h"
 
-#define YAS_MAG_MAX_FILTER_LEN			30
-struct yas_adaptive_filter {
-	int num;
-	int index;
-	int filter_len;
-	int filter_noise;
-	int sequence[YAS_MAG_MAX_FILTER_LEN];
-};
-
-struct yas_thresh_filter {
-	int threshold;
-	int last;
-};
-
-struct yas_filter {
-	int filter_len;
-	int filter_thresh;
-	int filter_noise[3];
-	struct yas_adaptive_filter adap_filter[3];
-	struct yas_thresh_filter thresh_filter[3];
-};
-
 /**
  *  struct inv_compass_state - Driver state variables.
  *  @plat_data:         mpu platform data from board file.
@@ -68,6 +46,7 @@ struct yas_filter {
  *  @delay:             delay to schedule the next work.
  *  @overflow_bound:    bound to determine overflow.
  *  @center:            center of the measurement.
+ *  @enable:            enable/disable driver.
  *  @compass_data[3]:   compass data store.
  *  @offset[3]:         yas530 specific data.
  *  @base_compass_data[3]: first measure data after reset.
@@ -75,13 +54,13 @@ struct yas_filter {
  *  @first_read_after_reset:1: flag for first read after reset.
  *  @reset_timer: timer to accumulate overflow conditions.
  *  @overunderflow:1:     overflow and underflow flag.
- *  @filter: filter data structure.
  *  @read_data:         function pointer of reading data from device.
  *  @get_cal_data: function pointer of reading cal data.
  */
 struct inv_compass_state {
 	struct mpu_platform_data plat_data;
 	struct i2c_client *client;
+	struct inv_chip_chan_info *chan_info;
 	struct iio_trigger  *trig;
 	struct delayed_work work;
 	s16 delay;
@@ -89,6 +68,7 @@ struct inv_compass_state {
 	s16 upper_bound;
 	s16 lower_bound;
 	s16 center;
+	s8 enable;
 	s16 compass_data[3];
 	s8 offset[3];
 	s16 base_compass_data[3];
@@ -96,7 +76,6 @@ struct inv_compass_state {
 	u8 first_read_after_reset:1;
 	u8 overunderflow:1;
 	s32 reset_timer;
-	struct yas_filter filter;
 	int (*read_data)(struct inv_compass_state *st,
 			  int *, u16 *, u16 *, u16 *, u16 *);
 	int (*get_cal_data)(struct inv_compass_state *);
@@ -134,15 +113,6 @@ enum inv_mpu_scan {
 #define YAS_YAS530_DATA_CENTER		2048
 #define YAS_YAS530_DATA_OVERFLOW	4095
 #define YAS_YAS530_CAL_DATA_SIZE        16
-
-/*filter related defines */
-#define YAS_MAG_DEFAULT_FILTER_NOISE_X          144 /* sd: 1200 nT */
-#define YAS_MAG_DEFAULT_FILTER_NOISE_Y          144 /* sd: 1200 nT */
-#define YAS_MAG_DEFAULT_FILTER_NOISE_Z          144 /* sd: 1200 nT */
-#define YAS_MAG_DEFAULT_FILTER_LEN              20
-
-#define YAS530_MAG_DEFAULT_FILTER_THRESH        100
-#define YAS532_MAG_DEFAULT_FILTER_THRESH        300
 
 #define YAS_YAS532_533_VERSION_AB	0 /* YAS532_533AB (MS-3R/3F ABver) */
 #define YAS_YAS532_533_VERSION_AC	1 /* YAS532_533AC (MS-3R/3F ACver) */

@@ -8,7 +8,7 @@ config INV_MPU_IIO
 	default n
 	help
 	  This driver supports the Invensense MPU devices.
-	  This includes MPU6050/MPU3050/MPU9150/ITG3500/MPU6500/MPU9250.
+	  This includes MPU6050/MPU3050/MPU9150/ITG3500/MPU6500.
 	  This driver can be built as a module. The module will be called
 	  inv-mpu-iio.
 

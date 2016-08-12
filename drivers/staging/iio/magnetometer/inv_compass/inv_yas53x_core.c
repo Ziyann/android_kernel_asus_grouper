@@ -274,10 +274,10 @@ static int measure_and_set_offset(struct inv_compass_state *st,
 }
 
 static void coordinate_conversion(short x, short y1, short y2, short t,
-				  int *xo, int *yo, int *zo)
+				  int32_t *xo, int32_t *yo, int32_t *zo)
 {
-	int sx, sy1, sy2, sy, sz;
-	int hx, hy, hz;
+	int32_t sx, sy1, sy2, sy, sz;
+	int32_t hx, hy, hz;
 
 	sx = x - (Cx * t) / 100;
 	sy1 = y1 - (Cy1 * t) / 100;
@@ -388,49 +388,6 @@ static int get_cal_data_yas530(struct inv_compass_state *st)
 	return 0;
 }
 
-
-static void thresh_filter_init(struct yas_thresh_filter *thresh_filter,
-				int threshold)
-{
-	thresh_filter->threshold = threshold;
-	thresh_filter->last = 0;
-}
-
-static void
-adaptive_filter_init(struct yas_adaptive_filter *adap_filter, int len,
-		int noise)
-{
-	int i;
-
-	adap_filter->num = 0;
-	adap_filter->index = 0;
-	adap_filter->filter_noise = noise;
-	adap_filter->filter_len = len;
-
-	for (i = 0; i < adap_filter->filter_len; ++i)
-		adap_filter->sequence[i] = 0;
-}
-
-static void yas_init_adap_filter(struct inv_compass_state *st)
-{
-	struct yas_filter *f;
-	int i;
-	int noise[] = {YAS_MAG_DEFAULT_FILTER_NOISE_X,
-			YAS_MAG_DEFAULT_FILTER_NOISE_Y,
-			YAS_MAG_DEFAULT_FILTER_NOISE_Z};
-
-	f = &st->filter;
-	f->filter_len = YAS_MAG_DEFAULT_FILTER_LEN;
-	for (i = 0; i < 3; i++)
-		f->filter_noise[i] = noise[i];
-
-	for (i = 0; i < 3; i++) {
-		adaptive_filter_init(&f->adap_filter[i], f->filter_len,
-				f->filter_noise[i]);
-		thresh_filter_init(&f->thresh_filter[i], f->filter_thresh);
-	}
-}
-
 int yas53x_resume(struct inv_compass_state *st)
 {
 	int result = 0;
@@ -484,13 +441,9 @@ int yas53x_resume(struct inv_compass_state *st)
 		return result;
 	/* Offset Measurement and Set */
 	result = measure_and_set_offset(st, st->offset);
-	if (result)
-		return result;
 	st->first_measure_after_reset = 1;
 	st->first_read_after_reset = 1;
 	st->reset_timer = 0;
-
-	yas_init_adap_filter(st);
 
 	return result;
 }
@@ -514,70 +467,6 @@ static int inv_check_range(struct inv_compass_state *st, s16 x, s16 y1, s16 y2)
 
 	return result;
 }
-static int square(int data)
-{
-	return data * data;
-}
-
-static int
-adaptive_filter_filter(struct yas_adaptive_filter *adap_filter, int in)
-{
-	int avg, sum;
-	int i;
-
-	if (adap_filter->filter_len == 0)
-		return in;
-	if (adap_filter->num < adap_filter->filter_len) {
-		adap_filter->sequence[adap_filter->index++] = in / 100;
-		adap_filter->num++;
-		return in;
-	}
-	if (adap_filter->filter_len <= adap_filter->index)
-		adap_filter->index = 0;
-	adap_filter->sequence[adap_filter->index++] = in / 100;
-
-	avg = 0;
-	for (i = 0; i < adap_filter->filter_len; i++)
-		avg += adap_filter->sequence[i];
-	avg /= adap_filter->filter_len;
-
-	sum = 0;
-	for (i = 0; i < adap_filter->filter_len; i++)
-		sum += square(avg - adap_filter->sequence[i]);
-	sum /= adap_filter->filter_len;
-
-	if (sum <= adap_filter->filter_noise)
-		return avg * 100;
-
-	return ((in/100 - avg) * (sum - adap_filter->filter_noise) / sum + avg)
-		* 100;
-}
-
-static int
-thresh_filter_filter(struct yas_thresh_filter *thresh_filter, int in)
-{
-	if (in < thresh_filter->last - thresh_filter->threshold
-			|| thresh_filter->last
-			+ thresh_filter->threshold < in) {
-		thresh_filter->last = in;
-		return in;
-	} else {
-		return thresh_filter->last;
-	}
-}
-
-static void
-filter_filter(struct yas_filter *d, int *orig, int *filtered)
-{
-	int i;
-
-	for (i = 0; i < 3; i++) {
-		filtered[i] = adaptive_filter_filter(&d->adap_filter[i],
-				orig[i]);
-		filtered[i] = thresh_filter_filter(&d->thresh_filter[i],
-				filtered[i]);
-	}
-}
 
 int yas53x_read(struct inv_compass_state *st, short rawfixed[3],
 				int *overunderflow)
@@ -594,10 +483,8 @@ int yas53x_read(struct inv_compass_state *st, short rawfixed[3],
 	if (busy)
 		return -1;
 	coordinate_conversion(x, y1, y2, t, &xyz[0], &xyz[1], &xyz[2]);
-	filter_filter(&st->filter, xyz, xyz);
 	for (i = 0; i < 3; i++)
 		rawfixed[i] = (short)(xyz[i] / 100);
-
 	if (st->first_measure_after_reset) {
 		for (i = 0; i < 3; i++)
 			st->base_compass_data[i] = rawfixed[i];
@@ -632,11 +519,8 @@ static int yas53x_read_raw(struct iio_dev *indio_dev,
 			      int *val2,
 			      long mask) {
 	struct inv_compass_state  *st = iio_priv(indio_dev);
-
 	switch (mask) {
 	case 0:
-		if (!(iio_buffer_enabled(indio_dev)))
-			return -EINVAL;
 		if (chan->type == IIO_MAGN) {
 			*val = st->compass_data[chan->channel2 - IIO_MOD_X];
 			return IIO_VAL_INT;
@@ -652,6 +536,25 @@ static int yas53x_read_raw(struct iio_dev *indio_dev,
 	default:
 		return -EINVAL;
 	}
+}
+
+/**
+ *  yas53x_write_raw() - write raw method.
+ */
+static int yas53x_write_raw(struct iio_dev *indio_dev,
+			       struct iio_chan_spec const *chan,
+			       int val,
+			       int val2,
+			       long mask) {
+	int result;
+	switch (mask) {
+	case IIO_CHAN_INFO_SCALE:
+		result = -EINVAL;
+		return result;
+	default:
+		return -EINVAL;
+	}
+	return 0;
 }
 
 /**
@@ -735,11 +638,21 @@ static ssize_t yas53x_overunderflow_show(struct device *dev,
 void set_yas53x_enable(struct iio_dev *indio_dev, bool enable)
 {
 	struct inv_compass_state *st = iio_priv(indio_dev);
+	int pre_enable = st->enable;
 
-	yas_init_adap_filter(st);
-	st->first_measure_after_reset = 1;
-	st->first_read_after_reset = 1;
-	schedule_delayed_work(&st->work, msecs_to_jiffies(st->delay));
+	if (enable) {
+		if (pre_enable == 0) {
+			schedule_delayed_work(&st->work,
+				msecs_to_jiffies(st->delay));
+			st->enable = 1;
+		}
+
+	} else {
+		if (pre_enable == 1) {
+			cancel_delayed_work_sync(&st->work);
+			st->enable = 0;
+		}
+	}
 }
 
 static void yas53x_work_func(struct work_struct *work)
@@ -750,16 +663,9 @@ static void yas53x_work_func(struct work_struct *work)
 	struct iio_dev *indio_dev = iio_priv_to_dev(st);
 	u32 delay = msecs_to_jiffies(st->delay);
 
-	mutex_lock(&indio_dev->mlock);
-	if (!(iio_buffer_enabled(indio_dev)))
-		goto error_ret;
-
 	schedule_delayed_work(&st->work, delay);
 	inv_read_yas53x_fifo(indio_dev);
 	INV_I2C_INC_COMPASSIRQ();
-
-error_ret:
-	mutex_unlock(&indio_dev->mlock);
 }
 
 static const struct iio_chan_spec compass_channels[] = {
@@ -808,6 +714,7 @@ static const struct attribute_group inv_attribute_group = {
 static const struct iio_info yas53x_info = {
 	.driver_module = THIS_MODULE,
 	.read_raw = &yas53x_read_raw,
+	.write_raw = &yas53x_write_raw,
 	.attrs = &inv_attribute_group,
 };
 
@@ -838,19 +745,16 @@ static int inv_yas53x_probe(struct i2c_client *client,
 	st->delay = 10;
 
 	i2c_set_clientdata(client, indio_dev);
-
 	if (!strcmp(id->name, "yas530")) {
 		st->read_data    = yas530_read_data;
 		st->get_cal_data = get_cal_data_yas530;
 		st->overflow_bound = YAS_YAS530_DATA_OVERFLOW;
 		st->center     = YAS_YAS530_DATA_CENTER;
-		st->filter.filter_thresh = YAS530_MAG_DEFAULT_FILTER_THRESH;
 	} else {
 		st->read_data    = yas532_533_read_data;
 		st->get_cal_data = get_cal_data_yas532_533;
 		st->overflow_bound = YAS_YAS532_533_DATA_OVERFLOW;
 		st->center     = YAS_YAS532_533_DATA_CENTER;
-		st->filter.filter_thresh = YAS532_MAG_DEFAULT_FILTER_THRESH;
 	}
 	st->upper_bound = st->center + (st->center >> 1);
 	st->lower_bound = (st->center >> 1);
@@ -883,7 +787,6 @@ static int inv_yas53x_probe(struct i2c_client *client,
 		goto out_remove_trigger;
 	INIT_DELAYED_WORK(&st->work, yas53x_work_func);
 	pr_info("%s: Probe name %s\n", __func__, id->name);
-
 	return 0;
 out_remove_trigger:
 	if (indio_dev->modes & INDIO_BUFFER_TRIGGERED)
